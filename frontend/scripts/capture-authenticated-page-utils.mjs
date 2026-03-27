@@ -39,23 +39,17 @@ export const loadEnvFile = async () => {
 export const resolveCaptureConfig = async () => {
   const envFile = await loadEnvFile();
 
-  const serverUrl = process.env.TEST_SERVER ?? envFile.TEST_SERVER;
   const username = process.env.TEST_USER ?? envFile.TEST_USER;
   const password = process.env.TEST_PASSWORD ?? envFile.TEST_PASSWORD;
 
-  if (!serverUrl || !username || !password) {
-    throw new Error('Missing TEST_SERVER, TEST_USER, or TEST_PASSWORD in .env or environment.');
-  }
-
-  if (!serverUrl.startsWith('https://')) {
-    throw new Error('TEST_SERVER must be an https:// URL to pass login validation.');
+  if (!username || !password) {
+    throw new Error('Missing TEST_USER or TEST_PASSWORD in .env or environment.');
   }
 
   return {
     appBaseUrl: process.env.APP_BASE_URL ?? envFile.APP_BASE_URL ?? 'http://127.0.0.1:3000',
     outputDir: path.join(ROOT_DIR, 'screenshots'),
     password,
-    serverUrl,
     username,
   };
 };
@@ -72,15 +66,14 @@ export const createAuthenticatedPage = async (config) => {
   });
   const page = await context.newPage();
 
-  await page.goto(`${config.appBaseUrl}/login/?plain=1`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${config.appBaseUrl}/login/`, { waitUntil: 'domcontentloaded' });
 
-  const serverInput = page.getByLabel(/server url/i);
   const usernameInput = page.getByLabel(/username/i);
   const passwordInput = page.getByLabel(/password/i);
   const errorBox = page.locator('.bg-red-50');
 
   await Promise.race([
-    serverInput.waitFor({ state: 'visible' }),
+    usernameInput.waitFor({ state: 'visible' }),
     errorBox.waitFor({ state: 'visible' }),
     page.waitForTimeout(15000),
   ]).catch(() => {});
@@ -90,13 +83,18 @@ export const createAuthenticatedPage = async (config) => {
     throw new Error(`Login form error: ${errorText.trim()}`);
   }
 
-  if (!(await serverInput.isVisible())) {
+  if (!(await usernameInput.isVisible())) {
     throw new Error('Login form did not render.');
   }
 
-  await serverInput.fill(config.serverUrl);
   await usernameInput.fill(config.username);
   await passwordInput.fill(config.password);
+  const rememberDeviceToggle = page.getByLabel(/remember device/i);
+
+  if (await rememberDeviceToggle.isVisible().catch(() => false)) {
+    await rememberDeviceToggle.check();
+  }
+
   await page.getByRole('button', { name: /log.*in|sign.*in/i }).click();
 
   try {
@@ -119,16 +117,16 @@ export const createAuthenticatedPage = async (config) => {
     await page.waitForURL(/\/timeline/, { timeout: 15000 });
   } catch {
     throw new Error(
-      `Failed to reach timeline. Current URL: ${page.url()}. Check TEST_SERVER/TEST_USER/TEST_PASSWORD.`,
+      `Failed to reach timeline. Current URL: ${page.url()}. Check TEST_USER/TEST_PASSWORD.`,
     );
   }
 
-  const serverInputVisible = await page
-    .getByLabel(/server url/i)
+  const loginFormVisible = await page
+    .getByLabel(/username/i)
     .isVisible()
     .catch(() => false);
 
-  if (serverInputVisible) {
+  if (loginFormVisible) {
     throw new Error('Redirected back to login; timeline requires authentication.');
   }
 

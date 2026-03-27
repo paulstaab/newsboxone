@@ -113,6 +113,7 @@ Then verify:
 Top-level product and test documentation lives in `docs/`:
 
 - `docs/requirements.md`
+- `docs/tech-stack.md`
 - `docs/api-contract.yaml`
 - `docs/frontend-requirements.md`
 - `docs/backend-requirements.md`

@@ -10,7 +10,7 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 
 - Test case catalog: `docs/frontend-test-cases.md`
 - End-to-end scenarios: `frontend/docs/test-scenarios.md`
-- Current stack and tooling: `frontend/docs/tech-stack.md`
+- Current stack and tooling: `docs/tech-stack.md`
 
 ## Requirement IDs
 

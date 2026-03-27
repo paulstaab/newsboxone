@@ -30,8 +30,8 @@ impl SafeGetError {
 /// - Loopback/private/link-local/unspecified/multicast/metadata targets are blocked.
 /// - `localhost` is only allowed in testing mode.
 pub async fn validate_remote_url(url: &str, allow_localhost: bool) -> Result<reqwest::Url> {
-    let parsed = reqwest::Url::parse(url)
-        .with_context(|| "URL scheme '' is not allowed. Only http and https are permitted.")?;
+    let parsed =
+        reqwest::Url::parse(url).with_context(|| format!("failed to parse remote URL `{url}`"))?;
 
     if parsed.scheme() != "http" && parsed.scheme() != "https" {
         anyhow::bail!(

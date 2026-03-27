@@ -32,6 +32,7 @@ export function useLoginFlow() {
       router.push('/timeline');
     } catch (error) {
       setStep(LoginStep.CREDENTIALS);
+      setPassword('');
       setValidationError(error instanceof Error ? error.message : 'Authentication failed');
     }
   }, [login, password, rememberDevice, router, username]);

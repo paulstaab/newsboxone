@@ -22,7 +22,7 @@ The combined public runtime surface is:
 
 - `/` for the frontend
 - `/api` for the public NewsBoxOne API
-- `/status` for health
+- `/api/status` for health
 
 ## Scope Rules
 
@@ -67,7 +67,7 @@ Do not recreate per-project copies of shared devcontainer, CI, or root Docker pa
 ## Public Runtime Rules
 
 - The combined container must serve the frontend at `/`.
-- The combined container must expose the backend health endpoint at `/status`.
+- The combined container must expose the backend health endpoint at `/api/status`.
 - The combined container must expose the NewsBoxOne API at `/api`.
 - Do not expose legacy or internal backend mount paths publicly through nginx unless the task explicitly changes the combined product contract.
 - If backend compatibility routes remain implemented internally, treat them as backend concerns, not combined public surface.
@@ -110,7 +110,7 @@ Frontend validation:
 Combined packaging validation when relevant:
 
 - `docker build -t newsboxone:local .`
-- verify `/`, `/api/version`, and `/status` against a local container run
+- verify `/`, `/api/version`, and `/api/status` against a local container run
 
 If you do not run a relevant validation step, say so clearly.
 
