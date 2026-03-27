@@ -82,8 +82,33 @@ When repository-level behavior changes, update the relevant top-level docs in th
 - `docs/backend-requirements.md` for backend behavior changes
 - `docs/frontend-test-cases.md` for frontend test coverage changes
 - `docs/backend-test-cases.md` for backend test coverage changes
+- `docs/e2e-test-cases.md` for cross-stack end-to-end scenario coverage changes
 
 If the task changes combined packaging, CI, routes, or developer workflow and the docs are not updated, treat the work as incomplete.
+
+## Test Taxonomy
+
+NewsBoxOne should maintain these automated test categories:
+
+- backend unit tests
+- backend integration tests
+- frontend unit tests
+- frontend integration tests
+- e2e scenario tests
+
+Rules:
+
+- Create unit tests whenever they are practical and provide meaningful local coverage.
+- Unit tests are not tracked in the top-level `docs/` catalogs.
+- `docs/backend-test-cases.md` is the maintained catalog for backend integration tests.
+- `docs/frontend-test-cases.md` is the maintained catalog for frontend integration tests.
+- `docs/e2e-test-cases.md` is the maintained catalog for end-to-end scenario tests.
+- Backend integration tests should be derived from `docs/backend-test-cases.md`.
+- Frontend integration tests should be derived from `docs/frontend-test-cases.md`.
+- End-to-end scenario tests should be derived from `docs/e2e-test-cases.md`.
+- Frontend unit tests and frontend integration tests must run standalone and mock the backend API instead of depending on a live backend.
+- Prefer live-backend e2e scenario tests over frontend integration tests whenever a user-visible flow can reasonably be validated through the combined product.
+- Use frontend integration tests mainly for focused frontend behavior that needs only minimal mocked API interaction, such as browser-platform or PWA installation flows.
 
 ## Validation Expectations
 

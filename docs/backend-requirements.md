@@ -7,7 +7,7 @@ The same requirements apply to all implementations.
 ## Related Contracts And Tests
 - API contract:
   - `docs/api-contract.yaml`
-- Test case catalogs:
+- Backend integration test catalog:
   - `docs/backend-test-cases.md`
 
 ## Requirement IDs

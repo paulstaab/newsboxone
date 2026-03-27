@@ -29,13 +29,13 @@ The following docs are part of the maintained product baseline and must stay ali
 
 - `../docs/frontend-requirements.md`
 - `../docs/frontend-test-cases.md`
-- `docs/test-scenarios.md`
+- `../docs/e2e-test-cases.md`
 - `../docs/tech-stack.md`
 
 Rules:
 
 - When behavior changes, update the relevant docs in the same task.
-- When tests change in a meaningful way, update `../docs/frontend-test-cases.md` and `docs/test-scenarios.md` as needed.
+- When tests change in a meaningful way, update `../docs/frontend-test-cases.md` and `../docs/e2e-test-cases.md` as needed.
 - When the stack, tooling, or core architecture changes, update `../docs/tech-stack.md`.
 - When the user asks for documentation updates, do not stop at code changes; keep the docs in sync as part of the request.
 - If you notice the docs are materially out of sync with the code while working on a related area, fix them.
@@ -120,5 +120,5 @@ These require network access and must run outside restricted sandboxes when appl
 
 - `../docs/frontend-requirements.md`
 - `../docs/frontend-test-cases.md`
-- `docs/test-scenarios.md`
+- `../docs/e2e-test-cases.md`
 - `../docs/tech-stack.md`

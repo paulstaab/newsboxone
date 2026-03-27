@@ -8,9 +8,11 @@ It covers the repository-level infrastructure needed to ship the frontend and ba
 - Product-specific requirement baselines:
   - `docs/frontend-requirements.md`
   - `docs/backend-requirements.md`
-- Product-specific test-case catalogs:
+- Product-specific integration-test catalogs:
   - `docs/frontend-test-cases.md`
   - `docs/backend-test-cases.md`
+- Shared end-to-end scenario catalog:
+  - `docs/e2e-test-cases.md`
 - Shared API contract:
   - `docs/api-contract.yaml`
 
@@ -41,6 +43,10 @@ It covers the repository-level infrastructure needed to ship the frontend and ba
 - `DEV-001`: The repository shall provide a single root devcontainer configuration for working on frontend and backend together.
 - `DEV-002`: The repository shall provide a single root VS Code tasks file covering frontend and backend lint, test, build, and serve workflows.
 - `DEV-003`: The repository shall keep per-project source code and language-specific manifests under `frontend/` and `backend/` while moving shared infrastructure to the repository root.
+- `DEV-004`: The repository shall maintain backend unit tests, backend integration tests, frontend unit tests, frontend integration tests, and end-to-end scenario tests as the shared automated testing taxonomy.
+- `DEV-005`: Unit tests shall be added whenever they are practical and useful, but unit-test inventories shall not be tracked in the top-level `docs/` catalogs.
+- `DEV-006`: Frontend unit tests and frontend integration tests shall run standalone and mock the backend API rather than depending on a live backend service.
+- `DEV-007`: Live-backend end-to-end scenario tests shall be preferred over frontend integration tests for cross-stack user journeys, while frontend integration tests shall remain available for focused frontend behavior that needs only minimal mocked API interaction.
 
 ### Continuous Integration
 - `CI-001`: The repository shall provide a single root CI workflow that validates backend and frontend changes in one pipeline.
@@ -50,5 +56,6 @@ It covers the repository-level infrastructure needed to ship the frontend and ba
 ### Documentation
 - `DOC-001`: Shared product requirements shall be maintained in this top-level document.
 - `DOC-002`: Frontend and backend requirement baselines shall be maintained in the top-level `docs/` directory using `frontend-` and `backend-` prefixes.
-- `DOC-003`: Frontend and backend test-case catalogs shall be maintained in the top-level `docs/` directory using `frontend-` and `backend-` prefixes.
-- `DOC-004`: The shared public API specification shall be maintained as OpenAPI in `docs/api-contract.yaml`.
+- `DOC-003`: Frontend and backend integration-test catalogs shall be maintained in the top-level `docs/` directory using `frontend-` and `backend-` prefixes.
+- `DOC-004`: Cross-stack end-to-end scenario coverage shall be maintained in `docs/e2e-test-cases.md`.
+- `DOC-005`: The shared public API specification shall be maintained as OpenAPI in `docs/api-contract.yaml`.
