@@ -1,0 +1,27 @@
+{
+  "name": "newsboxone",
+  "image": "mcr.microsoft.com/devcontainers/rust:2-1-trixie",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "24"
+    },
+    "ghcr.io/devcontainers/features/python:1": {},
+    "ghcr.io/rails/devcontainer/features/sqlite3:latest": {},
+    "ghcr.io/jsburckhardt/devcontainer-features/codex:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "alexcvzz.vscode-sqlite",
+        "dbaeumer.vscode-eslint",
+        "ms-playwright.playwright",
+        "rust-lang.rust-analyzer"
+      ]
+    }
+  },
+  "containerEnv": {
+    "CODEX_HOME": "/workspaces/newsboxone/.codex"
+  },
+  "forwardPorts": [3000, 8000],
+  "postCreateCommand": "bash -lc 'sudo apt-get update && sudo apt-get install -y --no-install-recommends ripgrep && sudo rm -rf /var/lib/apt/lists/* && cd backend && cargo fetch && cd ../frontend && npm ci && npx playwright install --with-deps'"
+}
