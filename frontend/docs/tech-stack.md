@@ -78,6 +78,7 @@ This document lists the technology and tooling currently used by NewsBoxZero.
 - HTTP Basic Auth against the NewsBoxOne API under `/api`
 - Typed API wrappers under `src/lib/api/`
 - Client-side session normalization and validation before authenticated requests
+- In local `next dev`, `/api/*` requests are proxied to the backend origin defined by `NEWSBOXONE_BACKEND_ORIGIN` and default to `http://127.0.0.1:8000`
 
 ## PWA And Browser Platform Features
 

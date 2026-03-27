@@ -34,9 +34,18 @@
       "type": "shell",
       "command": "cargo run -- serve --host 0.0.0.0 --port 8000",
       "options": {
-        "cwd": "${workspaceFolder}/backend"
+        "cwd": "${workspaceFolder}/backend",
+        "env": {
+          "USERNAME": "test",
+          "PASSWORD": "test"
+        }
       },
-      "problemMatcher": []
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "group": "workspace-serve"
+      }
     },
     {
       "label": "Frontend: Install Dependencies",
@@ -81,10 +90,15 @@
       "options": {
         "cwd": "${workspaceFolder}/frontend"
       },
-      "problemMatcher": []
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "group": "workspace-serve"
+      }
     },
     {
-      "label": "Workspace: Dev",
+      "label": "Workspace: Serve",
       "dependsOrder": "parallel",
       "dependsOn": [
         "Backend: Serve",
@@ -93,7 +107,8 @@
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",
-        "panel": "dedicated"
+        "panel": "shared",
+        "group": "workspace-serve"
       }
     },
     {

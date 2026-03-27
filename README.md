@@ -51,8 +51,13 @@ The repository provides shared VS Code tasks at the root for the common workflow
 - `Frontend: Test`
 - `Frontend: E2E`
 - `Frontend: Dev`
-- `Workspace: Dev`
+- `Workspace: Serve`
 - `Workspace: Validate`
+
+`Workspace: Serve` starts the Rust backend on port `8000` and the Next.js frontend on port `3000` in split VS Code terminal panes.
+For local development, the backend task sets `USERNAME=test` and `PASSWORD=test`, so the local login is `test` / `test`.
+During `next dev`, frontend requests to `/api/*` are proxied to `http://127.0.0.1:8000/api/*` by default.
+Override the backend origin for local development with `NEWSBOXONE_BACKEND_ORIGIN` if needed.
 
 ### Manual Commands
 
