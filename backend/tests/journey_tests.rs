@@ -259,7 +259,7 @@ async fn ts_e2e_008_incremental_sync_with_updated_items() {
 }
 
 #[tokio::test]
-async fn ts_e2e_009_star_and_unstar_item_v1_3() {
+async fn ts_e2e_009_star_and_unstar_item() {
     let context = setup_context(None).await;
     add_shared_feeds(&context).await;
     run_update_cycle(&context).await;
@@ -1075,7 +1075,7 @@ async fn wait_for_ready(client: &Client, base_url: &str) {
     panic!("service did not become ready before timeout");
 }
 
-/// Adds one feed through the v1-3 API and returns the HTTP status.
+/// Adds one feed through the public API and returns the HTTP status.
 async fn add_feed(
     client: &Client,
     base_url: &str,

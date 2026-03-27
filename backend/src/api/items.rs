@@ -183,8 +183,8 @@ pub(super) async fn get_item_content(
     Ok(Json(ItemContentOut { content }))
 }
 
-/// Marks a single v1-3 item as read.
-pub(super) async fn v1_3_mark_item_as_read(
+/// Marks a single item as read.
+pub(super) async fn mark_item_as_read(
     State(state): State<AppState>,
     Path(item_id): Path<i64>,
 ) -> ApiResult<StatusCode> {
@@ -197,8 +197,8 @@ pub(super) async fn v1_3_mark_item_as_read(
     .await
 }
 
-/// Marks multiple v1-3 items as read.
-pub(super) async fn v1_3_mark_multiple_items_as_read(
+/// Marks multiple items as read.
+pub(super) async fn mark_multiple_items_as_read(
     State(state): State<AppState>,
     Json(input): Json<ItemIdsV13In>,
 ) -> ApiResult<StatusCode> {
@@ -211,8 +211,8 @@ pub(super) async fn v1_3_mark_multiple_items_as_read(
     .await
 }
 
-/// Marks a single v1-3 item as unread.
-pub(super) async fn v1_3_mark_item_as_unread(
+/// Marks a single item as unread.
+pub(super) async fn mark_item_as_unread(
     State(state): State<AppState>,
     Path(item_id): Path<i64>,
 ) -> ApiResult<StatusCode> {
@@ -225,8 +225,8 @@ pub(super) async fn v1_3_mark_item_as_unread(
     .await
 }
 
-/// Marks multiple v1-3 items as unread.
-pub(super) async fn v1_3_mark_multiple_items_as_unread(
+/// Marks multiple items as unread.
+pub(super) async fn mark_multiple_items_as_unread(
     State(state): State<AppState>,
     Json(input): Json<ItemIdsV13In>,
 ) -> ApiResult<StatusCode> {
@@ -239,8 +239,8 @@ pub(super) async fn v1_3_mark_multiple_items_as_unread(
     .await
 }
 
-/// Marks a single v1-3 item as starred.
-pub(super) async fn v1_3_mark_item_as_starred(
+/// Marks a single item as starred.
+pub(super) async fn mark_item_as_starred(
     State(state): State<AppState>,
     Path(item_id): Path<i64>,
 ) -> ApiResult<StatusCode> {
@@ -253,8 +253,8 @@ pub(super) async fn v1_3_mark_item_as_starred(
     .await
 }
 
-/// Marks multiple v1-3 items as starred.
-pub(super) async fn v1_3_mark_multiple_items_as_starred(
+/// Marks multiple items as starred.
+pub(super) async fn mark_multiple_items_as_starred(
     State(state): State<AppState>,
     Json(input): Json<ItemIdsV13In>,
 ) -> ApiResult<StatusCode> {
@@ -267,8 +267,8 @@ pub(super) async fn v1_3_mark_multiple_items_as_starred(
     .await
 }
 
-/// Marks a single v1-3 item as unstarred.
-pub(super) async fn v1_3_mark_item_as_unstarred(
+/// Marks a single item as unstarred.
+pub(super) async fn mark_item_as_unstarred(
     State(state): State<AppState>,
     Path(item_id): Path<i64>,
 ) -> ApiResult<StatusCode> {
@@ -281,8 +281,8 @@ pub(super) async fn v1_3_mark_item_as_unstarred(
     .await
 }
 
-/// Marks multiple v1-3 items as unstarred.
-pub(super) async fn v1_3_mark_multiple_items_as_unstarred(
+/// Marks multiple items as unstarred.
+pub(super) async fn mark_multiple_items_as_unstarred(
     State(state): State<AppState>,
     Json(input): Json<ItemIdsV13In>,
 ) -> ApiResult<StatusCode> {
@@ -295,8 +295,8 @@ pub(super) async fn v1_3_mark_multiple_items_as_unstarred(
     .await
 }
 
-/// Marks all items as read through the v1-3 API variant.
-pub(super) async fn mark_all_items_as_read_v1_3(
+/// Marks all matching items as read.
+pub(super) async fn mark_all_items_as_read(
     State(state): State<AppState>,
     Json(input): Json<MarkAllItemsReadIn>,
 ) -> ApiResult<StatusCode> {

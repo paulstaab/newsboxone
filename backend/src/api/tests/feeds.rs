@@ -111,7 +111,7 @@ async fn delete_nonexistent_feed_returns_404() {
 }
 
 #[tokio::test]
-async fn v1_3_move_feed_with_missing_folder_returns_422() {
+async fn move_feed_with_missing_folder_returns_422() {
     let response = app(state(setup_pool().await))
         .oneshot(
             Request::builder()
@@ -133,7 +133,7 @@ async fn v1_3_move_feed_with_missing_folder_returns_422() {
 }
 
 #[tokio::test]
-async fn v1_3_rename_feed_updates_title() {
+async fn rename_feed_updates_title() {
     let pool = setup_pool().await;
 
     let response = app(state(pool.clone()))
@@ -142,7 +142,7 @@ async fn v1_3_rename_feed_updates_title() {
                 .method("POST")
                 .uri("/api/feeds/10/rename")
                 .header("content-type", "application/json")
-                .body(Body::from(r#"{"feedTitle":"Renamed v1-3"}"#))
+                .body(Body::from(r#"{"feedTitle":"Renamed feed"}"#))
                 .unwrap(),
         )
         .await
@@ -153,11 +153,11 @@ async fn v1_3_rename_feed_updates_title() {
         .fetch_one(&pool)
         .await
         .unwrap();
-    assert_eq!(title.as_deref(), Some("Renamed v1-3"));
+    assert_eq!(title.as_deref(), Some("Renamed feed"));
 }
 
 #[tokio::test]
-async fn v1_3_rename_feed_put_method_returns_405() {
+async fn rename_feed_put_method_returns_405() {
     let response = app(state(setup_pool().await))
         .oneshot(
             Request::builder()
@@ -174,7 +174,7 @@ async fn v1_3_rename_feed_put_method_returns_405() {
 }
 
 #[tokio::test]
-async fn v1_3_mark_feed_items_read_put_method_returns_405() {
+async fn mark_feed_items_read_put_method_returns_405() {
     let response = app(state(setup_pool().await))
         .oneshot(
             Request::builder()
@@ -191,7 +191,7 @@ async fn v1_3_mark_feed_items_read_put_method_returns_405() {
 }
 
 #[tokio::test]
-async fn v1_3_mark_feed_items_read_updates_article() {
+async fn mark_feed_items_read_updates_article() {
     let response = app(state(setup_pool().await))
         .oneshot(
             Request::builder()
@@ -208,7 +208,7 @@ async fn v1_3_mark_feed_items_read_updates_article() {
 }
 
 #[tokio::test]
-async fn v1_3_read_missing_feed_returns_404_with_detail() {
+async fn read_missing_feed_returns_404_with_detail() {
     let response = app(state(setup_pool().await))
         .oneshot(
             Request::builder()

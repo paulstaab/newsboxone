@@ -361,7 +361,7 @@ async fn item_content_returns_404_when_missing() {
 }
 
 #[tokio::test]
-async fn v1_3_read_multiple_accepts_item_ids_payload() {
+async fn read_multiple_accepts_item_ids_payload() {
     let response = app(state(setup_pool().await))
         .oneshot(
             Request::builder()
@@ -398,7 +398,7 @@ async fn get_items_invalid_selection_type_returns_400_with_detail() {
 }
 
 #[tokio::test]
-async fn v1_3_mark_item_as_read_updates_last_modified() {
+async fn mark_item_as_read_updates_last_modified() {
     let pool = setup_pool().await;
 
     let response = app(state(pool.clone()))
@@ -423,7 +423,7 @@ async fn v1_3_mark_item_as_read_updates_last_modified() {
 }
 
 #[tokio::test]
-async fn v1_3_mark_item_as_unread_updates_last_modified() {
+async fn mark_item_as_unread_updates_last_modified() {
     let pool = setup_pool().await;
     sqlx::query("UPDATE article SET unread = 0, last_modified = 200 WHERE id = 100")
         .execute(&pool)
@@ -452,7 +452,7 @@ async fn v1_3_mark_item_as_unread_updates_last_modified() {
 }
 
 #[tokio::test]
-async fn v1_3_mark_item_as_starred_updates_last_modified() {
+async fn mark_item_as_starred_updates_last_modified() {
     let pool = setup_pool().await;
 
     let response = app(state(pool.clone()))
@@ -477,7 +477,7 @@ async fn v1_3_mark_item_as_starred_updates_last_modified() {
 }
 
 #[tokio::test]
-async fn v1_3_mark_item_as_unstarred_updates_last_modified() {
+async fn mark_item_as_unstarred_updates_last_modified() {
     let pool = setup_pool().await;
     sqlx::query("UPDATE article SET starred = 1, last_modified = 200 WHERE id = 100")
         .execute(&pool)
@@ -506,7 +506,7 @@ async fn v1_3_mark_item_as_unstarred_updates_last_modified() {
 }
 
 #[tokio::test]
-async fn v1_3_mark_item_as_starred_missing_returns_404_with_detail() {
+async fn mark_item_as_starred_missing_returns_404_with_detail() {
     let response = app(state(setup_pool().await))
         .oneshot(
             Request::builder()
@@ -527,7 +527,7 @@ async fn v1_3_mark_item_as_starred_missing_returns_404_with_detail() {
 }
 
 #[tokio::test]
-async fn v1_3_mark_multiple_items_as_unread_updates_last_modified() {
+async fn mark_multiple_items_as_unread_updates_last_modified() {
     let pool = setup_pool().await;
     sqlx::query("UPDATE article SET unread = 0, last_modified = 200 WHERE id = 100")
         .execute(&pool)
@@ -557,7 +557,7 @@ async fn v1_3_mark_multiple_items_as_unread_updates_last_modified() {
 }
 
 #[tokio::test]
-async fn v1_3_mark_multiple_items_as_unstarred_updates_last_modified() {
+async fn mark_multiple_items_as_unstarred_updates_last_modified() {
     let pool = setup_pool().await;
     sqlx::query("UPDATE article SET starred = 1, last_modified = 200 WHERE id = 100")
         .execute(&pool)
@@ -587,7 +587,7 @@ async fn v1_3_mark_multiple_items_as_unstarred_updates_last_modified() {
 }
 
 #[tokio::test]
-async fn v1_3_mark_all_items_as_read_updates_last_modified() {
+async fn mark_all_items_as_read_updates_last_modified() {
     let pool = setup_pool().await;
 
     let response = app(state(pool.clone()))

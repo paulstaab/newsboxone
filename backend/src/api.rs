@@ -97,39 +97,39 @@ fn protected_router(config_for_middleware: Arc<Config>) -> Router<AppState> {
         )
         .route(
             "/items/{item_id}/read",
-            axum::routing::post(items::v1_3_mark_item_as_read),
+            axum::routing::post(items::mark_item_as_read),
         )
         .route(
             "/items/read/multiple",
-            axum::routing::post(items::v1_3_mark_multiple_items_as_read),
+            axum::routing::post(items::mark_multiple_items_as_read),
         )
         .route(
             "/items/{item_id}/unread",
-            axum::routing::post(items::v1_3_mark_item_as_unread),
+            axum::routing::post(items::mark_item_as_unread),
         )
         .route(
             "/items/unread/multiple",
-            axum::routing::post(items::v1_3_mark_multiple_items_as_unread),
+            axum::routing::post(items::mark_multiple_items_as_unread),
         )
         .route(
             "/items/star/multiple",
-            axum::routing::post(items::v1_3_mark_multiple_items_as_starred),
+            axum::routing::post(items::mark_multiple_items_as_starred),
         )
         .route(
             "/items/{item_id}/star",
-            axum::routing::post(items::v1_3_mark_item_as_starred),
+            axum::routing::post(items::mark_item_as_starred),
         )
         .route(
             "/items/{item_id}/unstar",
-            axum::routing::post(items::v1_3_mark_item_as_unstarred),
+            axum::routing::post(items::mark_item_as_unstarred),
         )
         .route(
             "/items/unstar/multiple",
-            axum::routing::post(items::v1_3_mark_multiple_items_as_unstarred),
+            axum::routing::post(items::mark_multiple_items_as_unstarred),
         )
         .route(
             "/items/read",
-            axum::routing::post(items::mark_all_items_as_read_v1_3),
+            axum::routing::post(items::mark_all_items_as_read),
         );
 
     router.route_layer(axum::middleware::from_fn_with_state(
