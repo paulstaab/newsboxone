@@ -129,8 +129,9 @@ Frontend validation:
 - `npm run format:check`
 - `npm run lint`
 - `npm run typecheck`
-- `npm run test`
-- `npm run test:e2e` when behavior changes warrant it
+- `npm run test` for frontend unit tests
+- `npm run test:integration` for standalone mocked frontend integration tests
+- `npm run test:e2e` for live-backend end-to-end scenarios when behavior changes warrant it
 
 Combined packaging validation when relevant:
 

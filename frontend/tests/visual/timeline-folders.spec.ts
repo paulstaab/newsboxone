@@ -1,9 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
-import { setupApiMocks } from '../e2e/mocks';
+import { setupApiMocks } from '../integration/mocks';
 
-const TEST_SERVER_URL = 'https://rss.example.com';
-const TEST_USERNAME = 'testuser';
-const TEST_PASSWORD = 'testpass';
+const TEST_USERNAME = 'test';
+const TEST_PASSWORD = 'test';
 
 const BREAKPOINTS = [
   { name: 'mobile', width: 320, height: 568 },
@@ -12,11 +11,8 @@ const BREAKPOINTS = [
 ];
 
 async function completeLogin(page: Page) {
-  await page.goto('/login/');
+  await page.goto('/login');
   await page.waitForLoadState('networkidle');
-  await page.getByLabel(/server url/i).fill(TEST_SERVER_URL);
-  await page.getByRole('button', { name: /^continue$/i }).click();
-  await expect(page.getByLabel(/username/i)).toBeVisible({ timeout: 10_000 });
   await page.getByLabel(/username/i).fill(TEST_USERNAME);
   await page.getByLabel(/password/i).fill(TEST_PASSWORD);
   await page.getByRole('button', { name: /log.*in|sign.*in/i }).click();
@@ -25,9 +21,9 @@ async function completeLogin(page: Page) {
 
 test.describe('Visual: Timeline Folders', () => {
   test.beforeEach(async ({ page }) => {
-    await setupApiMocks(page, TEST_SERVER_URL);
+    await setupApiMocks(page);
     await page.goto('/');
-    await page.waitForURL(/\/login\//);
+    await page.waitForURL(/\/login/);
     await page.evaluate(() => {
       sessionStorage.clear();
       localStorage.clear();
@@ -55,9 +51,7 @@ test.describe('Visual: Timeline Folders', () => {
   }
 
   test('all-read state visual', async ({ page }) => {
-    // Mock empty items to show "All caught up"
-    const apiBase = `${TEST_SERVER_URL}/api`;
-    await page.route(`${apiBase}/items**`, async (route) => {
+    await page.route('**/api/items**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

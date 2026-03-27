@@ -3,8 +3,8 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const TEST_USERNAME = 'testuser';
-const TEST_PASSWORD = 'testpass';
+const TEST_USERNAME = 'test';
+const TEST_PASSWORD = 'test';
 
 const storageStatePath = fileURLToPath(new URL('./.auth/user.json', import.meta.url));
 

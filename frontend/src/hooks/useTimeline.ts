@@ -129,11 +129,6 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
   );
   const feeds = useMemo(() => feedsResponse?.feeds ?? [], [feedsResponse]);
 
-  const feedFolderMap = useMemo(() => {
-    return new Map<number, number>(
-      feeds.map((feed) => [feed.id, feed.folderId ?? UNCATEGORIZED_FOLDER_ID]),
-    );
-  }, [feeds]);
   const feedNameMap = useMemo(() => {
     return new Map<number, string>(feeds.map((feed) => [feed.id, feed.title]));
   }, [feeds]);
@@ -145,6 +140,29 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
       const startedAt = Date.now();
       setIsSyncing(true);
       try {
+        let fetchedFeedsResponse: FeedsSummary | null = null;
+        if (feeds.length === 0) {
+          try {
+            fetchedFeedsResponse = await getFeeds();
+          } catch {
+            fetchedFeedsResponse = null;
+          }
+        }
+        const effectiveFeeds = feeds.length > 0 ? feeds : (fetchedFeedsResponse?.feeds ?? []);
+        const effectiveFeedFolderMap = new Map<number, number>(
+          effectiveFeeds.map((feed) => [feed.id, feed.folderId ?? UNCATEGORIZED_FOLDER_ID]),
+        );
+        const effectiveFeedNameMap = new Map<number, string>(
+          effectiveFeeds.map((feed) => [feed.id, feed.title]),
+        );
+        let effectiveFolders = foldersData ?? [];
+        if (effectiveFolders.length === 0) {
+          try {
+            effectiveFolders = await getFolders();
+          } catch {
+            effectiveFolders = [];
+          }
+        }
         const { items, serverUnreadIds } = await withTimeout(
           fetchUnreadItemsForSync(),
           SYNC_TIMEOUT_MS,
@@ -157,15 +175,18 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
             .map((article) =>
               toArticlePreview(
                 article,
-                resolveFolderId(article, feedFolderMap),
+                resolveFolderId(article, effectiveFeedFolderMap),
                 now,
-                feedNameMap.get(article.feedId) ?? 'Unknown source',
+                effectiveFeedNameMap.get(article.feedId) ?? 'Unknown source',
               ),
             )
             .filter((preview): preview is ArticlePreview => preview !== null);
 
           const merged = mergeItemsIntoCache(reconciled, previews, now);
-          const nextEnvelope = applyFeedNames(applyFolderNames(merged, foldersData), feedNameMap);
+          const nextEnvelope = applyFeedNames(
+            applyFolderNames(merged, effectiveFolders),
+            effectiveFeedNameMap,
+          );
 
           storeTimelineCache(nextEnvelope);
           return nextEnvelope;
@@ -189,7 +210,7 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
         setIsSyncing(false);
       }
     },
-    [feedFolderMap, feedNameMap, foldersData],
+    [feeds, foldersData],
   );
 
   useEffect(() => {

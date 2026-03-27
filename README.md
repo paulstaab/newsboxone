@@ -48,10 +48,11 @@ The repository provides shared VS Code tasks at the root for the common workflow
 - `Backend: Serve`
 - `Frontend: Install Dependencies`
 - `Frontend: Lint`
-- `Frontend: Test`
-- `Frontend: E2E`
+- `Frontend: Unit Test`
+- `Frontend: Integration Test`
 - `Frontend: Dev`
 - `Workspace: Serve`
+- `Workspace: E2E`
 - `Workspace: Validate`
 
 `Workspace: Serve` starts the Rust backend on port `8000` and the Next.js frontend on port `3000` in split VS Code terminal panes.
@@ -80,6 +81,7 @@ npm run format:check
 npm run lint
 npm run typecheck
 npm run test
+npm run test:integration
 npm run test:e2e
 npm run dev -- --hostname 0.0.0.0 --port 3000
 ```

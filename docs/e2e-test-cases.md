@@ -67,14 +67,13 @@ These scenarios are preferred over frontend integration tests whenever the behav
 | `TS-TIMELINE-007` | No unread items yields the caught-up state | Backend contains no unread items. | Open `/timeline`. | The page shows `All caught up!`. |
 | `TS-TIMELINE-008` | Refresh failure preserves the current view | Timeline is populated and a later update cycle fails. | Load `/timeline`, trigger refresh, and induce an update failure from the backend or fixture origin. | Existing cards remain visible, refresh controls recover, and the UI surfaces an actionable error state. |
 
-## Current Gaps Before Shared Live-Backend E2E Can Replace Frontend-Only E2E
+## Current Harness
 
-1. The Playwright suite still mocks NewsBoxOne API routes directly in `frontend/tests/e2e/mocks.ts` and related specs, so it does not currently validate the real backend integration path.
-2. `frontend/tests/e2e/global-setup.mjs` forges browser storage instead of logging in through the live UI, which bypasses backend auth and login error handling.
-3. `frontend/playwright.config.ts` starts only the frontend dev server. It does not start, wait for, or coordinate a backend process for shared E2E runs.
-4. There is no shared reset-and-seed harness callable from Playwright to create a fresh backend database, add fixture feeds, run a deterministic update cycle, and clean up between scenarios.
-5. The backend has deterministic fixture feed helpers inside Rust tests, but they are not exposed as a reusable process or script for repo-level E2E.
-6. Several frontend E2E scenarios currently depend on mock-only behaviors and data shapes, so they need to be rewritten around real backend setup rather than `page.route(...)`.
+- Shared live-backend scenarios live in the repository root under `tests/e2e/`.
+- The frontend package runs them through `frontend/playwright.e2e.config.ts`.
+- The harness starts a deterministic local fixture feed server, the real backend with a temporary test database, and the real frontend dev server.
+- Browser authentication goes through the live login form with the configured backend credentials.
+- Backend reset and feed seeding are handled through `tests/e2e/helpers/newsboxone.mjs` plus the backend CLI where needed.
 
 ## Scenarios Moved Out Of The Cross-Stack Baseline
 
@@ -83,10 +82,4 @@ These scenarios are preferred over frontend integration tests whenever the behav
 
 ## Recommended Next Step
 
-Build a shared global E2E harness that:
-
-- starts the backend with a temporary database and known credentials
-- starts a deterministic local fixture feed server
-- logs in through the real frontend UI
-- seeds data through the real backend API plus CLI update command
-- reserves Playwright route mocking for browser-only concerns and truly external dependencies
+Extend the shared live-backend harness with more browser-visible journeys before adding new frontend-only mocked integration cases.

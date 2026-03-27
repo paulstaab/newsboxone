@@ -217,9 +217,8 @@ export const mockItems = getMockItems();
 /**
  * Set up API mocks for E2E tests using Playwright route interception.
  */
-export async function setupApiMocks(page: Page, baseUrl = 'https://rss.example.com') {
-  const apiPath = '/api';
-  const apiBase = `${baseUrl}${apiPath}`;
+export async function setupApiMocks(page: Page) {
+  const apiBase = '**/api';
   const feeds = mockFeeds.map((feed) => ({ ...feed }));
   const folders = mockFolders.map((folder) => ({ ...folder, feeds: [...folder.feeds] }));
   const items = getMockItems().map((item) => ({ ...item }));
@@ -227,7 +226,7 @@ export async function setupApiMocks(page: Page, baseUrl = 'https://rss.example.c
   let nextFolderId = 100;
 
   const isAuthorized = (route: Route) =>
-    route.request().headers().authorization === 'Basic dGVzdHVzZXI6dGVzdHBhc3M=';
+    route.request().headers().authorization === 'Basic dGVzdDp0ZXN0';
 
   const syncFolderFeedAssignments = () => {
     for (const folder of folders) {
@@ -492,9 +491,8 @@ export async function setupApiMocks(page: Page, baseUrl = 'https://rss.example.c
 /**
  * Set up mock for unreachable server (network error).
  */
-export async function setupUnreachableServer(page: Page, baseUrl = 'https://rss.example.com') {
-  const apiPath = '/api';
-  const apiBase = `${baseUrl}${apiPath}`;
+export async function setupUnreachableServer(page: Page) {
+  const apiBase = '**/api';
 
   await page.route(`${apiBase}/**`, async (route: Route) => {
     await route.abort('failed');
@@ -504,9 +502,8 @@ export async function setupUnreachableServer(page: Page, baseUrl = 'https://rss.
 /**
  * Set up mock for invalid API path (404).
  */
-export async function setupInvalidApiPath(page: Page, baseUrl = 'https://rss.example.com') {
-  const apiPath = '/api';
-  const apiBase = `${baseUrl}${apiPath}`;
+export async function setupInvalidApiPath(page: Page) {
+  const apiBase = '**/api';
 
   await page.route(`${apiBase}/**`, async (route: Route) => {
     await route.fulfill({

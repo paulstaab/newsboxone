@@ -39,6 +39,11 @@ export function InstallPrompt({ delayMs = 3000, showDuringActivity = false }: In
   useEffect(() => {
     // Setup event listeners
     const cleanup = setupInstallPromptListeners();
+    const handleInstalled = () => {
+      setShow(false);
+      setIsInstalling(false);
+    };
+    window.addEventListener('appinstalled', handleInstalled);
 
     let idleTimer: NodeJS.Timeout | null = null;
 
@@ -60,6 +65,7 @@ export function InstallPrompt({ delayMs = 3000, showDuringActivity = false }: In
     return () => {
       clearTimeout(timer);
       if (idleTimer) clearTimeout(idleTimer);
+      window.removeEventListener('appinstalled', handleInstalled);
       cleanup();
     };
   }, [delayMs, showDuringActivity]);

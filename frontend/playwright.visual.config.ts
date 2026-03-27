@@ -3,16 +3,16 @@ import { defineConfig, devices } from '@playwright/test';
 const PORT = process.env.PORT ?? '3000';
 
 export default defineConfig({
-  testDir: './tests/integration',
+  testDir: './tests/visual',
   globalSetup: './tests/integration/global-setup.mjs',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 4,
-  reporter: [['list'], ['html', { outputFolder: 'playwright-report-integration', open: 'never' }]],
-  timeout: 30 * 1000, // 30 seconds per test
+  workers: 2,
+  reporter: [['list'], ['html', { outputFolder: 'playwright-report-visual', open: 'never' }]],
+  timeout: 30 * 1000,
   expect: {
-    timeout: 10 * 1000, // 10 seconds for assertions
+    timeout: 10 * 1000,
   },
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
@@ -20,7 +20,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     video: 'on-first-retry',
     screenshot: 'only-on-failure',
-    actionTimeout: 10 * 1000, // 10 seconds for actions
+    actionTimeout: 10 * 1000,
   },
   projects: [
     {

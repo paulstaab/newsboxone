@@ -13,6 +13,9 @@ frontend/node_modules/
 frontend/.next/
 frontend/out/
 frontend/playwright-report/
+frontend/playwright-report-e2e/
+frontend/playwright-report-integration/
 frontend/test-results/
 frontend/log/
 frontend/tsconfig.tsbuildinfo
+data/

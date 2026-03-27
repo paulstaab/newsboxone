@@ -46,7 +46,7 @@ impl Drop for RunningServer {
 }
 
 #[tokio::test]
-async fn ts_e2e_001_start_service_and_check_health() {
+async fn tc_svc_002_health_endpoint_response() {
     let context = setup_context(None).await;
 
     let status_before = context
@@ -70,7 +70,7 @@ async fn ts_e2e_001_start_service_and_check_health() {
 }
 
 #[tokio::test]
-async fn ts_e2e_002_verify_public_api_baseline() {
+async fn tc_api_002_tc_api_003_verify_public_api_baseline() {
     let context = setup_context(None).await;
 
     let version = get_json(&context, &format!("{API_V13}/version"), None).await;
@@ -87,7 +87,7 @@ async fn ts_e2e_002_verify_public_api_baseline() {
 }
 
 #[tokio::test]
-async fn ts_e2e_003_add_feeds_then_run_update_cycle() {
+async fn tc_pipe_001_updater_inserts_new_entries() {
     let context = setup_context(None).await;
 
     add_shared_feeds(&context).await;
@@ -104,7 +104,7 @@ async fn ts_e2e_003_add_feeds_then_run_update_cycle() {
 }
 
 #[tokio::test]
-async fn ts_e2e_004_add_feeds_into_non_root_folder() {
+async fn tc_api_014_tc_api_003_add_feeds_into_non_root_folder() {
     let context = setup_context(None).await;
 
     let folder = post_json(
@@ -151,7 +151,7 @@ async fn ts_e2e_004_add_feeds_into_non_root_folder() {
 }
 
 #[tokio::test]
-async fn ts_e2e_005_prevent_duplicate_feed_add() {
+async fn tc_api_006_feed_create_duplicate_conflict() {
     let context = setup_context(None).await;
     add_shared_feeds(&context).await;
     run_update_cycle(&context).await;
@@ -167,7 +167,7 @@ async fn ts_e2e_005_prevent_duplicate_feed_add() {
 }
 
 #[tokio::test]
-async fn ts_e2e_006_fetch_unread_and_mark_one_read() {
+async fn tc_api_031_single_item_read_state_update() {
     let context = setup_context(None).await;
     add_shared_feeds(&context).await;
     run_update_cycle(&context).await;
@@ -200,7 +200,7 @@ async fn ts_e2e_006_fetch_unread_and_mark_one_read() {
 }
 
 #[tokio::test]
-async fn ts_e2e_007_mark_feed_items_read_to_boundary() {
+async fn tc_api_013_feed_read_success_path() {
     let context = setup_context(None).await;
     add_shared_feeds(&context).await;
     run_update_cycle(&context).await;
@@ -235,7 +235,7 @@ async fn ts_e2e_007_mark_feed_items_read_to_boundary() {
 }
 
 #[tokio::test]
-async fn ts_e2e_008_incremental_sync_with_updated_items() {
+async fn tc_api_024_updated_items_filtering() {
     let context = setup_context(None).await;
     add_shared_feeds(&context).await;
     run_update_cycle(&context).await;
@@ -259,7 +259,7 @@ async fn ts_e2e_008_incremental_sync_with_updated_items() {
 }
 
 #[tokio::test]
-async fn ts_e2e_009_star_and_unstar_item() {
+async fn tc_api_033_tc_api_034_single_item_star_state_update() {
     let context = setup_context(None).await;
     add_shared_feeds(&context).await;
     run_update_cycle(&context).await;
@@ -285,7 +285,7 @@ async fn ts_e2e_009_star_and_unstar_item() {
 }
 
 #[tokio::test]
-async fn ts_e2e_011_rename_folder_keeps_feed_associations() {
+async fn tc_api_016_folder_rename_invalid_name_validation_journey() {
     let context = setup_context(None).await;
     let folder = post_json(
         &context,
@@ -321,7 +321,7 @@ async fn ts_e2e_011_rename_folder_keeps_feed_associations() {
 }
 
 #[tokio::test]
-async fn ts_e2e_012_move_feed_between_folders() {
+async fn tc_api_011_feed_move_invalid_folder_journey() {
     let context = setup_context(None).await;
     let folder_a = post_json(
         &context,
@@ -373,7 +373,7 @@ async fn ts_e2e_012_move_feed_between_folders() {
 }
 
 #[tokio::test]
-async fn ts_e2e_013_delete_feed_with_cascade() {
+async fn tc_api_010_feed_delete_cascade() {
     let context = setup_context(None).await;
     add_shared_feeds(&context).await;
     run_update_cycle(&context).await;
@@ -403,7 +403,7 @@ async fn ts_e2e_013_delete_feed_with_cascade() {
 }
 
 #[tokio::test]
-async fn ts_e2e_014_delete_folder_with_cascade() {
+async fn tc_api_017_folder_delete_cascade() {
     let context = setup_context(None).await;
     let folder = post_json(
         &context,
@@ -449,7 +449,7 @@ async fn ts_e2e_014_delete_folder_with_cascade() {
 }
 
 #[tokio::test]
-async fn ts_e2e_015_auth_disabled_allows_anonymous_access() {
+async fn tc_api_004_auth_disabled_allows_anonymous_access() {
     let context = setup_context(None).await;
     add_shared_feeds(&context).await;
     run_update_cycle(&context).await;
@@ -465,7 +465,7 @@ async fn ts_e2e_015_auth_disabled_allows_anonymous_access() {
 }
 
 #[tokio::test]
-async fn ts_e2e_016_auth_enforces_credentials_and_allows_update() {
+async fn tc_api_004_tc_api_005_auth_enforces_credentials_and_allows_access() {
     let username = "journey-user".to_string();
     let password = "journey-pass".to_string();
     let context = setup_context(Some((&username, &password))).await;
@@ -503,7 +503,7 @@ async fn ts_e2e_016_auth_enforces_credentials_and_allows_update() {
 
 #[tokio::test]
 /// Verifies the full subprocess flow for mocked mailbox credential storage and newsletter ingestion.
-async fn ts_e2e_017_store_email_credentials_and_ingest_newsletters() {
+async fn tc_pipe_028_mocked_newsletter_journey() {
     let context = setup_context(None).await;
     add_shared_feeds(&context).await;
     run_update_cycle(&context).await;
@@ -577,7 +577,7 @@ async fn ts_e2e_017_store_email_credentials_and_ingest_newsletters() {
 }
 
 #[tokio::test]
-async fn ts_e2e_018_updater_handles_source_failures_gracefully() {
+async fn tc_pipe_002_updater_persists_update_errors() {
     let context = setup_context(None).await;
     add_shared_feeds(&context).await;
 
@@ -605,7 +605,7 @@ async fn ts_e2e_018_updater_handles_source_failures_gracefully() {
 }
 
 #[tokio::test]
-async fn ts_e2e_019_restart_with_persistent_database() {
+async fn tc_db_001_restart_with_persistent_database() {
     let temp_dir = TempDir::new().expect("failed to create temp dir");
     let db_path = temp_dir.path().join("journey-restart.sqlite3");
 
@@ -649,7 +649,7 @@ async fn ts_e2e_019_restart_with_persistent_database() {
 }
 
 #[tokio::test]
-async fn ts_e2e_020_generates_llm_summary_from_extracted_article_content() {
+async fn tc_pipe_014_mock_openai_journey_summary() {
     let temp_dir = TempDir::new().expect("failed to create temp dir");
     let db_path = temp_dir.path().join("journey-llm.sqlite3");
 

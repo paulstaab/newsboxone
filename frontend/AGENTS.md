@@ -51,7 +51,7 @@ src/
   styles/           # Global styles and design tokens
   types/            # Shared TypeScript types
 tests/
-  e2e/              # Playwright end-to-end suites
+  integration/      # Playwright frontend integration suites with mocked API
   unit/             # Vitest unit tests
   visual/           # Visual regression suites
 public/             # Static assets, manifest, service worker assets
@@ -86,9 +86,11 @@ For the maintained stack description, see `../docs/tech-stack.md`.
 - `npm run format` - run Prettier write
 - `npm run format:check` - run Prettier check
 - `npm run test` - run unit tests
+- `npm run test:integration` - run Playwright frontend integration tests with mocked API
+- `npm run test:visual` - run visual regression suites
 - `npm run test:coverage` - run unit tests with coverage
-- `npm run test:e2e` - run Playwright e2e tests
-- `npm run test:e2e:ui` - run Playwright e2e tests in UI mode
+- `npm run test:e2e` - run root Playwright live-backend e2e tests
+- `npm run test:e2e:ui` - run root Playwright live-backend e2e tests in UI mode
 
 ## Working Expectations
 
@@ -102,8 +104,8 @@ For the maintained stack description, see `../docs/tech-stack.md`.
 
 ## Testing Expectations
 
-- Always run `npm run lint` and `npm run test` before finishing, and fix issues you introduced.
-- After significant behavior changes, also run `npm run test:e2e`.
+- Always run `npm run lint`, `npm run test`, and `npm run test:integration` before finishing, and fix issues you introduced.
+- After significant combined-product behavior changes, also run `npm run test:e2e`.
 - If you do not run a relevant test suite, say so clearly.
 
 ## Screenshots

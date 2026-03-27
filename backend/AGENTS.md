@@ -153,6 +153,7 @@ Rules:
 - `../docs/backend-test-cases.md` is the maintained catalog for backend integration tests.
 - Backend integration tests should be derived from `../docs/backend-test-cases.md`.
 - Backend integration tests should exercise multiple backend components together, such as API routes, persistence, migrations, refresh flows, and CLI-driven workflows.
+- Backend integration test names should include one or more matching `TC-*` identifiers from `../docs/backend-test-cases.md`.
 - Cross-stack browser-visible journeys belong in `../docs/e2e-test-cases.md`, not in `../docs/backend-test-cases.md`.
 
 ## Useful Paths

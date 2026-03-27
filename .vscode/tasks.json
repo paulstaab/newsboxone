@@ -66,7 +66,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Frontend: Test",
+      "label": "Frontend: Unit Test",
       "type": "shell",
       "command": "npm run test",
       "options": {
@@ -75,7 +75,16 @@
       "problemMatcher": []
     },
     {
-      "label": "Frontend: E2E",
+      "label": "Frontend: Integration Test",
+      "type": "shell",
+      "command": "npm run test:integration",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Workspace: E2E",
       "type": "shell",
       "command": "npm run test:e2e",
       "options": {
@@ -118,7 +127,9 @@
         "Backend: Lint",
         "Backend: Test",
         "Frontend: Lint",
-        "Frontend: Test"
+        "Frontend: Unit Test",
+        "Frontend: Integration Test",
+        "Workspace: E2E"
       ],
       "problemMatcher": [],
       "group": {
