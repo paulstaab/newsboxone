@@ -29,7 +29,7 @@ updates:
         patterns:
           - '*'
   - package-ecosystem: 'npm'
-    directory: '/'
+    directory: '/frontend'
     schedule:
       interval: daily
     assignees:
@@ -38,3 +38,4 @@ updates:
       everything:
         patterns:
           - '*'
+yes 
