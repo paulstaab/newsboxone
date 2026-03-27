@@ -130,9 +130,7 @@ function LoginContent() {
         </div>
 
         {/* Footer */}
-        <p className="mt-6 text-center text-sm text-gray-600">
-          Powered by NewsBoxOne
-        </p>
+        <p className="mt-6 text-center text-sm text-gray-600">Powered by NewsBoxOne</p>
       </div>
     </div>
   );

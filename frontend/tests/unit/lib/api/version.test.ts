@@ -66,9 +66,7 @@ describe('getVersion', () => {
 
   describe('network errors', () => {
     it('should throw NetworkError for unreachable server', async () => {
-      server.use(
-        http.get(API_PATH, () => HttpResponse.error()),
-      );
+      server.use(http.get(API_PATH, () => HttpResponse.error()));
 
       await expect(getVersion()).rejects.toThrow(NetworkError);
     }, 10000); // Increase timeout to account for retries
@@ -76,9 +74,7 @@ describe('getVersion', () => {
 
   describe('invalid URLs', () => {
     it('should handle 404 for wrong endpoint path', async () => {
-      server.use(
-        http.get(API_PATH, () => new HttpResponse(null, { status: 404 })),
-      );
+      server.use(http.get(API_PATH, () => new HttpResponse(null, { status: 404 })));
 
       await expect(getVersion()).rejects.toThrow(ApiError);
       try {
@@ -124,9 +120,7 @@ describe('getVersion', () => {
     });
 
     it('should throw ApiError immediately on 404 errors (no retry)', async () => {
-      server.use(
-        http.get(API_PATH, () => new HttpResponse(null, { status: 404 })),
-      );
+      server.use(http.get(API_PATH, () => new HttpResponse(null, { status: 404 })));
 
       try {
         await getVersion();

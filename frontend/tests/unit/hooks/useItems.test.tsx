@@ -55,9 +55,9 @@ beforeEach(() => {
 describe('useItems', () => {
   it('filters items by activeFolderId while preserving allItems', async () => {
     mockAuthReturn = {
-    isAuthenticated: true,
-    isInitializing: false,
-    session: {
+      isAuthenticated: true,
+      isInitializing: false,
+      session: {
         username: 'user1',
         credentials: 'dXNlcjE6cGFzcw==',
         rememberDevice: false,
@@ -127,9 +127,9 @@ describe('useItems', () => {
 
   it('treats null folderId as UNCATEGORIZED_FOLDER_ID', async () => {
     mockAuthReturn = {
-    isAuthenticated: true,
-    isInitializing: false,
-    session: {
+      isAuthenticated: true,
+      isInitializing: false,
+      session: {
         username: 'user2',
         credentials: 'dXNlcjI6cGFzcw==',
         rememberDevice: false,
