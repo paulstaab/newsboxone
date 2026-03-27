@@ -6,7 +6,7 @@ The combined product serves:
 
 - the frontend at `/`
 - the public NewsBoxOne API at `/api`
-- the backend health endpoint at `/status`
+- the backend health endpoint at `/api/status`
 
 The public container intentionally exposes only the unified surface above. The backend may still retain additional internal compatibility routes, but they are not part of the combined public proxy surface.
 
@@ -51,6 +51,7 @@ The repository provides shared VS Code tasks at the root for the common workflow
 - `Frontend: Test`
 - `Frontend: E2E`
 - `Frontend: Dev`
+- `Workspace: Dev`
 - `Workspace: Validate`
 
 ### Manual Commands
@@ -100,7 +101,7 @@ Then verify:
 
 - `http://localhost:8000/`
 - `http://localhost:8000/api/version`
-- `http://localhost:8000/status`pl
+- `http://localhost:8000/api/status`
 
 ## Documentation
 

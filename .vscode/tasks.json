@@ -84,6 +84,19 @@
       "problemMatcher": []
     },
     {
+      "label": "Workspace: Dev",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "Backend: Serve",
+        "Frontend: Dev"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
       "label": "Workspace: Validate",
       "dependsOrder": "sequence",
       "dependsOn": [
