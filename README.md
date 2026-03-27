@@ -100,7 +100,7 @@ Then verify:
 
 - `http://localhost:8000/`
 - `http://localhost:8000/api/version`
-- `http://localhost:8000/status`
+- `http://localhost:8000/status`pl
 
 ## Documentation
 

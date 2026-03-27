@@ -1,0 +1,92 @@
+{
+  "name": "newsboxone",
+  "version": "1.0.0",
+  "description": "A static webapp frontend for headless-rss",
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest --passWithNoTests",
+    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "prepare": "husky",
+    "pre-commit": "lint-staged"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ],
+    "**/*.ts?(x)": [
+      "bash -c 'tsc --noEmit'"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/paulstaab/newsboxone.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/paulstaab/newsboxone/issues"
+  },
+  "homepage": "https://github.com/paulstaab/newsboxone#readme",
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^7.2.0",
+    "@fortawesome/free-solid-svg-icons": "^7.2.0",
+    "@fortawesome/react-fontawesome": "^3.2.0",
+    "date-fns": "^4.1.0",
+    "next": "^16.1.7",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "swr": "^2.4.1"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.11.1",
+    "@eslint/js": "^9.39.4",
+    "@openai/codex": "^0.115.0",
+    "@playwright/test": "^1.58.2",
+    "@tailwindcss/postcss": "^4.2.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.57.1",
+    "@typescript-eslint/parser": "^8.57.1",
+    "@vitest/coverage-v8": "^4.1.0",
+    "autoprefixer": "^10.4.27",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.1.7",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "globals": "^17.4.0",
+    "husky": "^9.1.7",
+    "jiti": "^2.6.1",
+    "jsdom": "^29.0.0",
+    "lint-staged": "^16.4.0",
+    "msw": "^2.12.13",
+    "postcss": "^8.5.8",
+    "prettier": "^3.8.1",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.57.1",
+    "vitest": "^4.0.15"
+  }
+}

@@ -1,0 +1,15 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+target/
+.env
+.venv/
+.cache/
+
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+
+docs/_build/
+lib64/
