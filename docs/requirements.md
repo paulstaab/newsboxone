@@ -28,13 +28,14 @@ It covers the repository-level infrastructure needed to ship the frontend and ba
 ### Delivery
 - `DEL-001`: The combined product shall be deliverable as a single self-hosted container image.
 - `DEL-002`: The combined container shall serve the frontend application at `/`.
-- `DEL-003`: The combined container shall expose the backend health endpoint at `/status`.
+- `DEL-003`: The combined container shall expose the backend health endpoint at `/api/status`.
 - `DEL-004`: The combined container shall include both the Rust backend runtime and the built static frontend assets without requiring a second service container.
 
 ### API Surface
 - `API-001`: The combined container shall expose the NewsBoxOne API at `/api`.
 - `API-002`: The public API contract shall be defined by `docs/api-contract.yaml`.
 - `API-003`: Backward compatibility with the Nextcloud News v1.2 or v1.3 specifications is not required.
+- `API-004`: The combined frontend shall call the NewsBoxOne API through same-origin requests and shall not require user-entered server base URLs.
 
 ### Developer Workflow
 - `DEV-001`: The repository shall provide a single root devcontainer configuration for working on frontend and backend together.

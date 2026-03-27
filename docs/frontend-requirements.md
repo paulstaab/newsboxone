@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document captures the currently implemented product requirements for NewsBoxZero.
+This document captures the frontend product requirements for the combined NewsBoxOne application.
 
 The requirements should be phrased to stay implementation-agnostic wherever possible.
 
@@ -40,20 +40,17 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 ### Login Page
 
 - `LOGIN-001`: First-time and signed-out users shall be routed to the login page.
-- `LOGIN-002`: The default login flow shall use a two-step wizard: server URL first, then credentials after server validation succeeds.
-- `LOGIN-003`: The login page shall require a non-empty server URL.
-- `LOGIN-004`: The login page shall reject invalid server URLs.
-- `LOGIN-005`: The login page shall require HTTPS for normal server URLs and use actionable copy when the URL is insecure.
-- `LOGIN-006`: Before asking for credentials in the default flow, the application shall validate server reachability by calling the backend version endpoint.
-- `LOGIN-007`: Connectivity failures, CORS-style failures, 404 responses, and 5xx responses during server validation shall keep the user on the server step and show an actionable error.
-- `LOGIN-008`: The credentials step shall require a non-empty username and password.
-- `LOGIN-009`: The login flow shall validate credentials against the API before persisting a session.
-- `LOGIN-010`: Successful login shall store encoded Basic Auth credentials together with the normalized base URL and redirect to `/timeline`.
+- `LOGIN-002`: The login page shall present a same-origin username/password form and shall not ask the user for a server URL.
+- `LOGIN-003`: The username field shall be required and non-empty.
+- `LOGIN-004`: The password field shall be required and non-empty.
+- `LOGIN-005`: The login flow shall validate credentials against an existing protected NewsBoxOne API endpoint before persisting a session.
+- `LOGIN-006`: Successful login shall store encoded Basic Auth credentials and redirect to `/timeline`.
+- `LOGIN-007`: Failed authentication shall keep the user on the login page, preserve the username field, clear the password field, and show an inline error.
 - `LOGIN-011`: Session data shall be stored in `sessionStorage` by default.
 - `LOGIN-012`: When “remember device” is enabled, session data shall be stored in `localStorage` instead.
 - `LOGIN-013`: When a remembered session exists, it shall be preferred over `sessionStorage` on startup.
 - `LOGIN-014`: Failed authentication shall not create a stored session.
-- `LOGIN-015`: The login page shall expose a plain single-form mode through `?plain=1`, combining server validation and authentication in one submit path.
+- `LOGIN-015`: Frontend-auth-related storage keys shall use the `newsboxone:*` namespace.
 
 ### Timeline Page
 

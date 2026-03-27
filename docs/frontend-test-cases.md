@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document catalogs the automated tests that currently exist for NewsBoxZero.
+This document catalogs the automated tests that currently exist for the NewsBoxOne frontend.
 It is organized by shared shell behavior and page so coverage can scale as more pages are added.
 
 ## Source of Truth
@@ -37,18 +37,13 @@ It is organized by shared shell behavior and page so coverage can scale as more 
 
 | ID             | Type | Source                                 | Case                                                 | Expected Result                                                                           |
 | -------------- | ---- | -------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `TC-LOGIN-001` | E2E  | `tests/e2e/us1-login-timeline.spec.ts` | First visit redirects to login and shows the wizard. | `/` redirects to `/login` and the server URL step is visible.                             |
-| `TC-LOGIN-002` | E2E  | `tests/e2e/us1-login-timeline.spec.ts` | Valid server URL advances to credentials step.       | Successful `/version` validation reveals username and password fields.                    |
-| `TC-LOGIN-003` | E2E  | `tests/e2e/us1-login-timeline.spec.ts` | Unreachable server is rejected.                      | The user stays on the server step and sees a connectivity error.                          |
-| `TC-LOGIN-004` | E2E  | `tests/e2e/us1-login-timeline.spec.ts` | Wrong API path is rejected.                          | A 404-style validation failure shows an actionable server/API error.                      |
-| `TC-LOGIN-005` | E2E  | `tests/e2e/us1-login-timeline.spec.ts` | Non-HTTPS URLs are rejected.                         | The page shows the HTTPS validation error.                                                |
-| `TC-LOGIN-006` | E2E  | `tests/e2e/us1-login-timeline.spec.ts` | Credential inputs are required.                      | Username and password fields are present and marked `required`.                           |
-| `TC-LOGIN-007` | E2E  | `tests/e2e/us1-login-timeline.spec.ts` | Authentication progress is visible.                  | Submitting credentials shows the authenticating state and then redirects to `/timeline`.  |
-| `TC-LOGIN-008` | E2E  | `tests/e2e/us1-login-timeline.spec.ts` | Remember-device toggle is interactive.               | The checkbox is present, unchecked by default, and can be toggled.                        |
-| `TC-LOGIN-009` | E2E  | `tests/e2e/us1-login-timeline.spec.ts` | Default login persists session storage only.         | Successful login stores `newsboxzero:session` in `sessionStorage` and not `localStorage`. |
-| `TC-LOGIN-010` | E2E  | `tests/e2e/us1-login-timeline.spec.ts` | Remembered login persists local storage.             | Successful login with remember enabled stores `newsboxzero:session` in `localStorage`.    |
-| `TC-LOGIN-011` | Unit | `tests/unit/hooks/useAuth.test.ts`     | URL validation rejects insecure or empty input.      | `validateServerUrl` rejects `http` and empty values.                                      |
-| `TC-LOGIN-012` | Unit | `tests/unit/hooks/useAuth.test.ts`     | URL normalization trims trailing slashes.            | `normalizeBaseUrl` returns the normalized origin/path.                                    |
+| `TC-LOGIN-001` | E2E  | `tests/e2e/us1-login-timeline.spec.ts` | First visit redirects to login and shows the credential form. | `/` redirects to `/login` and username/password fields are visible.                |
+| `TC-LOGIN-002` | E2E  | `tests/e2e/us1-login-timeline.spec.ts` | Credential inputs are required.                      | Username and password fields are present and marked `required`.                           |
+| `TC-LOGIN-003` | E2E  | `tests/e2e/us1-login-timeline.spec.ts` | Authentication progress is visible.                  | Submitting credentials shows the authenticating state and then redirects to `/timeline`.  |
+| `TC-LOGIN-004` | E2E  | `tests/e2e/us1-login-timeline.spec.ts` | Invalid credentials keep the user on the login page. | The username remains filled, the password is cleared, and an inline error is shown.       |
+| `TC-LOGIN-005` | E2E  | `tests/e2e/us1-login-timeline.spec.ts` | Remember-device toggle is interactive.               | The checkbox is present, unchecked by default, and can be toggled.                        |
+| `TC-LOGIN-006` | E2E  | `tests/e2e/us1-login-timeline.spec.ts` | Default login persists session storage only.         | Successful login stores `newsboxone:session` in `sessionStorage` and not `localStorage`.  |
+| `TC-LOGIN-007` | E2E  | `tests/e2e/us1-login-timeline.spec.ts` | Remembered login persists local storage.             | Successful login with remember enabled stores `newsboxone:session` in `localStorage`.     |
 
 ## Timeline Page
 
@@ -100,5 +95,5 @@ It is organized by shared shell behavior and page so coverage can scale as more 
 ## Current Gaps
 
 - Several older unit tests in `tests/unit/hooks/useAuth.test.ts` are still placeholders and should not be treated as meaningful coverage beyond URL validation.
-- The current automated suite does not provide strong coverage for queue docking, focus trap edge cases, or the hidden `?plain=1` login mode.
+- The current automated suite does not provide strong coverage for queue docking or focus trap edge cases.
 - The feed management suite currently focuses on the main CRUD path and does not yet cover subscription failure states or accessibility-specific assertions on `/feeds`.

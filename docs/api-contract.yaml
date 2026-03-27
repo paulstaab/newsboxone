@@ -4,10 +4,11 @@ info:
   version: 0.1.0
   summary: Shared API contract for the public NewsBoxOne product surface.
   description: |
-    This specification defines the public NewsBoxOne API exposed by the combined
-    container at `/api`. It replaces the previous Nextcloud-compatibility-driven
-    documentation model. Backward compatibility with Nextcloud News v1.2 or v1.3
-    is not a product requirement.
+    This specification defines the public NewsBoxOne HTTP contract exposed by the
+    combined container. The API surface is rooted at `/api`, including the health
+    endpoint at `/api/status`. It replaces the previous
+    Nextcloud-compatibility-driven documentation model. Backward compatibility
+    with Nextcloud News v1.2 or v1.3 is not a product requirement.
 servers:
   - url: http://localhost:8000
     description: Local development server
@@ -17,7 +18,7 @@ tags:
   - name: Folders
   - name: Items
 paths:
-  /status:
+  /api/status:
     get:
       tags: [Service]
       summary: Service health check

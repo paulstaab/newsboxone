@@ -26,8 +26,8 @@ Rust API tests seed fixture data on top of the production SQL migrations so sche
 | ID | Case | Description | Expected Result |
 |---|---|---|---|
 | TC-SVC-001 | Public version endpoint reachable | Request `/api/version` through the public application surface. | Endpoint responds successfully (`200`). |
-| TC-SVC-002 | Health endpoint response | Call `/status` and verify health payload format. | Returns `200` with body `{"status":"ok"}`. |
-| TC-SVC-003 | CORS on service endpoint | Send request to `/status` with an `Origin` header. | Response includes `access-control-allow-origin: *`. |
+| TC-SVC-002 | Health endpoint response | Call `/api/status` and verify health payload format. | Returns `200` with body `{"status":"ok"}`. |
+| TC-SVC-003 | CORS on service endpoint | Send request to `/api/status` with an `Origin` header. | Response includes `access-control-allow-origin: *`. |
 | TC-SVC-004 | CORS on API endpoint | Send request to `/api/version` with an `Origin` header. | Response includes `access-control-allow-origin: *`. |
 | TC-SVC-005 | CORS preflight support | Send `OPTIONS` preflight request with `Access-Control-Request-Method`. | Returns success and includes CORS method headers. |
 
@@ -103,7 +103,7 @@ Rust API tests seed fixture data on top of the production SQL migrations so sche
 
 | ID | Case | Description | Expected Result |
 |---|---|---|---|
-| TC-API-001 | Health endpoint | Call `/status`. | Returns `200` with `{"status":"ok"}`. |
+| TC-API-001 | Health endpoint | Call `/api/status`. | Returns `200` with `{"status":"ok"}`. |
 | TC-API-002 | Version endpoint | Call `/api/version`. | Returns `200` with API version payload. |
 | TC-API-003 | Feed listing | Call `GET /api/feeds` with valid credentials. | Returns `200` with `feeds` payload. |
 | TC-API-004 | Conditional auth enforcement | Call a protected API endpoint without credentials when auth env vars are set. | Returns `401` with `{"detail":"Not authenticated"}` and Basic auth challenge header. |

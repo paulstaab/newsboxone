@@ -42,6 +42,7 @@ The same requirements apply to all implementations.
 - `API-001`: The service shall expose health and public API endpoints as defined in `docs/api-contract.yaml`.
 - `API-002`: The service may evolve the API without preserving compatibility with the Nextcloud News v1.2 or v1.3 specifications.
 - `API-003`: API payload field naming shall follow the shared contract defined in `docs/api-contract.yaml`.
+- `API-004`: The public health endpoint shall be exposed at `/api/status`.
 
 
 ### Feed Lifecycle And Refresh
@@ -155,7 +156,7 @@ The same requirements apply to all implementations.
 - `SEC-002`: Remote URL validation shall block loopback, private, link-local, unspecified, multicast, and cloud metadata addresses.
 - `SEC-003`: Localhost access may be allowed only in testing mode.
 - `SEC-004`: The same URL validation policy shall be applied consistently in all remote-fetch paths, including each HTTP redirect target before it is fetched, and hostname resolution failures shall be rejected rather than bypassing IP-based checks.
-- `SEC-005`: HTTP Basic auth shall be enforced only when both `USERNAME` and `PASSWORD` are configured.
+- `SEC-005`: HTTP Basic auth shall be enforced for the public API using configured `USERNAME` and `PASSWORD` credentials.
 - `SEC-006`: The system shall not log user-provided content, including titles, feed content, mailbox identities, or externally generated content derived from user input unless explicitly required by an `OBS` requirement.
 
 ### Configuration
