@@ -214,6 +214,13 @@ async fn add_feed_impl(
     .await
     .map_err(internal_error)?;
     let feed_id = result.last_insert_rowid();
+    let content_state = FeedContentState {
+        last_quality_check: None,
+        use_extracted_fulltext: false,
+        use_llm_summary: false,
+        manual_use_extracted_fulltext: None,
+        manual_use_llm_summary: None,
+    };
 
     for entry in parsed.entries.iter().take(50) {
         insert_article_from_entry(
@@ -223,13 +230,7 @@ async fn add_feed_impl(
             feed_id,
             &input.url,
             entry,
-            FeedContentState {
-                last_quality_check: None,
-                use_extracted_fulltext: false,
-                use_llm_summary: false,
-                manual_use_extracted_fulltext: None,
-                manual_use_llm_summary: None,
-            },
+            content_state,
         )
         .await?;
     }
