@@ -13,8 +13,6 @@ use std::{fs, io};
 use axum::Router;
 use axum::http::header;
 use axum::routing::{get, post};
-use base64::Engine;
-use base64::engine::general_purpose::STANDARD as BASE64;
 use reqwest::{Client, StatusCode};
 use serde_json::json;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
@@ -491,13 +489,14 @@ async fn tc_api_004_tc_api_005_auth_enforces_credentials_and_allows_access() {
     run_update_cycle(&context).await;
 
     let (user, pass) = auth_for(&context).expect("missing auth tuple");
-    let response = context
-        .client
-        .get(format!("{}{API_V13}/feeds", context.base_url))
-        .header("Authorization", basic_auth_value(user, pass))
-        .send()
-        .await
-        .expect("authorized feeds request failed");
+    let response = authenticated_get(
+        &context.client,
+        &context.base_url,
+        &format!("{API_V13}/feeds"),
+        (user, pass),
+    )
+    .await
+    .expect("authorized feeds request failed");
     assert_eq!(response.status(), StatusCode::OK);
 }
 
@@ -824,14 +823,13 @@ async fn get_json_from_client(
     credentials: Option<(&str, &str)>,
 ) -> serde_json::Value {
     let url = format!("{base_url}{path}");
-    let mut request = client.get(url);
-    if let Some((u, p)) = credentials {
-        request = request.header("Authorization", basic_auth_value(u, p));
-    }
+    let request = if let Some(credentials) = credentials {
+        authenticated_get(client, base_url, path, credentials).await
+    } else {
+        client.get(url).send().await
+    };
 
     let response = request
-        .send()
-        .await
         .expect("request failed")
         .error_for_status()
         .expect("endpoint returned non-success");
@@ -846,14 +844,16 @@ async fn post_json(
     credentials: Option<(&str, &str)>,
 ) -> serde_json::Value {
     let url = format!("{}{}", context.base_url, path);
-    let mut request = context
+    let request = context
         .client
         .post(url)
         .header("content-type", "application/json")
         .body(body.to_string());
-    if let Some((u, p)) = credentials {
-        request = request.header("Authorization", basic_auth_value(u, p));
-    }
+    let request = if let Some(credentials) = credentials {
+        authenticated_request(request, &context.client, &context.base_url, credentials).await
+    } else {
+        request
+    };
 
     let response = request
         .send()
@@ -876,14 +876,16 @@ async fn post_json_status(
     credentials: Option<(&str, &str)>,
 ) -> StatusCode {
     let url = format!("{}{}", context.base_url, path);
-    let mut request = context
+    let request = context
         .client
         .post(url)
         .header("content-type", "application/json")
         .body(body.to_string());
-    if let Some((u, p)) = credentials {
-        request = request.header("Authorization", basic_auth_value(u, p));
-    }
+    let request = if let Some(credentials) = credentials {
+        authenticated_request(request, &context.client, &context.base_url, credentials).await
+    } else {
+        request
+    };
     request.send().await.expect("request failed").status()
 }
 
@@ -894,14 +896,16 @@ async fn put_json_status(
     credentials: Option<(&str, &str)>,
 ) -> StatusCode {
     let url = format!("{}{}", context.base_url, path);
-    let mut request = context
+    let request = context
         .client
         .put(url)
         .header("content-type", "application/json")
         .body(body.to_string());
-    if let Some((u, p)) = credentials {
-        request = request.header("Authorization", basic_auth_value(u, p));
-    }
+    let request = if let Some(credentials) = credentials {
+        authenticated_request(request, &context.client, &context.base_url, credentials).await
+    } else {
+        request
+    };
     request.send().await.expect("request failed").status()
 }
 
@@ -919,10 +923,12 @@ async fn delete_status(
     credentials: Option<(&str, &str)>,
 ) -> StatusCode {
     let url = format!("{}{}", context.base_url, path);
-    let mut request = context.client.delete(url);
-    if let Some((u, p)) = credentials {
-        request = request.header("Authorization", basic_auth_value(u, p));
-    }
+    let request = context.client.delete(url);
+    let request = if let Some(credentials) = credentials {
+        authenticated_request(request, &context.client, &context.base_url, credentials).await
+    } else {
+        request
+    };
     request.send().await.expect("request failed").status()
 }
 
@@ -1082,14 +1088,16 @@ async fn add_feed(
     feed_url: &str,
     credentials: Option<(&str, &str)>,
 ) -> StatusCode {
-    let mut request = client
+    let request = client
         .post(format!("{base_url}{API_V13}/feeds"))
         .header("content-type", "application/json")
         .body(json!({ "url": feed_url }).to_string());
 
-    if let Some((username, password)) = credentials {
-        request = request.header("Authorization", basic_auth_value(username, password));
-    }
+    let request = if let Some(credentials) = credentials {
+        authenticated_request(request, client, base_url, credentials).await
+    } else {
+        request
+    };
 
     request
         .send()
@@ -1274,8 +1282,54 @@ fn binary_path() -> PathBuf {
     PathBuf::from(assert_cmd::cargo::cargo_bin!("headless-rss"))
 }
 
-/// Encodes an HTTP Basic auth header value.
-fn basic_auth_value(username: &str, password: &str) -> String {
-    let encoded = BASE64.encode(format!("{username}:{password}"));
-    format!("Basic {encoded}")
+async fn authenticated_get(
+    client: &Client,
+    base_url: &str,
+    path: &str,
+    credentials: (&str, &str),
+) -> reqwest::Result<reqwest::Response> {
+    let request = client.get(format!("{base_url}{path}"));
+    let request = authenticated_request(request, client, base_url, credentials).await;
+    request.send().await
+}
+
+async fn authenticated_request(
+    request: reqwest::RequestBuilder,
+    client: &Client,
+    base_url: &str,
+    credentials: (&str, &str),
+) -> reqwest::RequestBuilder {
+    let token = issue_auth_token(client, base_url, credentials).await;
+    request.header("Authorization", bearer_auth_value(&token))
+}
+
+async fn issue_auth_token(client: &Client, base_url: &str, credentials: (&str, &str)) -> String {
+    let response = client
+        .post(format!("{base_url}{API_V13}/auth/token"))
+        .header("content-type", "application/json")
+        .body(
+            json!({
+                "username": credentials.0,
+                "password": credentials.1,
+                "rememberDevice": false
+            })
+            .to_string(),
+        )
+        .send()
+        .await
+        .expect("token request failed")
+        .error_for_status()
+        .expect("token request returned non-success");
+    let body: serde_json::Value = response
+        .json()
+        .await
+        .expect("failed to parse token response");
+    body["token"]
+        .as_str()
+        .expect("missing issued token")
+        .to_string()
+}
+
+fn bearer_auth_value(token: &str) -> String {
+    format!("Bearer {token}")
 }

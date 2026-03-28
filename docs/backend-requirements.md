@@ -1,16 +1,19 @@
 # Backend Requirements Baseline
 
 ## Purpose
+
 This document defines the product requirements independent of implementation language.
 The same requirements apply to all implementations.
 
 ## Related Contracts And Tests
+
 - API contract:
   - `docs/api-contract.yaml`
 - Backend integration test catalog:
   - `docs/backend-test-cases.md`
 
 ## Requirement IDs
+
 - IDs are stable and unique.
 - Prefixes indicate domain:
   - `DEL-*`: delivery
@@ -30,22 +33,25 @@ The same requirements apply to all implementations.
 ## Requirements
 
 ### Delivery
+
 - `DEL-001`: The application shall be deliverable as a single self-hosted container image.
 
 ### Service Runtime
+
 - `SRV-001`: On startup, the service shall initialize persistent storage connectivity and apply schema migrations.
 - `SRV-002`: On startup, the service shall execute a feed refresh cycle.
 - `SRV-003`: Startup refresh shall process all non-mailing-list feeds regardless of previous schedule.
 - `SRV-004`: The service shall execute periodic feed refresh cycles based on `FEED_UPDATE_FREQUENCY_MIN`.
 
 ### API Behavior
+
 - `API-001`: The service shall expose health and public API endpoints as defined in `docs/api-contract.yaml`.
 - `API-002`: The service may evolve the API without preserving compatibility with the Nextcloud News v1.2 or v1.3 specifications.
 - `API-003`: API payload field naming shall follow the shared contract defined in `docs/api-contract.yaml`.
 - `API-004`: The public health endpoint shall be exposed at `/api/status`.
 
-
 ### Feed Lifecycle And Refresh
+
 - `FEED-001`: The system shall parse and ingest both RSS and Atom feeds.
 - `FEED-002`: Feed URLs shall be unique; duplicate feed creation shall be rejected.
 - `FEED-003`: Feed creation shall reject non-existent target folders.
@@ -63,6 +69,7 @@ The same requirements apply to all implementations.
 - `FEED-011`: Stale feed articles not present in the latest payload shall be eligible for cleanup only when older than 90 days, read, and unstarred.
 
 ### Folder Behavior
+
 - `FOL-001`: The system shall maintain an internal root folder and create it on demand if missing.
 - `FOL-002`: Root folder shall be omitted from folder listing responses.
 - `FOL-003`: `folderId: null` and `folderId: 0` shall map to root folder semantics where applicable.
@@ -72,6 +79,7 @@ The same requirements apply to all implementations.
 - `FOL-007`: Deleting a folder shall delete feeds in that folder.
 
 ### Item And Article Behavior
+
 - `ITEM-001`: Articles shall persist stable GUID and GUID-hash identifiers.
 - `ITEM-002`: Duplicate article insertion shall be prevented by GUID-hash de-duplication.
 - `ITEM-003`: Newly inserted articles shall default to unread unless explicitly set otherwise.
@@ -83,6 +91,7 @@ The same requirements apply to all implementations.
 - `ITEM-009`: Mark-as-read operations shall support boundary behavior using newest item ID for feed, folder, and global scopes.
 
 ### Content Extraction And Summarization
+
 - `CNT-001`: If feed metadata does not provide a thumbnail, the system shall extract the first image URL from HTML content when available.
 - `CNT-002`: Optional full-text extraction from article URLs:
   - shall extract the text of the article from the articles website,
@@ -128,6 +137,7 @@ The same requirements apply to all implementations.
   - shall fall back to the first 160 characters plus `...` when content is long and LLM summarization is not requested, not enabled, or does not return a usable summary.
 
 ### Email Newsletter Ingestion
+
 - `EML-001`: The system shall store IMAP credentials via CLI/API-internal paths.
 - `EML-002`: Credential persistence shall require successful mailbox connectivity/login validation.
 - `EML-003`: Update cycles shall fetch unread emails from configured mailboxes.
@@ -147,24 +157,29 @@ The same requirements apply to all implementations.
 - `EML-010`: Successful newsletter ingestion shall clear persisted refresh error state on the corresponding mailing-list feed.
 
 ### Observability
+
 - `OBS-001`: All incoming API requests shall be logged at `INFO` level with the raw request URI, including query parameters when present.
 - `OBS-002`: All outbound LLM requests shall be logged at `INFO` level with the task name and, when available, the associated `feed_id` and `article_id`.
 - `OBS-003`: Extraction of article content as described in `CNT-002` shall be logged with `feed_id`, `article_id` loaded URL at `INFO` level.
 
 ### Security
+
 - `SEC-001`: Remote URL validation shall allow only `http` and `https` schemes.
 - `SEC-002`: Remote URL validation shall block loopback, private, link-local, unspecified, multicast, and cloud metadata addresses.
 - `SEC-003`: Localhost access may be allowed only in testing mode.
 - `SEC-004`: The same URL validation policy shall be applied consistently in all remote-fetch paths, including each HTTP redirect target before it is fetched, and hostname resolution failures shall be rejected rather than bypassing IP-based checks.
-- `SEC-005`: HTTP Basic auth shall be enforced for the public API using configured `USERNAME` and `PASSWORD` credentials.
+- `SEC-005`: Protected public API routes shall require backend-issued bearer tokens, and token issuance shall validate the configured `USERNAME` and `PASSWORD` credentials when auth is enabled.
+- `SEC-005a`: Issued browser tokens shall expire after 1 day by default or after 30 days when the remember-device flow is requested.
 - `SEC-006`: The system shall not log user-provided content, including titles, feed content, mailbox identities, or externally generated content derived from user input unless explicitly required by an `OBS` requirement.
 
 ### Configuration
+
 - `CFG-001`: Runtime configuration shall be sourced from environment variables.
 - `CFG-002`: Supported variables shall include authentication settings, feed update frequency, service version, and provider-specific LLM configuration including request timeout.
 - `CFG-003`: Defaults shall include `VERSION=dev`, `FEED_UPDATE_FREQUENCY_MIN=15`, `OPENAI_TIMEOUT_SECONDS=30`, and a default LLM model identifier.
 
 ### CLI
+
 - `CLI-001`: A CLI `update` command shall initialize persistent storage access and execute a refresh cycle.
 - `CLI-002`: A CLI `add-email-credentials` command shall require server, port, username, and password inputs.
 - `CLI-003`: `add-email-credentials` shall return a user-visible error when credential validation fails.
@@ -172,7 +187,8 @@ The same requirements apply to all implementations.
 - `CLI-005`: A CLI `set-feed-quality` command shall require a regular-feed ID plus at least one of `use_extracted_fulltext` or `use_llm_summary`, persist manual overrides for the provided attributes, and update the effective feed quality flags immediately.
 
 ### Data Model And Constraints
-- `DAT-001`: Persistence shall include `Feed`, `Folder`, `Article`, and `EmailCredential` entities.
+
+- `DAT-001`: Persistence shall include `Feed`, `Folder`, `Article`, `EmailCredential`, and `AuthToken` entities.
 - `DAT-002`: Feed URL uniqueness shall be enforced.
 - `DAT-003`: Folder name uniqueness shall be enforced.
 - `DAT-004`: Feed persistence shall store nullable per-attribute manual quality-override fields for `use_extracted_fulltext` and `use_llm_summary`, plus a timestamp for the most recent manual override.

@@ -9,7 +9,7 @@ const FEED_FIXTURE_PORT = 4100;
 const backendOrigin = `http://127.0.0.1:${String(BACKEND_PORT)}`;
 const frontendOrigin = `http://127.0.0.1:${String(FRONTEND_PORT)}`;
 const feedFixtureOrigin = `http://127.0.0.1:${String(FEED_FIXTURE_PORT)}`;
-const e2eDatabasePath = path.join(ROOT_DIR, 'data', 'headless-rss.sqlite3');
+const e2eDatabasePath = path.join(ROOT_DIR, 'data', 'newsboxone-e2e.sqlite3');
 
 export default defineConfig({
   testDir: '../tests/e2e',

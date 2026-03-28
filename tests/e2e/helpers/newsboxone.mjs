@@ -14,7 +14,6 @@ const DATABASE_CANDIDATES = [
   path.join(ROOT_DIR, 'frontend', 'data', 'newsboxone-e2e.sqlite3'),
 ];
 
-export const AUTH_HEADER = 'Basic dGVzdDp0ZXN0';
 export const BACKEND_ORIGIN = 'http://127.0.0.1:8000';
 export const FEED_FIXTURE_ORIGIN = 'http://127.0.0.1:4100';
 export const FEED_URLS = {
@@ -46,10 +45,11 @@ function resolveDatabasePath() {
 }
 
 async function apiJson(request, url, init = {}) {
+  const authHeader = await issueAuthHeader(request);
   const response = await request.fetch(`${BACKEND_ORIGIN}${url}`, {
     ...init,
     headers: {
-      Authorization: AUTH_HEADER,
+      Authorization: authHeader,
       'Content-Type': 'application/json',
       ...(init.headers ?? {}),
     },
@@ -79,13 +79,33 @@ export async function loginViaUi(page, options = {}) {
   await page.waitForURL(/\/timeline/);
 }
 
+export async function issueAuthHeader(request, options = {}) {
+  const { username = 'test', password = 'test', rememberDevice = false } = options;
+  const response = await request.fetch(`${BACKEND_ORIGIN}/api/auth/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: {
+      username,
+      password,
+      rememberDevice,
+    },
+  });
+
+  expect(response.ok(), `failed issuing auth token: ${response.status()} ${response.statusText()}`).toBeTruthy();
+  const payload = await response.json();
+  return `Bearer ${payload.token}`;
+}
+
 export async function resetBackendState(request) {
   const feedsResponse = await apiJson(request, '/api/feeds');
   for (const feed of feedsResponse.feeds) {
+    const authHeader = await issueAuthHeader(request);
     const response = await request.fetch(`${BACKEND_ORIGIN}/api/feeds/${String(feed.id)}`, {
       method: 'DELETE',
       headers: {
-        Authorization: AUTH_HEADER,
+        Authorization: authHeader,
       },
     });
     expect(response.ok(), `failed deleting feed ${String(feed.id)}`).toBeTruthy();
@@ -93,10 +113,11 @@ export async function resetBackendState(request) {
 
   const foldersResponse = await apiJson(request, '/api/folders');
   for (const folder of foldersResponse.folders) {
+    const authHeader = await issueAuthHeader(request);
     const response = await request.fetch(`${BACKEND_ORIGIN}/api/folders/${String(folder.id)}`, {
       method: 'DELETE',
       headers: {
-        Authorization: AUTH_HEADER,
+        Authorization: authHeader,
       },
     });
     expect(response.ok(), `failed deleting folder ${String(folder.id)}`).toBeTruthy();

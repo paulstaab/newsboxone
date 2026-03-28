@@ -23,7 +23,7 @@ describe('getItems', () => {
       expect(true).toBe(true);
     });
 
-    it('should include Basic auth header', () => {
+    it('should include Bearer auth header', () => {
       // TODO: Implement proper test with mocked API client
       expect(true).toBe(true);
     });

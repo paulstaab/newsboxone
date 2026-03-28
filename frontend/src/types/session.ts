@@ -2,13 +2,16 @@
  * Client-only session state capturing auth state and user preferences.
  */
 export interface UserSessionConfig {
-  /** Username for HTTP Basic auth */
+  /** Username associated with the issued browser token */
   username: string;
 
-  /** Base64-encoded credentials: base64(username:password) */
-  credentials: string;
+  /** Opaque bearer token issued by the backend */
+  token: string;
 
-  /** Whether credentials are persisted to localStorage (true) or sessionStorage (false) */
+  /** ISO 8601 timestamp when the token expires */
+  expiresAt: string;
+
+  /** Whether session data is persisted to localStorage (true) or sessionStorage (false) */
   rememberDevice: boolean;
 
   /** User preference: default timeline view mode */
@@ -30,7 +33,8 @@ export type SortOrder = 'newest' | 'oldest';
 /** Minimal session data stored in browser storage */
 export interface StoredSession {
   username: string;
-  credentials: string;
+  token: string;
+  expiresAt: string;
   rememberDevice: boolean;
 }
 

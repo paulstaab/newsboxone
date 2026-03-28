@@ -226,7 +226,7 @@ export async function setupApiMocks(page: Page) {
   let nextFolderId = 100;
 
   const isAuthorized = (route: Route) =>
-    route.request().headers().authorization === 'Basic dGVzdDp0ZXN0';
+    route.request().headers().authorization === 'Bearer test-token';
 
   const syncFolderFeedAssignments = () => {
     for (const folder of folders) {
@@ -249,6 +249,42 @@ export async function setupApiMocks(page: Page) {
       contentType: 'application/json',
       body: JSON.stringify({ version: '1.3.0' }),
     });
+  });
+
+  await page.route(`${apiBase}/auth/token`, async (route: Route) => {
+    const request = route.request();
+    const body = (await request.postDataJSON()) as {
+      username?: string;
+      password?: string;
+      rememberDevice?: boolean;
+    };
+
+    if (body.username === 'test' && body.password === 'test') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          token: 'test-token',
+          expiresAt: body.rememberDevice ? 1_777_507_200 : 1_743_206_400,
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 401,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'Invalid authentication credentials' }),
+    });
+  });
+
+  await page.route(`${apiBase}/auth/logout`, async (route: Route) => {
+    if (!isAuthorized(route)) {
+      await fulfillUnauthorized(route);
+      return;
+    }
+
+    await route.fulfill({ status: 200, body: '' });
   });
 
   // Mock feeds endpoint and feed mutations

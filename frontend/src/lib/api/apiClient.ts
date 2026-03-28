@@ -10,6 +10,8 @@ import {
   apiPost as baseApiPost,
   apiPut as baseApiPut,
   apiDelete as baseApiDelete,
+  issueToken as baseIssueToken,
+  revokeCurrentToken as baseRevokeCurrentToken,
   validateCredentials as baseValidateCredentials,
   type ApiRequestOptions,
 } from './client';
@@ -195,9 +197,31 @@ export interface VersionApi {
  */
 export interface AuthApi {
   /**
-   * Validates credentials by attempting to fetch feeds.
+   * Validates submitted credentials by attempting token issuance.
    */
-  validateCredentials(authCredentials: string): Promise<{ valid: boolean; error?: string }>;
+  validateCredentials(
+    username: string,
+    password: string,
+    rememberDevice: boolean,
+  ): Promise<{
+    valid: boolean;
+    error?: string;
+    token?: { token: string; expiresAt: string | number };
+  }>;
+
+  /**
+   * Issues a browser auth token.
+   */
+  issueToken(
+    username: string,
+    password: string,
+    rememberDevice: boolean,
+  ): Promise<{ token: string; expiresAt: string | number }>;
+
+  /**
+   * Revokes the current browser token.
+   */
+  logout(): Promise<void>;
 }
 
 /**
@@ -485,9 +509,12 @@ class ApiClientImpl implements ApiClient {
 
     // Auth utilities implementation
     this.auth = {
-      validateCredentials: async (authCredentials: string) => {
-        return baseValidateCredentials(authCredentials);
+      validateCredentials: async (username: string, password: string, rememberDevice: boolean) => {
+        return baseValidateCredentials(username, password, rememberDevice);
       },
+      issueToken: async (username: string, password: string, rememberDevice: boolean) =>
+        baseIssueToken(username, password, rememberDevice),
+      logout: async () => baseRevokeCurrentToken(),
     };
   }
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { clearSession, loadSession, storeSession } from '@/lib/storage';
-import { encodeBasicCredentials, toStoredSession, toUserSessionConfig } from '@/lib/auth/session';
+import { toStoredSession, toUserSessionConfig } from '@/lib/auth/session';
 
 describe('auth session utilities', () => {
   beforeEach(() => {
@@ -8,14 +8,11 @@ describe('auth session utilities', () => {
     localStorage.clear();
   });
 
-  it('encodes username and password as basic auth credentials', () => {
-    expect(encodeBasicCredentials('testuser', 'testpass')).toBe('dGVzdHVzZXI6dGVzdHBhc3M=');
-  });
-
   it('stores sessionStorage by default', () => {
     storeSession({
       username: 'testuser',
-      credentials: 'encoded',
+      token: 'issued-token',
+      expiresAt: '2026-04-01T00:00:00.000Z',
       rememberDevice: false,
     });
 
@@ -26,7 +23,8 @@ describe('auth session utilities', () => {
   it('stores localStorage when rememberDevice is enabled', () => {
     storeSession({
       username: 'testuser',
-      credentials: 'encoded',
+      token: 'issued-token',
+      expiresAt: '2026-04-01T00:00:00.000Z',
       rememberDevice: true,
     });
 
@@ -36,13 +34,15 @@ describe('auth session utilities', () => {
   it('loads stored sessions from browser storage', () => {
     storeSession({
       username: 'testuser',
-      credentials: 'encoded',
+      token: 'issued-token',
+      expiresAt: '2026-04-01T00:00:00.000Z',
       rememberDevice: true,
     });
 
     expect(loadSession()).toEqual({
       username: 'testuser',
-      credentials: 'encoded',
+      token: 'issued-token',
+      expiresAt: '2026-04-01T00:00:00.000Z',
       rememberDevice: true,
     });
   });
@@ -50,7 +50,8 @@ describe('auth session utilities', () => {
   it('clears stored sessions', () => {
     storeSession({
       username: 'testuser',
-      credentials: 'encoded',
+      token: 'issued-token',
+      expiresAt: '2026-04-01T00:00:00.000Z',
       rememberDevice: true,
     });
 
@@ -62,7 +63,8 @@ describe('auth session utilities', () => {
   it('round-trips stored and in-memory session shapes', () => {
     const stored = {
       username: 'testuser',
-      credentials: 'encoded',
+      token: 'issued-token',
+      expiresAt: '2026-04-01T00:00:00.000Z',
       rememberDevice: true,
     };
 

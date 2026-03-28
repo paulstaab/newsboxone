@@ -4,7 +4,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const TEST_USERNAME = 'test';
-const TEST_PASSWORD = 'test';
 
 const storageStatePath = fileURLToPath(new URL('./.auth/user.json', import.meta.url));
 
@@ -22,20 +21,19 @@ export default async function globalSetup(config) {
 
   await page.goto(baseURL);
 
-  const credentials = Buffer.from(`${TEST_USERNAME}:${TEST_PASSWORD}`).toString('base64');
-
   await page.evaluate(
-    ({ username, credentials: encoded }) => {
+    ({ username }) => {
       localStorage.setItem(
         'newsboxone:session',
         JSON.stringify({
           username,
-          credentials: encoded,
+          token: 'test-token',
+          expiresAt: '2026-04-30T00:00:00.000Z',
           rememberDevice: true,
         }),
       );
     },
-    { username: TEST_USERNAME, credentials },
+    { username: TEST_USERNAME },
   );
 
   await context.storageState({ path: storageStatePath });

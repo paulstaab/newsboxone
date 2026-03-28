@@ -1,5 +1,5 @@
 /**
- * Authenticated fetch client with Basic auth, exponential backoff, and error mapping.
+ * Authenticated fetch client with bearer token auth, exponential backoff, and error mapping.
  */
 
 import { CONFIG, ERROR_MESSAGES } from '@/lib/config/env';
@@ -52,8 +52,6 @@ export interface ApiRequestOptions extends Omit<RequestInit, 'headers'> {
   responseType?: 'json' | 'text';
   /** Skip authentication header */
   skipAuth?: boolean;
-  /** Override auth credentials for this request */
-  overrideCredentials?: string;
   /** Number of retry attempts (default: CONFIG.MAX_RETRIES) */
   maxRetries?: number;
   /** Disable retry logic */
@@ -92,7 +90,6 @@ function sleep(ms: number): Promise<void> {
 export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
   const {
     skipAuth = false,
-    overrideCredentials,
     maxRetries = CONFIG.MAX_RETRIES,
     noRetry = false,
     responseType = 'json',
@@ -115,11 +112,11 @@ export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions
 
   // Add auth header if not skipped
   if (!skipAuth) {
-    const credentials = overrideCredentials ?? session?.credentials;
-    if (!credentials) {
+    const token = session?.token;
+    if (!token) {
       throw new AuthenticationError(ERROR_MESSAGES.SESSION_EXPIRED);
     }
-    headers.Authorization = `Basic ${credentials}`;
+    headers.Authorization = `Bearer ${token}`;
   }
 
   // Add Content-Type for requests with body
@@ -138,9 +135,13 @@ export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions
         headers,
       });
 
+      const sentStoredAuth = !skipAuth && Boolean(session?.token);
+
       // Handle authentication errors
       if (response.status === 401) {
-        clearSession();
+        if (sentStoredAuth) {
+          clearSession();
+        }
         throw new AuthenticationError(ERROR_MESSAGES.SESSION_EXPIRED);
       }
 
@@ -262,20 +263,73 @@ export async function apiDelete<T>(endpoint: string, options?: ApiRequestOptions
   return apiRequest<T>(endpoint, { ...options, method: 'DELETE' });
 }
 
+export interface IssueTokenResponse {
+  token: string;
+  expiresAt: string | number;
+}
+
 /**
- * Validates credentials by attempting to fetch feeds.
+ * Exchanges username/password credentials for a browser token.
+ */
+export async function issueToken(
+  username: string,
+  password: string,
+  rememberDevice: boolean,
+): Promise<IssueTokenResponse> {
+  try {
+    return await apiPost<IssueTokenResponse>(
+      '/auth/token',
+      {
+        username,
+        password,
+        rememberDevice,
+      },
+      {
+        skipAuth: true,
+        noRetry: true,
+      },
+    );
+  } catch (error) {
+    if (error instanceof AuthenticationError) {
+      throw new AuthenticationError(ERROR_MESSAGES.INVALID_CREDENTIALS);
+    }
+    if (error instanceof NetworkError) {
+      throw error;
+    }
+    if (error instanceof ApiError) {
+      if (error.status === 401) {
+        throw new AuthenticationError(ERROR_MESSAGES.INVALID_CREDENTIALS);
+      }
+      if (error.status === 404) {
+        throw new ApiError(404, ERROR_MESSAGES.NOT_FOUND, error.body);
+      }
+      throw new ApiError(error.status, ERROR_MESSAGES.SERVER_ERROR, error.body);
+    }
+    throw error instanceof Error ? error : new Error(String(error));
+  }
+}
+
+/**
+ * Revokes the currently stored browser token.
+ */
+export async function revokeCurrentToken(): Promise<void> {
+  await apiPost('/auth/logout', undefined, {
+    noRetry: true,
+  });
+}
+
+/**
+ * Validates a username/password pair by attempting token issuance.
  * Returns success/error result without throwing.
  */
 export async function validateCredentials(
-  authCredentials: string,
-): Promise<{ valid: boolean; error?: string }> {
+  username: string,
+  password: string,
+  rememberDevice: boolean,
+): Promise<{ valid: boolean; error?: string; token?: IssueTokenResponse }> {
   try {
-    await apiGet('/feeds', {
-      overrideCredentials: authCredentials,
-      skipAuth: false,
-      noRetry: true,
-    });
-    return { valid: true };
+    const token = await issueToken(username, password, rememberDevice);
+    return { valid: true, token };
   } catch (error) {
     if (error instanceof AuthenticationError) {
       return { valid: false, error: ERROR_MESSAGES.INVALID_CREDENTIALS };

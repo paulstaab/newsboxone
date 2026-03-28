@@ -1,10 +1,12 @@
 import test from '../../frontend/node_modules/@playwright/test/index.js';
-import { clearBrowserSession, loginViaUi, resetBackendState } from './helpers/newsboxone.mjs';
+import {
+  clearBrowserSession,
+  issueAuthHeader,
+  loginViaUi,
+  resetBackendState,
+} from './helpers/newsboxone.mjs';
 
 const { expect } = test;
-const authHeaders = {
-  Authorization: 'Basic dGVzdDp0ZXN0',
-};
 
 test.describe('Service startup and authentication e2e scenarios', () => {
   test.beforeEach(async ({ page, request }) => {
@@ -23,7 +25,11 @@ test.describe('Service startup and authentication e2e scenarios', () => {
     expect(status.ok()).toBeTruthy();
     expect(await status.json()).toEqual({ status: 'ok' });
 
-    const version = await request.get('/api/version', { headers: authHeaders });
+    const version = await request.get('/api/version', {
+      headers: {
+        Authorization: await issueAuthHeader(request),
+      },
+    });
     expect(version.ok()).toBeTruthy();
     const payload = await version.json();
     expect(typeof payload.version).toBe('string');

@@ -1,6 +1,6 @@
-//! Authentication middleware for protected Nextcloud-compatible API routes.
+//! Token issuance and authentication middleware for protected API routes.
 
-use std::sync::Arc;
+use std::time::Duration;
 
 use axum::Json;
 use axum::body::Body;
@@ -8,18 +8,92 @@ use axum::extract::State;
 use axum::http::{Request, StatusCode, header};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
-use base64::Engine;
-use base64::engine::general_purpose::STANDARD as BASE64;
+use serde::{Deserialize, Serialize};
 
-use crate::config::Config;
+use super::AppState;
+use super::errors::{ApiResult, internal_error};
+use crate::auth_tokens;
 
-/// Enforces optional basic authentication when credentials are configured.
-pub(super) async fn require_basic_auth(
-    State(config): State<Arc<Config>>,
-    request: Request<Body>,
+const SHORT_SESSION_TTL: Duration = Duration::from_secs(24 * 60 * 60);
+const REMEMBERED_SESSION_TTL: Duration = Duration::from_secs(30 * 24 * 60 * 60);
+
+#[derive(Debug, Deserialize)]
+pub(super) struct IssueTokenIn {
+    username: String,
+    password: String,
+    #[serde(rename = "rememberDevice")]
+    remember_device: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub(super) struct IssueTokenOut {
+    token: String,
+    #[serde(rename = "expiresAt")]
+    expires_at: i64,
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct AuthenticatedToken {
+    pub token: String,
+    pub username: String,
+}
+
+/// Issues a browser token after validating submitted credentials.
+pub(super) async fn issue_token(
+    State(state): State<AppState>,
+    Json(input): Json<IssueTokenIn>,
+) -> ApiResult<Json<IssueTokenOut>> {
+    if input.username.trim().is_empty() || input.password.is_empty() {
+        return Err(unauthorized_error("Not authenticated"));
+    }
+
+    if state.config.auth_enabled() {
+        let expected_username = state.config.username.as_deref().unwrap_or_default();
+        let expected_password = state.config.password.as_deref().unwrap_or_default();
+
+        if input.username != expected_username || input.password != expected_password {
+            return Err(unauthorized_error("Invalid authentication credentials"));
+        }
+    }
+
+    let ttl = if input.remember_device {
+        REMEMBERED_SESSION_TTL
+    } else {
+        SHORT_SESSION_TTL
+    };
+    let record = auth_tokens::create_token(&state.pool, input.username.trim(), ttl)
+        .await
+        .map_err(internal_error)?;
+
+    Ok(Json(IssueTokenOut {
+        token: record.token,
+        expires_at: record.expires_at,
+    }))
+}
+
+/// Revokes the currently authenticated browser token.
+pub(super) async fn logout(
+    State(state): State<AppState>,
+    authenticated: Option<axum::extract::Extension<AuthenticatedToken>>,
+) -> ApiResult<StatusCode> {
+    let Some(axum::extract::Extension(authenticated)) = authenticated else {
+        return Err(unauthorized_error("Not authenticated"));
+    };
+
+    let _ = &authenticated.username;
+    auth_tokens::revoke_token(&state.pool, &authenticated.token)
+        .await
+        .map_err(internal_error)?;
+    Ok(StatusCode::OK)
+}
+
+/// Enforces optional bearer authentication when credentials are configured.
+pub(super) async fn require_bearer_auth(
+    State(state): State<AppState>,
+    mut request: Request<Body>,
     next: Next,
 ) -> Response {
-    if !config.auth_enabled() {
+    if !state.config.auth_enabled() {
         return next.run(request).await;
     }
 
@@ -31,29 +105,25 @@ pub(super) async fn require_basic_auth(
         return unauthorized("Invalid authentication credentials");
     };
 
-    if !auth_header.starts_with("Basic ") {
+    let Some(token) = auth_header.strip_prefix("Bearer ") else {
+        return unauthorized("Invalid authentication credentials");
+    };
+
+    let token = token.trim();
+    if token.is_empty() {
         return unauthorized("Invalid authentication credentials");
     }
 
-    let encoded = &auth_header[6..];
-    let Ok(decoded_bytes) = BASE64.decode(encoded) else {
-        return unauthorized("Invalid authentication credentials");
+    let record = match auth_tokens::find_active_token(&state.pool, token).await {
+        Ok(Some(record)) => record,
+        Ok(None) => return unauthorized("Invalid authentication credentials"),
+        Err(error) => return internal_error(error).into_response(),
     };
 
-    let Ok(decoded) = String::from_utf8(decoded_bytes) else {
-        return unauthorized("Invalid authentication credentials");
-    };
-
-    let Some((username, password)) = decoded.split_once(':') else {
-        return unauthorized("Invalid authentication credentials");
-    };
-
-    let expected_username = config.username.as_deref().unwrap_or_default();
-    let expected_password = config.password.as_deref().unwrap_or_default();
-
-    if username != expected_username || password != expected_password {
-        return unauthorized("Invalid authentication credentials");
-    }
+    request.extensions_mut().insert(AuthenticatedToken {
+        token: record.token,
+        username: record.username,
+    });
 
     next.run(request).await
 }
@@ -61,8 +131,15 @@ pub(super) async fn require_basic_auth(
 fn unauthorized(message: &'static str) -> Response {
     (
         StatusCode::UNAUTHORIZED,
-        [(header::WWW_AUTHENTICATE, "Basic")],
+        [(header::WWW_AUTHENTICATE, "Bearer")],
         Json(serde_json::json!({ "detail": message })),
     )
         .into_response()
+}
+
+fn unauthorized_error(message: &'static str) -> (StatusCode, Json<serde_json::Value>) {
+    (
+        StatusCode::UNAUTHORIZED,
+        Json(serde_json::json!({ "detail": message })),
+    )
 }

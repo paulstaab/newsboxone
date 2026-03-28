@@ -89,11 +89,18 @@ mod tests {
         .fetch_one(&pool)
         .await
         .unwrap();
+        let auth_token_exists: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='auth_token'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
 
         assert_eq!(folder_exists, 1);
         assert_eq!(feed_exists, 1);
         assert_eq!(article_exists, 1);
         assert_eq!(email_exists, 1);
+        assert_eq!(auth_token_exists, 1);
 
         let row = sqlx::query("SELECT name, is_root FROM folder WHERE id = 0")
             .fetch_one(&pool)
