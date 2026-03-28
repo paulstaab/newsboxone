@@ -13,8 +13,8 @@ import { storeSession, clearSession } from '@/lib/storage';
 const BASE_URL = '';
 const API_PATH = '/api';
 
-// Valid test credentials (base64 of "testuser:testpass")
-const TEST_CREDENTIALS = 'dGVzdHVzZXI6dGVzdHBhc3M=';
+const TEST_TOKEN = 'test-token';
+const TEST_EXPIRY = '2026-04-30T00:00:00.000Z';
 
 beforeEach(() => {
   server.resetHandlers();
@@ -48,7 +48,8 @@ describe('ApiClient', () => {
     it('should automatically attach auth token to authenticated requests', async () => {
       storeSession({
         username: 'testuser',
-        credentials: TEST_CREDENTIALS,
+        token: TEST_TOKEN,
+        expiresAt: TEST_EXPIRY,
         rememberDevice: false,
       });
 
@@ -63,7 +64,7 @@ describe('ApiClient', () => {
       const client = getApiClient();
       await client.feeds.getAll();
 
-      expect(receivedAuth).toBe(`Basic ${TEST_CREDENTIALS}`);
+      expect(receivedAuth).toBe(`Bearer ${TEST_TOKEN}`);
     });
 
     it('should throw AuthenticationError when no session exists', async () => {
@@ -76,7 +77,8 @@ describe('ApiClient', () => {
     it('should throw AuthenticationError on 401 responses', async () => {
       storeSession({
         username: 'testuser',
-        credentials: 'invalid',
+        token: 'invalid-token',
+        expiresAt: TEST_EXPIRY,
         rememberDevice: false,
       });
 
@@ -95,7 +97,8 @@ describe('ApiClient', () => {
     beforeEach(() => {
       storeSession({
         username: 'testuser',
-        credentials: TEST_CREDENTIALS,
+        token: TEST_TOKEN,
+        expiresAt: TEST_EXPIRY,
         rememberDevice: false,
       });
     });
@@ -157,7 +160,8 @@ describe('ApiClient', () => {
     beforeEach(() => {
       storeSession({
         username: 'testuser',
-        credentials: TEST_CREDENTIALS,
+        token: TEST_TOKEN,
+        expiresAt: TEST_EXPIRY,
         rememberDevice: false,
       });
     });
@@ -230,7 +234,8 @@ describe('ApiClient', () => {
     beforeEach(() => {
       storeSession({
         username: 'testuser',
-        credentials: TEST_CREDENTIALS,
+        token: TEST_TOKEN,
+        expiresAt: TEST_EXPIRY,
         rememberDevice: false,
       });
     });
@@ -279,7 +284,8 @@ describe('ApiClient', () => {
     beforeEach(() => {
       storeSession({
         username: 'testuser',
-        credentials: TEST_CREDENTIALS,
+        token: TEST_TOKEN,
+        expiresAt: TEST_EXPIRY,
         rememberDevice: false,
       });
     });
@@ -320,7 +326,8 @@ describe('ApiClient', () => {
     beforeEach(() => {
       storeSession({
         username: 'testuser',
-        credentials: TEST_CREDENTIALS,
+        token: TEST_TOKEN,
+        expiresAt: TEST_EXPIRY,
         rememberDevice: false,
       });
     });
@@ -424,21 +431,25 @@ describe('ApiClient', () => {
   describe('auth utilities', () => {
     it('should validate correct credentials', async () => {
       const client = getApiClient();
-      const result = await client.auth.validateCredentials(TEST_CREDENTIALS);
+      const result = await client.auth.validateCredentials('testuser', 'testpass', false);
 
       expect(result.valid).toBe(true);
       expect(result.error).toBeUndefined();
+      expect(result.token?.token).toBe(TEST_TOKEN);
     });
 
     it('should reject invalid credentials', async () => {
       server.use(
-        http.get(`${BASE_URL}${API_PATH}/feeds`, () => {
-          return new HttpResponse(null, { status: 401 });
+        http.post(`${BASE_URL}${API_PATH}/auth/token`, () => {
+          return HttpResponse.json(
+            { detail: 'Invalid authentication credentials' },
+            { status: 401 },
+          );
         }),
       );
 
       const client = getApiClient();
-      const result = await client.auth.validateCredentials('invalid');
+      const result = await client.auth.validateCredentials('testuser', 'wrong-password', false);
 
       expect(result.valid).toBe(false);
       expect(result.error).toBeDefined();
@@ -483,6 +494,8 @@ describe('ApiClient', () => {
         },
         auth: {
           validateCredentials: vi.fn().mockResolvedValue({ valid: true }),
+          issueToken: vi.fn(),
+          logout: vi.fn(),
         },
       };
 

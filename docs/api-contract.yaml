@@ -24,260 +24,292 @@ paths:
       summary: Service health check
       operationId: getStatus
       responses:
-        '200':
+        "200":
           description: Service is healthy
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthResponse'
+                $ref: "#/components/schemas/HealthResponse"
   /api/version:
     get:
       tags: [Service]
       summary: API version and capability summary
       operationId: getVersion
       responses:
-        '200':
+        "200":
           description: API version payload
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VersionResponse'
+                $ref: "#/components/schemas/VersionResponse"
+  /api/auth/token:
+    post:
+      tags: [Service]
+      summary: Exchange username and password for a browser session token
+      operationId: issueAuthToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IssueTokenRequest"
+      responses:
+        "200":
+          description: Session token issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueTokenResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/auth/logout:
+    post:
+      tags: [Service]
+      summary: Revoke the currently authenticated browser session token
+      operationId: logoutAuthToken
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Session token revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/feeds:
     get:
       tags: [Feeds]
       summary: List feeds
       operationId: listFeeds
       security:
-        - basicAuth: []
+        - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Feed list
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FeedsResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/FeedsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
     post:
       tags: [Feeds]
       summary: Create feed
       operationId: createFeed
       security:
-        - basicAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateFeedRequest'
+              $ref: "#/components/schemas/CreateFeedRequest"
       responses:
-        '200':
+        "200":
           description: Feed created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CreateFeedResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationError'
+                $ref: "#/components/schemas/CreateFeedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
   /api/feeds/{feedId}:
     delete:
       tags: [Feeds]
       summary: Delete feed
       operationId: deleteFeed
       security:
-        - basicAuth: []
+        - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/FeedId'
+        - $ref: "#/components/parameters/FeedId"
       responses:
-        '200':
+        "200":
           description: Feed deleted
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/feeds/{feedId}/move:
     post:
       tags: [Feeds]
       summary: Move feed to folder
       operationId: moveFeed
       security:
-        - basicAuth: []
+        - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/FeedId'
+        - $ref: "#/components/parameters/FeedId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MoveFeedRequest'
+              $ref: "#/components/schemas/MoveFeedRequest"
       responses:
-        '200':
+        "200":
           description: Feed moved
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/ValidationError'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
   /api/feeds/{feedId}/rename:
     post:
       tags: [Feeds]
       summary: Rename feed
       operationId: renameFeed
       security:
-        - basicAuth: []
+        - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/FeedId'
+        - $ref: "#/components/parameters/FeedId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RenameFeedRequest'
+              $ref: "#/components/schemas/RenameFeedRequest"
       responses:
-        '200':
+        "200":
           description: Feed renamed
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/feeds/{feedId}/read:
     post:
       tags: [Feeds]
       summary: Mark feed items read up to newest item id
       operationId: markFeedRead
       security:
-        - basicAuth: []
+        - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/FeedId'
+        - $ref: "#/components/parameters/FeedId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MarkReadRequest'
+              $ref: "#/components/schemas/MarkReadRequest"
       responses:
-        '200':
+        "200":
           description: Feed items marked read
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/folders:
     get:
       tags: [Folders]
       summary: List folders
       operationId: listFolders
       security:
-        - basicAuth: []
+        - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Folder list
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FoldersResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/FoldersResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
     post:
       tags: [Folders]
       summary: Create folder
       operationId: createFolder
       security:
-        - basicAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateFolderRequest'
+              $ref: "#/components/schemas/CreateFolderRequest"
       responses:
-        '200':
+        "200":
           description: Folder created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FoldersResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationError'
+                $ref: "#/components/schemas/FoldersResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
   /api/folders/{folderId}:
     put:
       tags: [Folders]
       summary: Rename folder
       operationId: renameFolder
       security:
-        - basicAuth: []
+        - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/FolderId'
+        - $ref: "#/components/parameters/FolderId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RenameFolderRequest'
+              $ref: "#/components/schemas/RenameFolderRequest"
       responses:
-        '200':
+        "200":
           description: Folder renamed
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationError'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
     delete:
       tags: [Folders]
       summary: Delete folder
       operationId: deleteFolder
       security:
-        - basicAuth: []
+        - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/FolderId'
+        - $ref: "#/components/parameters/FolderId"
       responses:
-        '200':
+        "200":
           description: Folder deleted
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/folders/{folderId}/read:
     post:
       tags: [Folders]
       summary: Mark folder items read up to newest item id
       operationId: markFolderRead
       security:
-        - basicAuth: []
+        - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/FolderId'
+        - $ref: "#/components/parameters/FolderId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MarkReadRequest'
+              $ref: "#/components/schemas/MarkReadRequest"
       responses:
-        '200':
+        "200":
           description: Folder items marked read
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/items:
     get:
       tags: [Items]
       summary: List items
       operationId: listItems
       security:
-        - basicAuth: []
+        - bearerAuth: []
       parameters:
         - in: query
           name: batchSize
@@ -312,23 +344,23 @@ paths:
           schema:
             type: integer
       responses:
-        '200':
+        "200":
           description: Item list
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ItemsResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/ItemsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/items/updated:
     get:
       tags: [Items]
       summary: List items updated since a timestamp
       operationId: listUpdatedItems
       security:
-        - basicAuth: []
+        - bearerAuth: []
       parameters:
         - in: query
           name: lastModified
@@ -345,195 +377,196 @@ paths:
           schema:
             type: integer
       responses:
-        '200':
+        "200":
           description: Updated item list
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ItemsResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/ItemsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/items/read:
     post:
       tags: [Items]
       summary: Mark all items read up to newest item id
       operationId: markAllItemsRead
       security:
-        - basicAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MarkReadRequest'
+              $ref: "#/components/schemas/MarkReadRequest"
       responses:
-        '200':
+        "200":
           description: Matching items marked read
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/items/read/multiple:
     post:
       tags: [Items]
       summary: Mark multiple items read
       operationId: markMultipleItemsRead
       security:
-        - basicAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ItemIdsRequest'
+              $ref: "#/components/schemas/ItemIdsRequest"
       responses:
-        '200':
+        "200":
           description: Items marked read
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/items/unread/multiple:
     post:
       tags: [Items]
       summary: Mark multiple items unread
       operationId: markMultipleItemsUnread
       security:
-        - basicAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ItemIdsRequest'
+              $ref: "#/components/schemas/ItemIdsRequest"
       responses:
-        '200':
+        "200":
           description: Items marked unread
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/items/star/multiple:
     post:
       tags: [Items]
       summary: Star multiple items
       operationId: starMultipleItems
       security:
-        - basicAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ItemIdsRequest'
+              $ref: "#/components/schemas/ItemIdsRequest"
       responses:
-        '200':
+        "200":
           description: Items starred
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/items/unstar/multiple:
     post:
       tags: [Items]
       summary: Unstar multiple items
       operationId: unstarMultipleItems
       security:
-        - basicAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ItemIdsRequest'
+              $ref: "#/components/schemas/ItemIdsRequest"
       responses:
-        '200':
+        "200":
           description: Items unstarred
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/items/{itemId}/read:
     post:
       tags: [Items]
       summary: Mark item read
       operationId: markItemRead
       security:
-        - basicAuth: []
+        - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/ItemId'
+        - $ref: "#/components/parameters/ItemId"
       responses:
-        '200':
+        "200":
           description: Item marked read
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/items/{itemId}/unread:
     post:
       tags: [Items]
       summary: Mark item unread
       operationId: markItemUnread
       security:
-        - basicAuth: []
+        - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/ItemId'
+        - $ref: "#/components/parameters/ItemId"
       responses:
-        '200':
+        "200":
           description: Item marked unread
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/items/{itemId}/star:
     post:
       tags: [Items]
       summary: Star item
       operationId: starItem
       security:
-        - basicAuth: []
+        - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/ItemId'
+        - $ref: "#/components/parameters/ItemId"
       responses:
-        '200':
+        "200":
           description: Item starred
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/items/{itemId}/unstar:
     post:
       tags: [Items]
       summary: Unstar item
       operationId: unstarItem
       security:
-        - basicAuth: []
+        - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/ItemId'
+        - $ref: "#/components/parameters/ItemId"
       responses:
-        '200':
+        "200":
           description: Item unstarred
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/items/{itemId}/content:
     get:
       tags: [Items]
       summary: Get item full content payload
       operationId: getItemContent
       security:
-        - basicAuth: []
+        - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/ItemId'
+        - $ref: "#/components/parameters/ItemId"
       responses:
-        '200':
+        "200":
           description: Full content payload
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ItemContentResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/ItemContentResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 components:
   securitySchemes:
-    basicAuth:
+    bearerAuth:
       type: http
-      scheme: basic
+      scheme: bearer
+      bearerFormat: opaque-token
   parameters:
     FeedId:
       in: path
@@ -559,31 +592,31 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
     NotFound:
       description: Resource not found
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
     ValidationError:
       description: Request validation failed
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
     Conflict:
       description: Request conflicts with existing state
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
     BadRequest:
       description: Invalid request parameters
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     HealthResponse:
       type: object
@@ -611,11 +644,41 @@ components:
       properties:
         detail:
           type: string
+    IssueTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password, rememberDevice]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        rememberDevice:
+          type: boolean
+    IssueTokenResponse:
+      type: object
+      additionalProperties: false
+      required: [token, expiresAt]
+      properties:
+        token:
+          type: string
+        expiresAt:
+          type: integer
+          description: Unix timestamp in seconds when the token expires.
     Feed:
       type: object
       additionalProperties: false
       required:
-        [id, url, title, folderId, ordering, pinned, updateErrorCount, lastUpdateError]
+        [
+          id,
+          url,
+          title,
+          folderId,
+          ordering,
+          pinned,
+          updateErrorCount,
+          lastUpdateError,
+        ]
       properties:
         id:
           type: integer
@@ -626,21 +689,21 @@ components:
           type: string
         link:
           type: string
-          default: ''
+          default: ""
         faviconLink:
           type:
             - string
-            - 'null'
+            - "null"
         added:
           type: integer
         nextUpdateTime:
           type:
             - integer
-            - 'null'
+            - "null"
         folderId:
           type:
             - integer
-            - 'null'
+            - "null"
         ordering:
           type: integer
         pinned:
@@ -650,7 +713,7 @@ components:
         lastUpdateError:
           type:
             - string
-            - 'null'
+            - "null"
     Folder:
       type: object
       additionalProperties: false
@@ -668,7 +731,20 @@ components:
       type: object
       additionalProperties: false
       required:
-        [id, guid, guidHash, title, author, url, body, feedId, unread, starred, pubDate, lastModified]
+        [
+          id,
+          guid,
+          guidHash,
+          title,
+          author,
+          url,
+          body,
+          feedId,
+          unread,
+          starred,
+          pubDate,
+          lastModified,
+        ]
       properties:
         id:
           type: integer
@@ -689,7 +765,7 @@ components:
         folderId:
           type:
             - integer
-            - 'null'
+            - "null"
         unread:
           type: boolean
         starred:
@@ -701,11 +777,11 @@ components:
         enclosureLink:
           type:
             - string
-            - 'null'
+            - "null"
         enclosureMime:
           type:
             - string
-            - 'null'
+            - "null"
         fingerprint:
           type: string
         contentHash:
@@ -713,11 +789,11 @@ components:
         mediaThumbnail:
           type:
             - string
-            - 'null'
+            - "null"
         mediaDescription:
           type:
             - string
-            - 'null'
+            - "null"
         rtl:
           type: boolean
     FeedsResponse:
@@ -728,13 +804,13 @@ components:
         feeds:
           type: array
           items:
-            $ref: '#/components/schemas/Feed'
+            $ref: "#/components/schemas/Feed"
         starredCount:
           type: integer
         newestItemId:
           type:
             - integer
-            - 'null'
+            - "null"
     FoldersResponse:
       type: object
       additionalProperties: false
@@ -743,7 +819,7 @@ components:
         folders:
           type: array
           items:
-            $ref: '#/components/schemas/Folder'
+            $ref: "#/components/schemas/Folder"
     ItemsResponse:
       type: object
       additionalProperties: false
@@ -752,7 +828,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/Item'
+            $ref: "#/components/schemas/Item"
     ItemContentResponse:
       type: object
       additionalProperties: false
@@ -770,7 +846,7 @@ components:
         folderId:
           type:
             - integer
-            - 'null'
+            - "null"
     CreateFeedResponse:
       type: object
       additionalProperties: false
@@ -779,11 +855,11 @@ components:
         feeds:
           type: array
           items:
-            $ref: '#/components/schemas/Feed'
+            $ref: "#/components/schemas/Feed"
         newestItemId:
           type:
             - integer
-            - 'null'
+            - "null"
     MoveFeedRequest:
       type: object
       additionalProperties: false
@@ -792,7 +868,7 @@ components:
         folderId:
           type:
             - integer
-            - 'null'
+            - "null"
     RenameFeedRequest:
       type: object
       additionalProperties: false

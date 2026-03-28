@@ -6,7 +6,7 @@
       "localStorage": [
         {
           "name": "newsboxone:session",
-          "value": "{\"username\":\"test\",\"credentials\":\"dGVzdDp0ZXN0\",\"rememberDevice\":true}"
+          "value": "{\"username\":\"test\",\"token\":\"test-token\",\"expiresAt\":\"2026-04-30T00:00:00.000Z\",\"rememberDevice\":true}"
         }
       ]
     }

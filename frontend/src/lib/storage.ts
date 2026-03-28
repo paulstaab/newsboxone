@@ -1,11 +1,10 @@
 /**
- * Browser storage helpers for credentials and preferences.
+ * Browser storage helpers for auth session state and preferences.
  * Supports session vs. local storage based on remember-device setting.
  */
 
 import { CONFIG } from './config/env';
 import { type StoredSession, type UserPreferences, DEFAULT_PREFERENCES } from '@/types';
-import { encodeBasicCredentials } from '@/lib/auth/session';
 
 /**
  * Stores session data in the appropriate storage based on rememberDevice flag.
@@ -116,13 +115,6 @@ export function clearAllData(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(CONFIG.METRICS_KEY);
   }
-}
-
-/**
- * Encodes credentials for HTTP Basic auth.
- */
-export function encodeCredentials(username: string, password: string): string {
-  return encodeBasicCredentials(username, password);
 }
 
 /**

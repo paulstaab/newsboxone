@@ -6,6 +6,7 @@ use axum::routing::get as axum_get;
 use sqlx::SqlitePool;
 use tokio::net::TcpListener;
 
+use crate::auth_tokens;
 use crate::config::Config;
 
 use super::super::AppState;
@@ -77,6 +78,14 @@ pub(super) fn state(pool: SqlitePool) -> AppState {
 /// Builds application state for API tests with basic auth enabled.
 pub(super) fn state_with_auth(pool: SqlitePool, username: &str, password: &str) -> AppState {
     build_state(pool, Some(username), Some(password), true)
+}
+
+/// Issues a real bearer token for API tests.
+pub(super) async fn issue_test_token(pool: &SqlitePool, username: &str) -> String {
+    auth_tokens::create_token(pool, username, std::time::Duration::from_secs(3600))
+        .await
+        .unwrap()
+        .token
 }
 
 /// Builds application state for API tests with a custom SSRF testing-mode flag.

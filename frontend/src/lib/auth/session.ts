@@ -1,19 +1,13 @@
 import { DEFAULT_PREFERENCES, type StoredSession, type UserSessionConfig } from '@/types';
 
 /**
- * Encodes username and password for HTTP Basic authentication.
- */
-export function encodeBasicCredentials(username: string, password: string): string {
-  return btoa(`${username}:${password}`);
-}
-
-/**
  * Converts minimal persisted session data into the richer in-memory session shape.
  */
 export function toUserSessionConfig(stored: StoredSession): UserSessionConfig {
   return {
     username: stored.username,
-    credentials: stored.credentials,
+    token: stored.token,
+    expiresAt: stored.expiresAt,
     rememberDevice: stored.rememberDevice,
     ...DEFAULT_PREFERENCES,
     lastSyncAt: new Date().toISOString(),
@@ -26,7 +20,8 @@ export function toUserSessionConfig(stored: StoredSession): UserSessionConfig {
 export function toStoredSession(session: UserSessionConfig): StoredSession {
   return {
     username: session.username,
-    credentials: session.credentials,
+    token: session.token,
+    expiresAt: session.expiresAt,
     rememberDevice: session.rememberDevice,
   };
 }

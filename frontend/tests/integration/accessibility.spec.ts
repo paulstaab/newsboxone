@@ -19,7 +19,8 @@ async function seedRememberedSession(page: Page) {
       'newsboxone:session',
       JSON.stringify({
         username: 'test',
-        credentials: 'dGVzdDp0ZXN0',
+        token: 'test-token',
+        expiresAt: '2026-04-30T00:00:00.000Z',
         rememberDevice: true,
       }),
     );

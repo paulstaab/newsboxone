@@ -22,20 +22,19 @@ export default async function globalSetup(config) {
 
   await page.goto(baseURL);
 
-  const credentials = Buffer.from(`${TEST_USERNAME}:${TEST_PASSWORD}`).toString('base64');
-
   await page.evaluate(
-    ({ username, credentials: encoded }) => {
+    ({ username }) => {
       localStorage.setItem(
         'newsboxone:session',
         JSON.stringify({
           username,
-          credentials: encoded,
+          token: 'test-token',
+          expiresAt: '2026-04-30T00:00:00.000Z',
           rememberDevice: true,
         }),
       );
     },
-    { username: TEST_USERNAME, credentials },
+    { username: TEST_USERNAME },
   );
 
   await context.storageState({ path: storageStatePath });

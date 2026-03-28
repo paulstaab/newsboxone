@@ -2,9 +2,9 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { loadSession, storeSession, clearSession } from '@/lib/storage';
-import { validateCredentials } from '@/lib/api/client';
+import { getApiClient } from '@/lib/api/apiClient';
 import type { UserSessionConfig } from '@/types';
-import { encodeBasicCredentials, toStoredSession, toUserSessionConfig } from '@/lib/auth/session';
+import { toStoredSession, toUserSessionConfig } from '@/lib/auth/session';
 
 interface AuthContextValue {
   /** Current session configuration (null if not authenticated) */
@@ -24,7 +24,7 @@ interface AuthContextValue {
 
   /**
    * Authenticate user with same-origin API credentials.
-   * Validates credentials by calling a protected API endpoint.
+   * Exchanges credentials for a backend-issued browser token.
    * Stores session in storage on success
    */
   login: (username: string, password: string, rememberDevice?: boolean) => Promise<void>;
@@ -32,7 +32,7 @@ interface AuthContextValue {
   /**
    * Clear authentication and remove stored session
    */
-  logout: () => void;
+  logout: () => Promise<void>;
 
   /**
    * Update session preferences
@@ -44,10 +44,19 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function normalizeExpiry(rawExpiresAt: string | number): string {
+  if (typeof rawExpiresAt === 'number') {
+    return new Date(rawExpiresAt * 1000).toISOString();
+  }
+
+  return new Date(rawExpiresAt).toISOString();
+}
+
 /**
  * Provides authentication state and actions to the app.
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const apiClient = getApiClient();
   const [session, setSession] = useState<UserSessionConfig | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -81,21 +90,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           throw new Error('Password is required');
         }
 
-        // Encode credentials
-        const credentials = encodeBasicCredentials(username, password);
+        const validationResult = await apiClient.auth.validateCredentials(
+          username.trim(),
+          password,
+          rememberDevice ?? false,
+        );
 
-        // Validate credentials by calling the API with explicit credentials
-        // This avoids relying on storage which hasn't been set yet
-        const validationResult = await validateCredentials(credentials);
-
-        if (!validationResult.valid) {
+        if (!validationResult.valid || !validationResult.token) {
           throw new Error(validationResult.error ?? 'Authentication failed');
         }
 
-        // If we get here, credentials are valid - create the session
+        const expiresAt = normalizeExpiry(validationResult.token.expiresAt);
+
         const newSession: UserSessionConfig = {
           username: username.trim(),
-          credentials,
+          token: validationResult.token.token,
+          expiresAt,
           rememberDevice: rememberDevice ?? false,
           viewMode: 'card',
           sortOrder: 'newest',
@@ -117,17 +127,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     },
-    [],
+    [apiClient],
   );
 
-  const logout = useCallback(() => {
-    // Clear session from both storage types
-    clearSession();
+  const logout = useCallback(async () => {
+    try {
+      await apiClient.auth.logout();
+    } catch {
+      // Local sign-out should still succeed even when the server-side token is already invalid.
+    }
 
-    // Clear state
+    clearSession();
     setSession(null);
     setError(null);
-  }, []);
+  }, [apiClient]);
 
   const updatePreferences = useCallback(
     (preferences: Partial<Pick<UserSessionConfig, 'viewMode' | 'sortOrder' | 'showRead'>>) => {

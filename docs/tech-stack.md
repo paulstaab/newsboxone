@@ -41,13 +41,13 @@ It describes the shared runtime, major technologies, development workflow, and p
 - Public API namespace: `/api`
 - Health endpoint: `/api/status`
 - Frontend API access: same-origin requests to `/api/*`
-- Authentication: HTTP Basic Auth using configured backend `USERNAME` and `PASSWORD`
+- Authentication: backend-issued opaque bearer tokens, with token issuance validated against configured backend `USERNAME` and `PASSWORD`
 - Local frontend dev proxy: Next.js rewrites `/api/*` to `NEWSBOXONE_BACKEND_ORIGIN`, defaulting to `http://127.0.0.1:8000`
 
 ## Storage
 
 - Backend data store: SQLite database under `data/` by default
-- Frontend session storage: `sessionStorage` by default, `localStorage` when remember-device is enabled
+- Frontend session storage: token-backed session data in `sessionStorage` by default, `localStorage` when remember-device is enabled
 - Frontend storage namespace: `newsboxone:*`
 
 ## Shared Tooling

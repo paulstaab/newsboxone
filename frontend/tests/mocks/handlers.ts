@@ -8,15 +8,14 @@ import { http, HttpResponse, type HttpHandler } from 'msw';
 // Base URL for mock API in jsdom tests.
 const BASE_URL = '/api';
 
-// Valid test credentials (base64 of "testuser:testpass")
-const VALID_AUTH = 'Basic dGVzdHVzZXI6dGVzdHBhc3M=';
+const VALID_TOKEN = 'test-token';
 
 /**
  * Helper to check authorization header.
  */
 function isAuthorized(request: Request): boolean {
   const auth = request.headers.get('Authorization');
-  return auth === VALID_AUTH;
+  return auth === `Bearer ${VALID_TOKEN}`;
 }
 
 /**
@@ -271,6 +270,30 @@ export const mockVersion = {
 export const handlers: HttpHandler[] = [
   // Legacy health check endpoint
   http.get('https://example.com/health', () => HttpResponse.json({ ok: true })),
+
+  http.post(`${BASE_URL}/auth/token`, async ({ request }) => {
+    const body = (await request.json()) as {
+      username?: string;
+      password?: string;
+      rememberDevice?: boolean;
+    };
+
+    if (body.username === 'testuser' && body.password === 'testpass') {
+      return HttpResponse.json({
+        token: VALID_TOKEN,
+        expiresAt: body.rememberDevice ? '2026-04-30T00:00:00.000Z' : '2026-03-29T00:00:00.000Z',
+      });
+    }
+
+    return HttpResponse.json({ detail: 'Invalid authentication credentials' }, { status: 401 });
+  }),
+
+  http.post(`${BASE_URL}/auth/logout`, ({ request }) => {
+    if (!isAuthorized(request)) {
+      return new HttpResponse(null, { status: 401 });
+    }
+    return new HttpResponse(null, { status: 200 });
+  }),
 
   // GET /version - public endpoint (no auth required)
   http.get(`${BASE_URL}/version`, () => {

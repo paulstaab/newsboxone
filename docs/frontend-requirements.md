@@ -43,11 +43,11 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 - `LOGIN-002`: The login page shall present a same-origin username/password form and shall not ask the user for a server URL.
 - `LOGIN-003`: The username field shall be required and non-empty.
 - `LOGIN-004`: The password field shall be required and non-empty.
-- `LOGIN-005`: The login flow shall validate credentials against an existing protected NewsBoxOne API endpoint before persisting a session.
-- `LOGIN-006`: Successful login shall store encoded Basic Auth credentials and redirect to `/timeline`.
+- `LOGIN-005`: The login flow shall exchange credentials for a backend-issued browser token before persisting a session.
+- `LOGIN-006`: Successful login shall store the issued auth token in browser session data and redirect to `/timeline`.
 - `LOGIN-007`: Failed authentication shall keep the user on the login page, preserve the username field, clear the password field, and show an inline error.
-- `LOGIN-011`: Session data shall be stored in `sessionStorage` by default.
-- `LOGIN-012`: When “remember device” is enabled, session data shall be stored in `localStorage` instead.
+- `LOGIN-011`: Token-backed session data shall be stored in `sessionStorage` by default.
+- `LOGIN-012`: When “remember device” is enabled, token-backed session data shall be stored in `localStorage` instead.
 - `LOGIN-013`: When a remembered session exists, it shall be preferred over `sessionStorage` on startup.
 - `LOGIN-014`: Failed authentication shall not create a stored session.
 - `LOGIN-015`: Frontend-auth-related storage keys shall use the `newsboxone:*` namespace.

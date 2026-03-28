@@ -8,7 +8,7 @@ use axum::extract::State;
 use axum::http::Request;
 use axum::middleware::Next;
 use axum::response::Response;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::Serialize;
 use sqlx::SqlitePool;
@@ -46,7 +46,9 @@ struct VersionOut {
 
 /// Builds the full Axum router for the public API surface.
 pub fn app(state: AppState) -> Router {
-    let public_api = protected_router(state.config.clone());
+    let public_api = Router::new()
+        .route("/auth/token", post(auth::issue_token))
+        .merge(protected_router(state.clone()));
 
     Router::new()
         .route("/api/status", get(status))
@@ -57,8 +59,9 @@ pub fn app(state: AppState) -> Router {
 }
 
 /// Builds the protected public API router.
-fn protected_router(config_for_middleware: Arc<Config>) -> Router<AppState> {
+fn protected_router(state_for_middleware: AppState) -> Router<AppState> {
     let router = Router::new()
+        .route("/auth/logout", post(auth::logout))
         .route("/feeds", get(feeds::get_feeds))
         .route("/feeds", axum::routing::post(feeds::add_feed))
         .route(
@@ -133,8 +136,8 @@ fn protected_router(config_for_middleware: Arc<Config>) -> Router<AppState> {
         );
 
     router.route_layer(axum::middleware::from_fn_with_state(
-        config_for_middleware,
-        auth::require_basic_auth,
+        state_for_middleware,
+        auth::require_bearer_auth,
     ))
 }
 
