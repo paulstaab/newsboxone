@@ -10,6 +10,7 @@ function buildFeed(partial: Partial<Feed>): Feed {
     link: partial.link ?? 'https://example.com',
     faviconLink: partial.faviconLink ?? null,
     added: partial.added ?? 0,
+    lastArticleDate: partial.lastArticleDate ?? null,
     nextUpdateTime: partial.nextUpdateTime ?? null,
     folderId: partial.folderId ?? null,
     unreadCount: partial.unreadCount ?? 0,
@@ -36,15 +37,16 @@ describe('feedManagement utilities', () => {
       { id: 10, name: 'Design', unreadCount: 0, feedIds: [] },
     ];
     const feeds = [
-      buildFeed({ id: 1, title: 'Zulu Feed', folderId: 20 }),
+      buildFeed({ id: 1, title: 'Zulu Feed', folderId: 20, lastArticleDate: 1_700_000_000 }),
       buildFeed({ id: 2, title: 'Alpha Feed', folderId: 20 }),
       buildFeed({ id: 3, title: 'Beta Feed', folderId: null }),
     ];
 
-    const groups = buildFeedManagementGroups(folders, feeds, { 1: 1_700_000_000 });
+    const groups = buildFeedManagementGroups(folders, feeds);
 
     expect(groups.map((group) => group.name)).toEqual(['Podcasts', 'Uncategorized']);
     expect(groups[0].feeds.map((row) => row.feed.title)).toEqual(['Alpha Feed', 'Zulu Feed']);
+    expect(groups[0].feeds[1].lastArticleDate).toBe(1_700_000_000);
     expect(groups[1].feeds[0].lastArticleDate).toBeNull();
   });
 

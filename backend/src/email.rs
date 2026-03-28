@@ -156,6 +156,7 @@ async fn process_email_message(
     let subject = extract_subject(&parsed);
     let from_header = parsed.headers.get_first_value("From").unwrap_or_default();
     let from_address = extract_sender_address(&from_header);
+    let email_timestamp = email_timestamp(&parsed);
     if from_address.is_empty() {
         return Ok(0);
     }
@@ -176,6 +177,7 @@ async fn process_email_message(
         &subject,
         &from_address,
         &cleaned_content,
+        email_timestamp,
         llm_result,
     );
 
@@ -214,6 +216,7 @@ fn build_articles_from_email(
     subject: &str,
     from_address: &str,
     content: &str,
+    email_timestamp: i64,
     llm_result: Option<NewsletterLlmResult>,
 ) -> Vec<ArticleRecord> {
     match llm_result {
@@ -230,6 +233,7 @@ fn build_articles_from_email(
                     &title,
                     from_address,
                     &item_content,
+                    email_timestamp,
                     item.summary,
                     Some(item.url),
                 ));
@@ -244,6 +248,7 @@ fn build_articles_from_email(
                 subject,
                 from_address,
                 content,
+                email_timestamp,
                 result.summary,
                 None,
             )]
@@ -255,6 +260,7 @@ fn build_articles_from_email(
                 subject,
                 from_address,
                 &article_content,
+                email_timestamp,
                 result.summary,
                 None,
             )]
@@ -264,6 +270,7 @@ fn build_articles_from_email(
             subject,
             from_address,
             content,
+            email_timestamp,
             None,
             None,
         )],
@@ -276,10 +283,10 @@ fn build_newsletter_article_record(
     subject: &str,
     from_address: &str,
     content: &str,
+    email_timestamp: i64,
     summary: Option<String>,
     url: Option<String>,
 ) -> ArticleRecord {
-    let now_ts = article_store::unix_now();
     let guid = match url.as_deref() {
         Some(url) => format!("{from_address}:{subject}:{url}"),
         None => format!("{from_address}:{subject}"),
@@ -294,14 +301,23 @@ fn build_newsletter_article_record(
         feed_id,
         guid_hash: article_store::guid_hash(&guid),
         guid,
-        last_modified: now_ts,
+        last_modified: email_timestamp,
         media_thumbnail: None,
-        pub_date: Some(now_ts),
-        updated_date: Some(now_ts),
+        pub_date: Some(email_timestamp),
+        updated_date: Some(email_timestamp),
         url,
         starred: false,
         unread: true,
     }
+}
+
+/// Parses the message Date header into a unix timestamp, falling back to ingest time.
+fn email_timestamp(parsed: &ParsedMail<'_>) -> i64 {
+    parsed
+        .headers
+        .get_first_value("Date")
+        .and_then(|value| mailparse::dateparse(&value).ok())
+        .unwrap_or_else(article_store::unix_now)
 }
 
 /// Returns an existing mailing-list feed for a sender address or creates one under the root folder.
@@ -811,7 +827,7 @@ mod tests {
         .await
         .unwrap();
         sqlx::query(
-            "CREATE TABLE feed (id INTEGER PRIMARY KEY NOT NULL, url VARCHAR NOT NULL UNIQUE, title VARCHAR, favicon_link VARCHAR, added INTEGER NOT NULL, next_update_time INTEGER, folder_id INTEGER NOT NULL, ordering INTEGER NOT NULL DEFAULT 0, link VARCHAR, pinned BOOLEAN NOT NULL DEFAULT 0, update_error_count INTEGER NOT NULL DEFAULT 0, last_update_error VARCHAR, is_mailing_list BOOLEAN NOT NULL DEFAULT 0, last_quality_check INTEGER, use_extracted_fulltext BOOLEAN NOT NULL DEFAULT 0, use_llm_summary BOOLEAN NOT NULL DEFAULT 0, manual_use_extracted_fulltext BOOLEAN, manual_use_llm_summary BOOLEAN, last_manual_quality_override INTEGER)",
+            "CREATE TABLE feed (id INTEGER PRIMARY KEY NOT NULL, url VARCHAR NOT NULL UNIQUE, title VARCHAR, favicon_link VARCHAR, added INTEGER NOT NULL, last_article_date INTEGER, next_update_time INTEGER, folder_id INTEGER NOT NULL, ordering INTEGER NOT NULL DEFAULT 0, link VARCHAR, pinned BOOLEAN NOT NULL DEFAULT 0, update_error_count INTEGER NOT NULL DEFAULT 0, last_update_error VARCHAR, is_mailing_list BOOLEAN NOT NULL DEFAULT 0, last_quality_check INTEGER, use_extracted_fulltext BOOLEAN NOT NULL DEFAULT 0, use_llm_summary BOOLEAN NOT NULL DEFAULT 0, manual_use_extracted_fulltext BOOLEAN, manual_use_llm_summary BOOLEAN, last_manual_quality_override INTEGER)",
         )
         .execute(&pool)
         .await
@@ -951,6 +967,31 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn newsletter_processing_uses_email_date_for_feed_last_article_date() {
+        let pool = setup_pool().await;
+        let raw_email = b"Date: Fri, 06 Mar 2026 12:34:56 +0000\r\nSubject: Timestamped Newsletter\r\nFrom: Example List <list@example.com>\r\nList-Unsubscribe: <mailto:unsubscribe@example.com>\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nBody";
+        let client = reqwest::Client::new();
+
+        process_email_message(&pool, &client, &config(), raw_email)
+            .await
+            .unwrap();
+
+        let last_article_date: Option<i64> =
+            sqlx::query_scalar("SELECT last_article_date FROM feed WHERE url = 'list@example.com'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        let article_pub_date: Option<i64> =
+            sqlx::query_scalar("SELECT pub_date FROM article WHERE feed_id = (SELECT id FROM feed WHERE url = 'list@example.com') LIMIT 1")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+
+        assert_eq!(last_article_date, Some(1_772_800_496));
+        assert_eq!(article_pub_date, Some(1_772_800_496));
+    }
+
+    #[tokio::test]
     async fn llm_multi_mode_builds_separate_articles_and_caps_to_25_items() {
         let items = (0..(NEWSLETTER_MAX_ITEMS + 5))
             .map(|index| NewsletterItem {
@@ -972,6 +1013,7 @@ mod tests {
             "Newsletter",
             "list@example.com",
             "fallback body",
+            1_700_000_000,
             Some(result),
         );
 
@@ -994,12 +1036,14 @@ mod tests {
             "Newsletter",
             "list@example.com",
             "fallback body",
+            1_700_000_000,
             Some(result),
         );
 
         assert_eq!(articles.len(), 1);
         assert_eq!(articles[0].content.as_deref(), Some("Cleaned content text"));
         assert_eq!(articles[0].summary.as_deref(), Some("Concise summary"));
+        assert_eq!(articles[0].pub_date, Some(1_700_000_000));
         assert!(articles[0].url.is_none());
     }
 

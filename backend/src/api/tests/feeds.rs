@@ -30,6 +30,7 @@ async fn feeds_endpoint_maps_root_folder_to_null() {
         .unwrap();
     let parsed: Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(parsed["feeds"][0]["folderId"], Value::Null);
+    assert_eq!(parsed["feeds"][0]["lastArticleDate"], 100);
 }
 
 #[tokio::test]
@@ -269,6 +270,7 @@ async fn add_feed_success_returns_expected_payload_fields() {
     assert_eq!(created_feed["title"], "Fixture Feed");
     assert_eq!(created_feed["link"], "http://example.org/");
     assert_eq!(created_feed["updateErrorCount"], 0);
+    assert_eq!(created_feed["lastArticleDate"], 1_772_755_200);
     assert!(created_feed["nextUpdateTime"].as_i64().is_some());
     assert_eq!(created_feed["folderId"], Value::Null);
 }

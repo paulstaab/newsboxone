@@ -318,6 +318,28 @@ pub async fn create_mailing_list_feed(
     Ok(result.last_insert_rowid())
 }
 
+/// Advances the stored feed last-article timestamp when the candidate is newer.
+pub async fn advance_feed_last_article_date(
+    pool: &SqlitePool,
+    feed_id: i64,
+    candidate_timestamp: i64,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE feed
+         SET last_article_date = CASE
+             WHEN last_article_date IS NULL OR last_article_date < ? THEN ?
+             ELSE last_article_date
+         END
+         WHERE id = ?",
+    )
+    .bind(candidate_timestamp)
+    .bind(candidate_timestamp)
+    .bind(feed_id)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 /// Persists a fully prepared article record.
 pub async fn insert_article_record(
     pool: &SqlitePool,

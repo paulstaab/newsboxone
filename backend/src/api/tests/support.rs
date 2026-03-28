@@ -23,7 +23,7 @@ pub(super) async fn setup_pool() -> SqlitePool {
         .execute(&pool)
         .await
         .unwrap();
-    sqlx::query("INSERT INTO feed (id, url, title, favicon_link, added, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error, is_mailing_list, last_quality_check, use_extracted_fulltext, use_llm_summary) VALUES (10, 'https://example.com/rss', 'Example Feed', NULL, 123, NULL, 1, 0, 'https://example.com', 0, 0, NULL, 0, NULL, 0, 0)")
+    sqlx::query("INSERT INTO feed (id, url, title, favicon_link, added, last_article_date, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error, is_mailing_list, last_quality_check, use_extracted_fulltext, use_llm_summary) VALUES (10, 'https://example.com/rss', 'Example Feed', NULL, 123, 100, NULL, 1, 0, 'https://example.com', 0, 0, NULL, 0, NULL, 0, 0)")
         .execute(&pool)
         .await
         .unwrap();

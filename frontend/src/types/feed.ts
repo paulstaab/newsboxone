@@ -20,6 +20,9 @@ export interface Feed {
   /** Unix timestamp (seconds) of when the feed was added */
   added: number;
 
+  /** Unix timestamp (seconds) of the latest known article for this feed */
+  lastArticleDate: number | null;
+
   /** Unix timestamp (seconds) for the next scheduled refresh */
   nextUpdateTime: number | null;
 
@@ -49,6 +52,7 @@ export interface ApiFeed {
   title: string | null;
   faviconLink: string | null;
   added: number;
+  lastArticleDate: number | null;
   nextUpdateTime: number | null;
   folderId: number | null;
   ordering: number;
@@ -74,6 +78,7 @@ export function normalizeFeed(api: ApiFeed): Feed {
     link: api.link ?? '',
     faviconLink: api.faviconLink,
     added: api.added,
+    lastArticleDate: api.lastArticleDate,
     nextUpdateTime: api.nextUpdateTime,
     folderId: api.folderId,
     unreadCount: 0, // computed client-side

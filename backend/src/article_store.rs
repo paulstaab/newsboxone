@@ -174,6 +174,9 @@ pub async fn ingest_article_if_new(
     .await;
 
     repo::insert_article_record(context.pool, article.clone()).await?;
+    if let Some(pub_date) = article.pub_date {
+        repo::advance_feed_last_article_date(context.pool, article.feed_id, pub_date).await?;
+    }
 
     Ok(InsertArticleOutcome::Inserted {
         guid_hash: article.guid_hash,
