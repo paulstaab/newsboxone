@@ -69,7 +69,6 @@ export function useFeedManagementPage() {
   const { isAuthenticated, isInitializing, logout } = useAuthGuard();
   const createFeedDialogRef = useRef<HTMLDialogElement>(null);
   const createFolderDialogRef = useRef<HTMLDialogElement>(null);
-  const moveFeedDialogRef = useRef<HTMLDialogElement>(null);
   const qualityDialogRef = useRef<HTMLDialogElement>(null);
 
   const [data, setData] = useState<FeedManagementData>({ folders: [], feeds: [] });
@@ -84,11 +83,6 @@ export function useFeedManagementPage() {
   const [newFolderName, setNewFolderName] = useState('');
   const [editingFolderId, setEditingFolderId] = useState<number | null>(null);
   const [editingFolderName, setEditingFolderName] = useState('');
-  const [editingFeedId, setEditingFeedId] = useState<number | null>(null);
-  const [editingFeedTitle, setEditingFeedTitle] = useState('');
-  const [moveFeedId, setMoveFeedId] = useState<number | null>(null);
-  const [moveFeedTitle, setMoveFeedTitle] = useState('');
-  const [moveFeedFolderId, setMoveFeedFolderId] = useState('');
   const [qualityFeedId, setQualityFeedId] = useState<number | null>(null);
   const [qualityFeedTitle, setQualityFeedTitle] = useState('');
   const [qualityFeedFolderId, setQualityFeedFolderId] = useState('');
@@ -126,19 +120,6 @@ export function useFeedManagementPage() {
 
   const closeCreateFeedDialog = useCallback(() => {
     createFeedDialogRef.current?.close();
-  }, []);
-
-  const openMoveFeedDialog = useCallback((feed: Feed) => {
-    setMoveFeedId(feed.id);
-    setMoveFeedTitle(feed.title);
-    setMoveFeedFolderId(feed.folderId === null ? '' : String(feed.folderId));
-    moveFeedDialogRef.current?.showModal();
-  }, []);
-
-  const resetMoveFeedDialog = useCallback(() => {
-    setMoveFeedId(null);
-    setMoveFeedTitle('');
-    setMoveFeedFolderId('');
   }, []);
 
   const selectedQualityFeed = useMemo(
@@ -348,58 +329,6 @@ export function useFeedManagementPage() {
     [data.feeds, runMutation],
   );
 
-  const handleRenameFeed = useCallback(
-    async (feedId: number) => {
-      const trimmedTitle = editingFeedTitle.trim();
-      if (!trimmedTitle) {
-        setMutationError('Feed name is required.');
-        return;
-      }
-
-      await runMutation('Rename feed', async () => {
-        await renameFeed(feedId, trimmedTitle);
-        setData((current) => ({
-          ...current,
-          feeds: current.feeds.map((feed) =>
-            feed.id === feedId ? { ...feed, title: trimmedTitle } : feed,
-          ),
-        }));
-        setEditingFeedId(null);
-        setEditingFeedTitle('');
-        setStatusMessage(`Renamed feed to ${trimmedTitle}.`);
-      });
-    },
-    [editingFeedTitle, runMutation],
-  );
-
-  const handleMoveFeed = useCallback(
-    async (feedId: number, folderIdValue: string) => {
-      const folderId = folderIdValue ? Number(folderIdValue) : null;
-
-      return runMutation('Move feed', async () => {
-        await moveFeed(feedId, folderId);
-        setData((current) => ({
-          ...current,
-          feeds: current.feeds.map((feed) => (feed.id === feedId ? { ...feed, folderId } : feed)),
-        }));
-        setStatusMessage('Moved feed successfully.');
-      });
-    },
-    [runMutation],
-  );
-
-  const handleMoveFeedSubmit = useCallback(async () => {
-    if (moveFeedId === null) {
-      return;
-    }
-
-    const moved = await handleMoveFeed(moveFeedId, moveFeedFolderId);
-    if (moved) {
-      moveFeedDialogRef.current?.close();
-      resetMoveFeedDialog();
-    }
-  }, [handleMoveFeed, moveFeedFolderId, moveFeedId, resetMoveFeedDialog]);
-
   const handleDeleteFeed = useCallback(
     async (feed: Feed) => {
       const confirmed = window.confirm(`Unsubscribe "${feed.title}"?`);
@@ -439,14 +368,21 @@ export function useFeedManagementPage() {
     await runMutation('Update feed quality', async () => {
       const nextFolderId = qualityFeedFolderId ? Number(qualityFeedFolderId) : null;
 
-      await Promise.all([
-        renameFeed(qualityFeedId, trimmedTitle),
-        moveFeed(qualityFeedId, nextFolderId),
-      ]);
-      const updatedFeed = await updateFeedQuality(qualityFeedId, {
-        useExtractedFulltext: qualityPreferenceToBool(qualityUseExtractedFulltext),
-        useLlmSummary: qualityPreferenceToBool(qualityUseLlmSummary),
-      });
+      let updatedFeed: Feed;
+      try {
+        await Promise.all([
+          renameFeed(qualityFeedId, trimmedTitle),
+          moveFeed(qualityFeedId, nextFolderId),
+        ]);
+        updatedFeed = await updateFeedQuality(qualityFeedId, {
+          useExtractedFulltext: qualityPreferenceToBool(qualityUseExtractedFulltext),
+          useLlmSummary: qualityPreferenceToBool(qualityUseLlmSummary),
+        });
+      } catch (error) {
+        // Any step may have already been applied — refresh to reconcile UI state.
+        await refreshPageData(false);
+        throw error;
+      }
 
       setData((current) => ({
         ...current,
@@ -463,6 +399,7 @@ export function useFeedManagementPage() {
     qualityFeedTitle,
     qualityUseExtractedFulltext,
     qualityUseLlmSummary,
+    refreshPageData,
     resetQualityDialog,
     runMutation,
   ]);
@@ -481,7 +418,6 @@ export function useFeedManagementPage() {
     statusMessage,
     createFeedDialogRef,
     createFolderDialogRef,
-    moveFeedDialogRef,
     qualityDialogRef,
     newFeedUrl,
     setNewFeedUrl,
@@ -493,13 +429,6 @@ export function useFeedManagementPage() {
     setEditingFolderId,
     editingFolderName,
     setEditingFolderName,
-    editingFeedId,
-    setEditingFeedId,
-    editingFeedTitle,
-    setEditingFeedTitle,
-    moveFeedTitle,
-    moveFeedFolderId,
-    setMoveFeedFolderId,
     qualityFeedTitle,
     qualityFeedFolderId,
     setQualityFeedFolderId,
@@ -511,8 +440,6 @@ export function useFeedManagementPage() {
     selectedQualityFeed,
     openCreateFeedDialog,
     closeCreateFeedDialog,
-    openMoveFeedDialog,
-    resetMoveFeedDialog,
     openQualityDialog,
     resetQualityDialog,
     refreshPageData,
@@ -520,8 +447,6 @@ export function useFeedManagementPage() {
     handleCreateFolder,
     handleRenameFolder,
     handleDeleteFolder,
-    handleRenameFeed,
-    handleMoveFeedSubmit,
     handleDeleteFeed,
     handleSaveFeedQuality,
   };

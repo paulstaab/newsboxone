@@ -942,20 +942,27 @@ components:
     UpdateFeedQualityRequest:
       type: object
       additionalProperties: false
-      properties:
-        useExtractedFulltext:
-          type:
-            - boolean
-            - "null"
-          description: Manual override for extracted full text, or `null` to return to automatic mode.
-        useLlmSummary:
-          type:
-            - boolean
-            - "null"
-          description: Manual override for LLM summaries, or `null` to return to automatic mode.
-        reevaluate:
-          type: boolean
-          description: When true, clears manual overrides and recomputes both feed-quality flags.
+      minProperties: 1
+      oneOf:
+        - required: [reevaluate]
+          properties:
+            reevaluate:
+              type: boolean
+              enum: [true]
+              description: When true, clears manual overrides and recomputes both feed-quality flags.
+        - not:
+            required: [reevaluate]
+          properties:
+            useExtractedFulltext:
+              type:
+                - boolean
+                - "null"
+              description: Manual override for extracted full text, or `null` to return to automatic mode.
+            useLlmSummary:
+              type:
+                - boolean
+                - "null"
+              description: Manual override for LLM summaries, or `null` to return to automatic mode.
     UpdateFeedQualityResponse:
       type: object
       additionalProperties: false

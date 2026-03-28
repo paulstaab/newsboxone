@@ -92,6 +92,15 @@ pub(super) fn internal_error(error: sqlx::Error) -> ApiError {
     )
 }
 
+/// Returns a generic internal-server-error response and logs the error.
+pub(super) fn anyhow_internal_error(error: anyhow::Error) -> ApiError {
+    tracing::error!(error = %error, "unexpected error");
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(serde_json::json!({ "detail": "Internal server error" })),
+    )
+}
+
 /// Returns a not-found error for a missing item resource.
 pub(super) fn item_not_found() -> ApiError {
     (

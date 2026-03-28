@@ -416,6 +416,55 @@ async fn update_feed_quality_reevaluate_clears_manual_overrides() {
 }
 
 #[tokio::test]
+async fn update_feed_quality_rejects_unknown_fields() {
+    let pool = setup_pool().await;
+
+    let response = app(state(pool.clone()))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/feeds/10/quality")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"unknownField":true}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 400);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let parsed: Value = serde_json::from_slice(&body).unwrap();
+    assert!(
+        parsed["detail"]
+            .as_str()
+            .unwrap_or("")
+            .contains("unknownField"),
+        "expected detail to mention unknown field name"
+    );
+}
+
+#[tokio::test]
+async fn update_feed_quality_returns_404_for_missing_feed() {
+    let pool = setup_pool().await;
+
+    let response = app(state(pool.clone()))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/feeds/99999/quality")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"useExtractedFulltext":true}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 404);
+}
+
+#[tokio::test]
 async fn add_feed_extracts_media_thumbnail_from_body_content() {
     let feed_url = start_fixture_feed_server().await;
     let pool = setup_pool().await;

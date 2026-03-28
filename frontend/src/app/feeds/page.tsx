@@ -56,6 +56,9 @@ function FeedActionButton({
 }
 
 function formatAutomaticQualityLabel(value: boolean | undefined) {
+  if (value === undefined) {
+    return 'Automatic';
+  }
   return `Automatic (${value ? 'Enabled' : 'Disabled'})`;
 }
 

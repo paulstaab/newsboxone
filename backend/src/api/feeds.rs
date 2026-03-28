@@ -15,8 +15,8 @@ use crate::updater::{self, FeedQualityOverrideUpdate};
 
 use super::AppState;
 use super::errors::{
-    ApiResult, bad_request_error, feed_already_exists, feed_not_found_with_id, feed_parse_error,
-    internal_error, ssrf_error,
+    ApiResult, anyhow_internal_error, bad_request_error, feed_already_exists,
+    feed_not_found_with_id, feed_parse_error, internal_error, ssrf_error,
 };
 use super::folders::resolve_folder_id;
 
@@ -187,6 +187,14 @@ pub(super) async fn update_feed_quality(
     let object = input
         .as_object()
         .ok_or_else(|| bad_request_error("feed quality payload must be a JSON object"))?;
+    for key in object.keys() {
+        if !matches!(
+            key.as_str(),
+            "reevaluate" | "useExtractedFulltext" | "useLlmSummary"
+        ) {
+            return Err(bad_request_error(format!("unknown field: {key}")));
+        }
+    }
     let reevaluate = parse_reevaluate_field(object.get("reevaluate"))?;
     let use_extracted_fulltext =
         parse_quality_field(object.get("useExtractedFulltext"), "useExtractedFulltext")?;
@@ -478,15 +486,24 @@ fn map_feed_row(feed: FeedRow, root_folder_id: Option<i64>) -> FeedOut {
 /// Maps updater-side feed-quality errors into public API errors.
 fn map_feed_quality_error(error: anyhow::Error) -> super::errors::ApiError {
     let detail = error.to_string();
+
+    // Feed not found: produced by `with_context(|| format!("feed {id} not found"))`.
     if let Some(feed_id) = detail
         .strip_prefix("feed ")
         .and_then(|rest| rest.split_whitespace().next())
         .and_then(|value| value.parse::<i64>().ok())
+        .filter(|_| detail.ends_with("not found"))
     {
         return feed_not_found_with_id(feed_id);
     }
 
-    bad_request_error(detail)
+    // Known validation errors from `anyhow::ensure!` in the updater.
+    if detail == "at least one feed-quality attribute must be provided" {
+        return bad_request_error(detail);
+    }
+
+    // Unexpected/internal errors: log and return a generic 500.
+    anyhow_internal_error(error)
 }
 
 /// Parses one tri-state feed-quality field from JSON while preserving explicit `null`.
