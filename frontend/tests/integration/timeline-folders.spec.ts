@@ -247,8 +247,8 @@ test.describe('Timeline integration coverage', () => {
     ).toBeVisible();
 
     await expect(dialog.getByText('New keyboard shortcuts now live.')).toBeVisible();
-    await expect(dialog.getByText('Engineering just shipped the folder queue feature.')).toHaveCount(
-      0,
-    );
+    await expect(
+      dialog.getByText('Engineering just shipped the folder queue feature.'),
+    ).toHaveCount(0);
   });
 });
