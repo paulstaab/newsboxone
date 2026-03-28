@@ -3,8 +3,8 @@
 import { useMemo, useRef, type RefObject } from 'react';
 import useSWR from 'swr';
 import { formatDistanceToNow } from 'date-fns';
-import type { Article, ArticlePreview } from '@/types';
-import { getArticle, getArticleContent } from '@/lib/api/items';
+import type { ArticlePreview } from '@/types';
+import { getArticleContent } from '@/lib/api/items';
 
 interface ArticlePopoutProps {
   isOpen: boolean;
@@ -27,14 +27,6 @@ export function ArticlePopout({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const shouldFetch = isOpen && Boolean(article);
-
-  const { data: fullArticle, error: articleError } = useSWR<Article | null, Error>(
-    shouldFetch && article ? ['article', article.id, article.feedId] : null,
-    async () => (article ? getArticle(article.id) : null),
-    {
-      keepPreviousData: false,
-    },
-  );
 
   const {
     data: fullContent,
@@ -70,12 +62,11 @@ export function ArticlePopout({
     : null;
 
   const normalizedContent = typeof fullContent === 'string' ? fullContent.trim() : '';
-  const fallbackBody = fullArticle?.body ?? '';
+  const fallbackBody = article.body.trim();
   const bodyHtml = normalizedContent ? fullContent : fallbackBody;
   const bodyFallback = !bodyHtml && content.summary ? content.summary : null;
   const isBodyLoading = isContentLoading && !bodyHtml && !bodyFallback;
-  const combinedError = contentError ?? articleError;
-  const hasError = combinedError && !bodyHtml && !bodyFallback;
+  const hasError = Boolean(contentError) && !bodyHtml && !bodyFallback;
 
   return (
     <div
@@ -116,7 +107,7 @@ export function ArticlePopout({
             </p>
           </div>
 
-          <div className="article-popout__body" dir={fullArticle?.rtl ? 'rtl' : 'ltr'}>
+          <div className="article-popout__body" dir="auto">
             {isBodyLoading ? (
               <div className="article-popout__loading">
                 <div className="article-popout__spinner" />
