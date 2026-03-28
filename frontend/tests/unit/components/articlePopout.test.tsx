@@ -3,7 +3,7 @@ import React, { useEffect, useRef } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ArticlePopout } from '@/components/timeline/ArticlePopout';
 import { useArticlePopout } from '@/hooks/useArticlePopout';
-import type { ArticlePreview, Article } from '@/types';
+import type { ArticlePreview } from '@/types';
 
 /* eslint-disable @next/next/no-img-element */
 type MockImageProps = React.ImgHTMLAttributes<HTMLImageElement> & {
@@ -21,12 +21,7 @@ vi.mock('next/image', () => ({
 }));
 /* eslint-enable @next/next/no-img-element */
 
-const { mockArticleResponse, mockContentResponse } = vi.hoisted(() => ({
-  mockArticleResponse: {
-    data: undefined as Article | null | undefined,
-    error: null as Error | null,
-    isLoading: false,
-  },
+const { mockContentResponse } = vi.hoisted(() => ({
   mockContentResponse: {
     data: undefined as string | null | undefined,
     error: null as Error | null,
@@ -38,9 +33,6 @@ vi.mock('swr', () => ({
   default: (key: unknown) => {
     if (Array.isArray(key) && key[0] === 'article-content') {
       return mockContentResponse;
-    }
-    if (Array.isArray(key) && key[0] === 'article') {
-      return mockArticleResponse;
     }
     return { data: undefined, error: null, isLoading: false };
   },
@@ -64,34 +56,8 @@ const mockArticle: ArticlePreview = {
   storedAt: 1700000000,
 };
 
-const mockFullArticle: Article = {
-  id: mockArticle.id,
-  guid: 'guid-1',
-  guidHash: 'hash-1',
-  title: mockArticle.title,
-  author: mockArticle.author,
-  url: mockArticle.url,
-  body: '<p>This is the full body content.</p>',
-  feedId: mockArticle.feedId,
-  folderId: 100,
-  unread: mockArticle.unread,
-  starred: mockArticle.starred,
-  pubDate: mockArticle.pubDate,
-  lastModified: 1700000000,
-  enclosureLink: null,
-  enclosureMime: null,
-  fingerprint: 'fp',
-  contentHash: 'ch',
-  mediaThumbnail: null,
-  mediaDescription: null,
-  rtl: false,
-};
-
 describe('ArticlePopout', () => {
   it('renders heading, subheading, and body content', () => {
-    mockArticleResponse.data = mockFullArticle;
-    mockArticleResponse.error = null;
-    mockArticleResponse.isLoading = false;
     mockContentResponse.data = '<p>This is the full body content.</p>';
     mockContentResponse.error = null;
     mockContentResponse.isLoading = false;
@@ -109,6 +75,27 @@ describe('ArticlePopout', () => {
     expect(screen.getByText('Popout Article Title')).toBeDefined();
     expect(screen.getByText(/Example Feed/i)).toBeDefined();
     expect(screen.getByText('This is the full body content.')).toBeDefined();
+  });
+
+  it('falls back to the selected article body when content is empty', () => {
+    mockContentResponse.data = '';
+    mockContentResponse.error = null;
+    mockContentResponse.isLoading = false;
+
+    render(
+      <ArticlePopout
+        isOpen
+        article={{
+          ...mockArticle,
+          body: '<p>This is the selected article fallback body.</p>',
+        }}
+        onClose={vi.fn()}
+        dialogRef={React.createRef()}
+        closeButtonRef={React.createRef()}
+      />,
+    );
+
+    expect(screen.getByText('This is the selected article fallback body.')).toBeDefined();
   });
 
   it('calls onClose only when close button is clicked', () => {
@@ -132,9 +119,6 @@ describe('ArticlePopout', () => {
   });
 
   it('closes when Space is pressed', async () => {
-    mockArticleResponse.data = mockFullArticle;
-    mockArticleResponse.error = null;
-    mockArticleResponse.isLoading = false;
     mockContentResponse.data = '<p>This is the full body content.</p>';
     mockContentResponse.error = null;
     mockContentResponse.isLoading = false;

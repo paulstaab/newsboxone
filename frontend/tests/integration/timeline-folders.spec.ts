@@ -210,4 +210,45 @@ test.describe('Timeline integration coverage', () => {
     await expect(page.getByRole('dialog')).toBeVisible();
     expect(markedRead).toBe(true);
   });
+
+  test('[TC-TIMELINE-021] article pop-out keeps the selected article body when content is empty', async ({
+    page,
+  }) => {
+    const items = getMockItems();
+    const selectedArticle = items.find((item) => item.id === 1002);
+
+    if (!selectedArticle) {
+      throw new Error('Required mock articles were not found');
+    }
+
+    await page.route('**/api/items/*/content', async (route) => {
+      const match = /\/items\/(\d+)\/content$/.exec(route.request().url());
+      const itemId = match ? Number(match[1]) : null;
+
+      if (itemId === selectedArticle.id) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ content: '' }),
+        });
+        return;
+      }
+
+      await route.fallback();
+    });
+
+    await page.goto('/timeline');
+    await page.getByRole('option', { name: /accessibility improvements rolling out/i }).click();
+    const dialog = page.getByRole('dialog');
+
+    await expect(dialog).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: selectedArticle.title, exact: true }),
+    ).toBeVisible();
+
+    await expect(dialog.getByText('New keyboard shortcuts now live.')).toBeVisible();
+    await expect(dialog.getByText('Engineering just shipped the folder queue feature.')).toHaveCount(
+      0,
+    );
+  });
 });
