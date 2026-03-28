@@ -92,16 +92,6 @@ pub(super) fn internal_error(error: sqlx::Error) -> ApiError {
     )
 }
 
-/// Maps anyhow errors to a standard internal-server response.
-pub(super) fn internal_anyhow_error(error: anyhow::Error) -> ApiError {
-    let _ = error;
-    tracing::error!("application operation failed");
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(serde_json::json!({ "detail": "Internal server error" })),
-    )
-}
-
 /// Returns a not-found error for a missing item resource.
 pub(super) fn item_not_found() -> ApiError {
     (

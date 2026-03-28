@@ -648,7 +648,7 @@ async fn tc_db_001_restart_with_persistent_database() {
 }
 
 #[tokio::test]
-async fn tc_pipe_014_mock_openai_journey_summary() {
+async fn tc_pipe_014_feed_creation_defers_mock_openai_summary() {
     let temp_dir = TempDir::new().expect("failed to create temp dir");
     let db_path = temp_dir.path().join("journey-llm.sqlite3");
 
@@ -691,10 +691,7 @@ async fn tc_pipe_014_mock_openai_journey_summary() {
         .expect("missing inserted item");
     let item_id = item["id"].as_i64().expect("missing item id");
 
-    assert_eq!(
-        item["body"].as_str(),
-        Some("Fixture summary from mock LLM. (AI generated)")
-    );
+    assert_eq!(item["body"].as_str(), Some("<p>Short teaser only.</p>"));
 
     let content = get_json_from_client(
         &client,
@@ -707,13 +704,12 @@ async fn tc_pipe_014_mock_openai_journey_summary() {
         .as_str()
         .expect("missing item content body");
     assert!(
-        content_body.contains("important technical details"),
-        "expected extracted article content, got: {content_body}"
+        content_body.contains("Short teaser only."),
+        "expected create-time feed teaser content, got: {content_body}"
     );
-    assert!(
-        !content_body.contains("Cookie banner"),
-        "expected boilerplate removal, got: {content_body}"
-    );
+
+    let quality_state = get_feed_quality_state(&db_path, &feed_url).await;
+    assert_eq!(quality_state, (None, false, false));
 
     drop(server);
     drop(temp_dir);
@@ -806,6 +802,28 @@ async fn insert_feed_row(db_path: &Path, url: &str, folder_id: i64) {
     .expect("failed to insert feed row");
 
     pool.close().await;
+}
+
+async fn get_feed_quality_state(db_path: &Path, url: &str) -> (Option<i64>, bool, bool) {
+    let options = SqliteConnectOptions::new()
+        .filename(db_path)
+        .create_if_missing(false);
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect_with(options)
+        .await
+        .expect("failed to connect sqlite");
+
+    let state = sqlx::query_as(
+        "SELECT last_quality_check, use_extracted_fulltext, use_llm_summary FROM feed WHERE url = ?",
+    )
+    .bind(url)
+    .fetch_one(&pool)
+    .await
+    .expect("failed to load feed quality state");
+
+    pool.close().await;
+    state
 }
 
 async fn get_json(
