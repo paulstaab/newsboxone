@@ -7,6 +7,9 @@ use crate::api::app;
 
 use super::support::{issue_test_token, setup_pool, state_with_auth};
 
+const TEST_USERNAME: &str = "testuser";
+const TEST_PASSWORD: &str = "testpass";
+
 #[tokio::test]
 async fn protected_endpoints_require_auth_when_configured() {
     let response = app(state_with_auth(setup_pool().await, "user", "pass"))
@@ -96,7 +99,7 @@ async fn token_issuance_returns_token_for_valid_credentials() {
 
 #[tokio::test]
 async fn token_issuance_rejects_invalid_credentials() {
-    let response = app(state_with_auth(setup_pool().await, "testuser", "testpass"))
+    let response = app(state_with_auth(setup_pool().await, TEST_USERNAME, TEST_PASSWORD))
         .oneshot(
             Request::builder()
                 .method("POST")
@@ -104,7 +107,7 @@ async fn token_issuance_rejects_invalid_credentials() {
                 .header("content-type", "application/json")
                 .body(Body::from(
                     serde_json::json!({
-                        "username": "testuser",
+                        "username": TEST_USERNAME,
                         "password": "wrongpass",
                         "rememberDevice": false
                     })
@@ -121,8 +124,8 @@ async fn token_issuance_rejects_invalid_credentials() {
 #[tokio::test]
 async fn logout_revokes_current_token() {
     let pool = setup_pool().await;
-    let token = issue_test_token(&pool, "testuser").await;
-    let app = app(state_with_auth(pool, "testuser", "testpass"));
+    let token = issue_test_token(&pool, TEST_USERNAME).await;
+    let app = app(state_with_auth(pool, TEST_USERNAME, TEST_PASSWORD));
 
     let response = app
         .clone()
