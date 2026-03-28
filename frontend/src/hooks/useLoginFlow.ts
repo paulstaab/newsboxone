@@ -16,7 +16,7 @@ export enum LoginStep {
 export function useLoginFlow() {
   const router = useRouter();
   const { login, error } = useAuth();
-  const [step, setStep] = useState<LoginStep>(LoginStep.CREDENTIALS);
+  const [step, setStep] = useState(LoginStep.CREDENTIALS);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberDevice, setRememberDevice] = useState(false);
