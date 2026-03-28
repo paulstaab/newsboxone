@@ -30,6 +30,12 @@ export const mockFeeds: ApiFeed[] = [
     pinned: false,
     updateErrorCount: 0,
     lastUpdateError: null,
+    lastQualityCheck: nowInSeconds - 86400,
+    useExtractedFulltext: false,
+    useLlmSummary: false,
+    manualUseExtractedFulltext: null,
+    manualUseLlmSummary: null,
+    lastManualQualityOverride: null,
   },
   {
     id: 102,
@@ -45,6 +51,12 @@ export const mockFeeds: ApiFeed[] = [
     pinned: false,
     updateErrorCount: 0,
     lastUpdateError: null,
+    lastQualityCheck: nowInSeconds - 172800,
+    useExtractedFulltext: true,
+    useLlmSummary: false,
+    manualUseExtractedFulltext: true,
+    manualUseLlmSummary: null,
+    lastManualQualityOverride: nowInSeconds - 43200,
   },
   {
     id: 201,
@@ -60,6 +72,12 @@ export const mockFeeds: ApiFeed[] = [
     pinned: true,
     updateErrorCount: 0,
     lastUpdateError: null,
+    lastQualityCheck: null,
+    useExtractedFulltext: false,
+    useLlmSummary: true,
+    manualUseExtractedFulltext: null,
+    manualUseLlmSummary: null,
+    lastManualQualityOverride: null,
   },
   {
     id: 301,
@@ -75,6 +93,12 @@ export const mockFeeds: ApiFeed[] = [
     pinned: false,
     updateErrorCount: 1,
     lastUpdateError: 'Connection timeout',
+    lastQualityCheck: nowInSeconds - 259200,
+    useExtractedFulltext: false,
+    useLlmSummary: false,
+    manualUseExtractedFulltext: null,
+    manualUseLlmSummary: false,
+    lastManualQualityOverride: nowInSeconds - 3600,
   },
 ];
 
@@ -333,6 +357,12 @@ export async function setupApiMocks(page: Page) {
         pinned: false,
         updateErrorCount: 0,
         lastUpdateError: null,
+        lastQualityCheck: null,
+        useExtractedFulltext: false,
+        useLlmSummary: false,
+        manualUseExtractedFulltext: null,
+        manualUseLlmSummary: null,
+        lastManualQualityOverride: null,
       };
 
       feeds.push(newFeed);
@@ -346,7 +376,7 @@ export async function setupApiMocks(page: Page) {
       return;
     }
 
-    const feedMatch = /\/feeds\/(\d+)(?:\/(move|rename|read))?$/.exec(pathname);
+    const feedMatch = /\/feeds\/(\d+)(?:\/(move|rename|read|quality))?$/.exec(pathname);
     if (!feedMatch) {
       await route.fulfill({ status: 404 });
       return;
@@ -385,6 +415,53 @@ export async function setupApiMocks(page: Page) {
 
     if (method === 'POST' && action === 'read') {
       await route.fulfill({ status: 200, body: '' });
+      return;
+    }
+
+    if (method === 'POST' && action === 'quality') {
+      const body = (await request.postDataJSON()) as {
+        useExtractedFulltext?: boolean | null;
+        useLlmSummary?: boolean | null;
+        reevaluate?: boolean;
+      };
+      const now = Math.floor(Date.now() / 1000);
+
+      if (body.reevaluate) {
+        feeds[feedIndex].manualUseExtractedFulltext = null;
+        feeds[feedIndex].manualUseLlmSummary = null;
+        feeds[feedIndex].useExtractedFulltext = false;
+        feeds[feedIndex].useLlmSummary = true;
+        feeds[feedIndex].lastQualityCheck = now;
+        feeds[feedIndex].lastManualQualityOverride = null;
+      } else {
+        if (Object.prototype.hasOwnProperty.call(body, 'useExtractedFulltext')) {
+          feeds[feedIndex].manualUseExtractedFulltext = body.useExtractedFulltext ?? null;
+          if (body.useExtractedFulltext !== null && body.useExtractedFulltext !== undefined) {
+            feeds[feedIndex].useExtractedFulltext = body.useExtractedFulltext;
+            feeds[feedIndex].lastQualityCheck = now;
+          }
+        }
+
+        if (Object.prototype.hasOwnProperty.call(body, 'useLlmSummary')) {
+          feeds[feedIndex].manualUseLlmSummary = body.useLlmSummary ?? null;
+          if (body.useLlmSummary !== null && body.useLlmSummary !== undefined) {
+            feeds[feedIndex].useLlmSummary = body.useLlmSummary;
+            feeds[feedIndex].lastQualityCheck = now;
+          }
+        }
+
+        feeds[feedIndex].lastManualQualityOverride =
+          feeds[feedIndex].manualUseExtractedFulltext !== null ||
+          feeds[feedIndex].manualUseLlmSummary !== null
+            ? now
+            : null;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ feed: feeds[feedIndex] }),
+      });
       return;
     }
 

@@ -49,6 +49,8 @@ The same requirements apply to all implementations.
 - `API-002`: The service may evolve the API without preserving compatibility with the Nextcloud News v1.2 or v1.3 specifications.
 - `API-003`: API payload field naming shall follow the shared contract defined in `docs/api-contract.yaml`.
 - `API-004`: The public health endpoint shall be exposed at `/api/status`.
+- `API-005`: The feeds API shall expose feed-quality metadata for each feed, including effective quality flags, nullable per-attribute manual overrides, and the latest quality-check and manual-override timestamps.
+- `API-006`: The feeds API shall allow feed-quality overrides to be updated per feed by setting each attribute to `true`, `false`, or `null`, and shall allow a dedicated re-evaluation action that clears manual overrides and recomputes both quality flags.
 
 ### Feed Lifecycle And Refresh
 
@@ -117,6 +119,8 @@ The same requirements apply to all implementations.
   - shall lock only the manually set attribute and leave the other attribute eligible for future automatic quality evaluation,
   - shall update the effective feed-level quality flag immediately when a manual override is applied,
   - shall update `last_quality_check` and a dedicated manual-override timestamp when a manual override is applied,
+  - shall allow an individual manual override attribute to be cleared back to automatic mode without forcing an immediate remote re-evaluation,
+  - clearing an individual manual override back to automatic mode shall preserve the current effective feed-level quality flag until a later automatic or forced quality evaluation recomputes it,
   - shall be cleared when the dedicated feed-quality re-evaluation command is run for that feed.
 - `CNT-005`: Optional LLM-based article summarization when loading new articles:
   - shall run only for new articles after GUID-hash de-duplication confirms the article is not already stored,

@@ -37,6 +37,7 @@ struct FeedToUpdate {
     use_llm_summary: bool,
     manual_use_extracted_fulltext: Option<bool>,
     manual_use_llm_summary: Option<bool>,
+    last_manual_quality_override: Option<i64>,
 }
 
 /// Shared context for ingesting entries from one feed refresh cycle.
@@ -60,6 +61,16 @@ pub struct FeedQualityReevaluationResult {
     pub manual_use_llm_summary: Option<bool>,
     pub last_quality_check: Option<i64>,
     pub last_manual_quality_override: Option<i64>,
+}
+
+/// Feed-quality mutation payload expressed as explicit field updates.
+///
+/// `Some(Some(value))` applies a manual override, `Some(None)` clears that attribute back to
+/// automatic mode, and `None` leaves the attribute unchanged.
+#[derive(Debug, Clone, Copy)]
+pub struct FeedQualityOverrideUpdate {
+    pub use_extracted_fulltext: Option<Option<bool>>,
+    pub use_llm_summary: Option<Option<bool>>,
 }
 
 /// Runs one foreground update cycle for the CLI `update` command.
@@ -111,6 +122,36 @@ pub async fn set_feed_quality_overrides(
     set_single_feed_quality_overrides(&pool, feed_id, use_extracted_fulltext, use_llm_summary).await
 }
 
+/// Re-evaluates one feed's quality flags using an existing connection pool.
+pub async fn reevaluate_feed_quality_with_pool(
+    pool: &SqlitePool,
+    config: &Config,
+    feed_id: i64,
+    testing_mode: bool,
+) -> Result<FeedQualityReevaluationResult> {
+    reevaluate_single_feed_quality(pool, config, feed_id, testing_mode).await
+}
+
+/// Applies explicit feed-quality override updates using an existing connection pool.
+pub async fn update_feed_quality_overrides_with_pool(
+    pool: &SqlitePool,
+    feed_id: i64,
+    update: FeedQualityOverrideUpdate,
+) -> Result<FeedQualityReevaluationResult> {
+    anyhow::ensure!(
+        update.use_extracted_fulltext.is_some() || update.use_llm_summary.is_some(),
+        "at least one feed-quality attribute must be provided"
+    );
+
+    update_single_feed_quality_overrides(
+        pool,
+        feed_id,
+        update.use_extracted_fulltext,
+        update.use_llm_summary,
+    )
+    .await
+}
+
 /// Refreshes only feeds whose `next_update_time` is due.
 pub async fn update_due_feeds(
     pool: &SqlitePool,
@@ -119,7 +160,7 @@ pub async fn update_due_feeds(
 ) -> Result<usize> {
     let now_ts = article_store::unix_now();
     let feeds: Vec<FeedToUpdate> = sqlx::query_as(
-        "SELECT id, url, title, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary FROM feed WHERE is_mailing_list = 0 AND (next_update_time IS NULL OR next_update_time <= ?)",
+        "SELECT id, url, title, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE is_mailing_list = 0 AND (next_update_time IS NULL OR next_update_time <= ?)",
     )
     .bind(now_ts)
     .fetch_all(pool)
@@ -137,7 +178,7 @@ pub async fn update_all_regular_feeds(
 ) -> Result<usize> {
     let feeds: Vec<FeedToUpdate> =
         sqlx::query_as(
-            "SELECT id, url, title, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary FROM feed WHERE is_mailing_list = 0",
+            "SELECT id, url, title, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE is_mailing_list = 0",
         )
             .fetch_all(pool)
             .await
@@ -291,7 +332,7 @@ async fn reevaluate_single_feed_quality(
     let feed_http_client = http_client::build_feed_http_client()?;
     let article_http_client = http_client::build_article_http_client()?;
     let feed: FeedToUpdate = sqlx::query_as(
-        "SELECT id, url, title, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary FROM feed WHERE id = ? AND is_mailing_list = 0",
+        "SELECT id, url, title, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE id = ? AND is_mailing_list = 0",
     )
     .bind(feed_id)
     .fetch_optional(pool)
@@ -352,8 +393,24 @@ async fn set_single_feed_quality_overrides(
     use_extracted_fulltext: Option<bool>,
     use_llm_summary: Option<bool>,
 ) -> Result<FeedQualityReevaluationResult> {
+    update_single_feed_quality_overrides(
+        pool,
+        feed_id,
+        use_extracted_fulltext.map(Some),
+        use_llm_summary.map(Some),
+    )
+    .await
+}
+
+/// Applies explicit quality override updates for one regular feed without fetching remote content.
+async fn update_single_feed_quality_overrides(
+    pool: &SqlitePool,
+    feed_id: i64,
+    use_extracted_fulltext: Option<Option<bool>>,
+    use_llm_summary: Option<Option<bool>>,
+) -> Result<FeedQualityReevaluationResult> {
     let feed: FeedToUpdate = sqlx::query_as(
-        "SELECT id, url, title, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary FROM feed WHERE id = ? AND is_mailing_list = 0",
+        "SELECT id, url, title, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE id = ? AND is_mailing_list = 0",
     )
     .bind(feed_id)
     .fetch_optional(pool)
@@ -363,11 +420,31 @@ async fn set_single_feed_quality_overrides(
 
     let now = article_store::unix_now();
     let manual_use_extracted_fulltext =
-        use_extracted_fulltext.or(feed.manual_use_extracted_fulltext);
-    let manual_use_llm_summary = use_llm_summary.or(feed.manual_use_llm_summary);
-    let effective_use_extracted_fulltext =
-        use_extracted_fulltext.unwrap_or(feed.use_extracted_fulltext);
-    let effective_use_llm_summary = use_llm_summary.unwrap_or(feed.use_llm_summary);
+        use_extracted_fulltext.unwrap_or(feed.manual_use_extracted_fulltext);
+    let manual_use_llm_summary = use_llm_summary.unwrap_or(feed.manual_use_llm_summary);
+    let effective_use_extracted_fulltext = match use_extracted_fulltext {
+        Some(Some(value)) => value,
+        Some(None) | None => feed.use_extracted_fulltext,
+    };
+    let effective_use_llm_summary = match use_llm_summary {
+        Some(Some(value)) => value,
+        Some(None) | None => feed.use_llm_summary,
+    };
+    let touched_manual_override = use_extracted_fulltext.is_some() || use_llm_summary.is_some();
+    let updated_last_quality_check = if matches!(use_extracted_fulltext, Some(Some(_)))
+        || matches!(use_llm_summary, Some(Some(_)))
+    {
+        Some(now)
+    } else {
+        feed.last_quality_check
+    };
+    let updated_last_manual_quality_override = if !touched_manual_override {
+        feed.last_manual_quality_override
+    } else if manual_use_extracted_fulltext.is_some() || manual_use_llm_summary.is_some() {
+        Some(now)
+    } else {
+        None
+    };
 
     sqlx::query(
         "UPDATE feed SET use_extracted_fulltext = ?, use_llm_summary = ?, manual_use_extracted_fulltext = ?, manual_use_llm_summary = ?, last_quality_check = ?, last_manual_quality_override = ? WHERE id = ?",
@@ -376,8 +453,8 @@ async fn set_single_feed_quality_overrides(
     .bind(effective_use_llm_summary)
     .bind(manual_use_extracted_fulltext)
     .bind(manual_use_llm_summary)
-    .bind(now)
-    .bind(now)
+    .bind(updated_last_quality_check)
+    .bind(updated_last_manual_quality_override)
     .bind(feed_id)
     .execute(pool)
     .await
@@ -390,8 +467,8 @@ async fn set_single_feed_quality_overrides(
         use_llm_summary: effective_use_llm_summary,
         manual_use_extracted_fulltext,
         manual_use_llm_summary,
-        last_quality_check: Some(now),
-        last_manual_quality_override: Some(now),
+        last_quality_check: updated_last_quality_check,
+        last_manual_quality_override: updated_last_manual_quality_override,
     })
 }
 
@@ -572,7 +649,7 @@ mod tests {
     };
     use super::{
         reevaluate_single_feed_quality, set_single_feed_quality_overrides,
-        update_all_regular_feeds, update_due_feeds,
+        update_all_regular_feeds, update_due_feeds, update_single_feed_quality_overrides,
     };
 
     async fn setup_pool() -> SqlitePool {
@@ -1320,6 +1397,48 @@ mod tests {
         assert_eq!(flags.3, None);
         assert_eq!(flags.4, None);
         assert_eq!(flags.5, Some(12_345));
+    }
+
+    #[tokio::test]
+    async fn update_single_feed_quality_overrides_can_clear_one_attribute_to_automatic() {
+        let pool = setup_pool().await;
+        let url = start_quality_fixture_feed_server(
+            Some("Lead sentence only."),
+            Some("<p>Lead sentence only. More detail follows in the full article body.</p>"),
+            "<html><body><article><p>Short article.</p></article></body></html>",
+            None,
+        )
+        .await;
+        sqlx::query("INSERT INTO feed (id, url, title, favicon_link, added, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error, is_mailing_list, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override) VALUES (17, ?, 'Quality Fixture', NULL, 1, 12345, 1, 0, 'http://example.org', 0, 0, NULL, 0, 4444, 1, 0, 1, 0, 4444)")
+            .bind(url)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let result = update_single_feed_quality_overrides(&pool, 17, Some(None), None)
+            .await
+            .unwrap();
+
+        assert!(result.use_extracted_fulltext);
+        assert!(!result.use_llm_summary);
+        assert_eq!(result.manual_use_extracted_fulltext, None);
+        assert_eq!(result.manual_use_llm_summary, Some(false));
+        assert_eq!(result.last_quality_check, Some(4444));
+        assert!(result.last_manual_quality_override.is_some());
+
+        let flags: (bool, bool, Option<bool>, Option<bool>, Option<i64>, Option<i64>) =
+            sqlx::query_as(
+                "SELECT use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_quality_check, last_manual_quality_override FROM feed WHERE id = 17",
+            )
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert!(flags.0);
+        assert!(!flags.1);
+        assert_eq!(flags.2, None);
+        assert_eq!(flags.3, Some(false));
+        assert_eq!(flags.4, Some(4444));
+        assert!(flags.5.is_some());
     }
 
     #[tokio::test]

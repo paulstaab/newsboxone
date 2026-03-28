@@ -181,6 +181,12 @@ describe('ApiClient', () => {
         pinned: false,
         updateErrorCount: 0,
         lastUpdateError: null,
+        lastQualityCheck: null,
+        useExtractedFulltext: false,
+        useLlmSummary: false,
+        manualUseExtractedFulltext: null,
+        manualUseLlmSummary: null,
+        lastManualQualityOverride: null,
       };
 
       server.use(
@@ -223,6 +229,12 @@ describe('ApiClient', () => {
         pinned: false,
         updateErrorCount: 0,
         lastUpdateError: null,
+        lastQualityCheck: 1234567999,
+        useExtractedFulltext: true,
+        useLlmSummary: false,
+        manualUseExtractedFulltext: true,
+        manualUseLlmSummary: null,
+        lastManualQualityOverride: 1234567999,
       };
 
       server.use(
@@ -238,6 +250,8 @@ describe('ApiClient', () => {
       expect(result.feeds[0]).toHaveProperty('title');
       expect(result.feeds[0]).toHaveProperty('folderId');
       expect(result.feeds[0]).toHaveProperty('lastArticleDate', 1234567000);
+      expect(result.feeds[0]).toHaveProperty('useExtractedFulltext', true);
+      expect(result.feeds[0]).toHaveProperty('manualUseExtractedFulltext', true);
     });
   });
 
@@ -288,6 +302,53 @@ describe('ApiClient', () => {
     it('should mark feed as read', async () => {
       const client = getApiClient();
       await expect(client.feeds.markRead(123, 999)).resolves.not.toThrow();
+    });
+
+    it('should update feed quality', async () => {
+      server.use(
+        http.post(`${BASE_URL}${API_PATH}/feeds/123/quality`, async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+
+          expect(body).toEqual({
+            useExtractedFulltext: true,
+            useLlmSummary: null,
+          });
+
+          return HttpResponse.json({
+            feed: {
+              id: 123,
+              url: 'https://example.com/feed',
+              title: 'Quality Feed',
+              folderId: null,
+              faviconLink: null,
+              added: 1234567890,
+              lastArticleDate: null,
+              nextUpdateTime: null,
+              ordering: 0,
+              link: 'https://example.com',
+              pinned: false,
+              updateErrorCount: 0,
+              lastUpdateError: null,
+              lastQualityCheck: 1234567999,
+              useExtractedFulltext: true,
+              useLlmSummary: false,
+              manualUseExtractedFulltext: true,
+              manualUseLlmSummary: null,
+              lastManualQualityOverride: 1234567999,
+            },
+          });
+        }),
+      );
+
+      const client = getApiClient();
+      const result = await client.feeds.updateQuality(123, {
+        useExtractedFulltext: true,
+        useLlmSummary: null,
+      });
+
+      expect(result.useExtractedFulltext).toBe(true);
+      expect(result.manualUseExtractedFulltext).toBe(true);
+      expect(result.manualUseLlmSummary).toBeNull();
     });
   });
 
@@ -477,6 +538,7 @@ describe('ApiClient', () => {
           move: vi.fn(),
           rename: vi.fn(),
           markRead: vi.fn(),
+          updateQuality: vi.fn(),
         },
         folders: {
           getAll: vi.fn().mockResolvedValue([]),

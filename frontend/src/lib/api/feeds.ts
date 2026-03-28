@@ -56,3 +56,17 @@ export async function renameFeed(feedId: number, feedTitle: string): Promise<voi
 export async function markFeedRead(feedId: number, newestItemId: number): Promise<void> {
   return api.feeds.markRead(feedId, newestItemId);
 }
+
+/**
+ * Updates manual feed-quality preferences or triggers a quality re-evaluation.
+ */
+export async function updateFeedQuality(
+  feedId: number,
+  input: {
+    useExtractedFulltext?: boolean | null;
+    useLlmSummary?: boolean | null;
+    reevaluate?: boolean;
+  },
+): Promise<Feed> {
+  return api.feeds.updateQuality(feedId, input);
+}

@@ -199,6 +199,34 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/feeds/{feedId}/quality:
+    post:
+      tags: [Feeds]
+      summary: Update feed-quality overrides or force re-evaluation
+      operationId: updateFeedQuality
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/FeedId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFeedQualityRequest"
+      responses:
+        "200":
+          description: Feed quality updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateFeedQualityResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/folders:
     get:
       tags: [Folders]
@@ -673,12 +701,22 @@ components:
           id,
           url,
           title,
+          added,
+          link,
+          faviconLink,
           lastArticleDate,
+          nextUpdateTime,
           folderId,
           ordering,
           pinned,
           updateErrorCount,
           lastUpdateError,
+          lastQualityCheck,
+          useExtractedFulltext,
+          useLlmSummary,
+          manualUseExtractedFulltext,
+          manualUseLlmSummary,
+          lastManualQualityOverride,
         ]
       properties:
         id:
@@ -718,6 +756,26 @@ components:
         lastUpdateError:
           type:
             - string
+            - "null"
+        lastQualityCheck:
+          type:
+            - integer
+            - "null"
+        useExtractedFulltext:
+          type: boolean
+        useLlmSummary:
+          type: boolean
+        manualUseExtractedFulltext:
+          type:
+            - boolean
+            - "null"
+        manualUseLlmSummary:
+          type:
+            - boolean
+            - "null"
+        lastManualQualityOverride:
+          type:
+            - integer
             - "null"
     Folder:
       type: object
@@ -881,6 +939,37 @@ components:
       properties:
         feedTitle:
           type: string
+    UpdateFeedQualityRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      oneOf:
+        - required: [reevaluate]
+          properties:
+            reevaluate:
+              type: boolean
+              enum: [true]
+              description: When true, clears manual overrides and recomputes both feed-quality flags.
+        - not:
+            required: [reevaluate]
+          properties:
+            useExtractedFulltext:
+              type:
+                - boolean
+                - "null"
+              description: Manual override for extracted full text, or `null` to return to automatic mode.
+            useLlmSummary:
+              type:
+                - boolean
+                - "null"
+              description: Manual override for LLM summaries, or `null` to return to automatic mode.
+    UpdateFeedQualityResponse:
+      type: object
+      additionalProperties: false
+      required: [feed]
+      properties:
+        feed:
+          $ref: "#/components/schemas/Feed"
     CreateFolderRequest:
       type: object
       additionalProperties: false

@@ -167,7 +167,7 @@ export function markFeedsDue() {
 }
 
 export async function createFolderViaUi(page, name) {
-  await page.getByRole('button', { name: /new folder/i }).click();
+  await page.getByRole('button', { name: /add folder/i }).click();
   await page.getByLabel(/new folder name/i).fill(name);
   await page.getByRole('button', { name: /^create folder$/i }).click();
   await expect(page.getByText(new RegExp(`created folder ${name}`, 'i'))).toBeVisible();
@@ -175,7 +175,7 @@ export async function createFolderViaUi(page, name) {
 
 export async function addFeedViaUi(page, url, folderName) {
   const dialog = page.getByRole('dialog');
-  await page.getByRole('button', { name: /add feed/i }).click();
+  await page.getByRole('button', { name: /subscribe to feed/i }).click();
   await expect(dialog).toBeVisible();
   await page.getByLabel(/^feed url$/i).fill(url);
   if (folderName) {

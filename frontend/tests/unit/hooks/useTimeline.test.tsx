@@ -129,6 +129,12 @@ function buildFeed(partial: Partial<Feed>): Feed {
     pinned: partial.pinned ?? false,
     lastUpdateError: partial.lastUpdateError ?? null,
     updateMode: partial.updateMode ?? 1,
+    lastQualityCheck: partial.lastQualityCheck ?? null,
+    useExtractedFulltext: partial.useExtractedFulltext ?? false,
+    useLlmSummary: partial.useLlmSummary ?? false,
+    manualUseExtractedFulltext: partial.manualUseExtractedFulltext ?? null,
+    manualUseLlmSummary: partial.manualUseLlmSummary ?? null,
+    lastManualQualityOverride: partial.lastManualQualityOverride ?? null,
   };
 }
 
