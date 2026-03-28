@@ -93,15 +93,34 @@ pub(super) fn state_with_testing_mode(pool: SqlitePool, testing_mode: bool) -> A
     build_state(pool, None, None, testing_mode)
 }
 
+/// Builds application state for API tests with OpenAI support configured.
+pub(super) fn state_with_openai(pool: SqlitePool, base_url: &str) -> AppState {
+    build_state_with_config(
+        pool,
+        Config {
+            username: None,
+            password: None,
+            version: "dev".to_string(),
+            db_path: "data/headless-rss.sqlite3".to_string(),
+            feed_update_frequency_min: 15,
+            openai_api_key: Some("test-key".to_string()),
+            openai_base_url: format!("{}/v1", base_url.trim_end_matches('/')),
+            openai_model: "gpt-5-nano".to_string(),
+            openai_timeout_seconds: 30,
+            testing_mode: true,
+        },
+    )
+}
+
 fn build_state(
     pool: SqlitePool,
     username: Option<&str>,
     password: Option<&str>,
     testing_mode: bool,
 ) -> AppState {
-    AppState {
+    build_state_with_config(
         pool,
-        config: Arc::new(Config {
+        Config {
             username: username.map(str::to_string),
             password: password.map(str::to_string),
             version: "dev".to_string(),
@@ -112,7 +131,14 @@ fn build_state(
             openai_model: "gpt-5-nano".to_string(),
             openai_timeout_seconds: 30,
             testing_mode,
-        }),
+        },
+    )
+}
+
+fn build_state_with_config(pool: SqlitePool, config: Config) -> AppState {
+    AppState {
+        pool,
+        config: Arc::new(config),
         feed_http_client: crate::http_client::build_feed_http_client().unwrap(),
         article_http_client: crate::http_client::build_article_http_client().unwrap(),
     }

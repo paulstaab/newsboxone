@@ -8,14 +8,14 @@ use sqlx::{FromRow, SqlitePool};
 
 use crate::article_store;
 use crate::config::Config;
-use crate::content::{self, FeedContentState};
+use crate::content::FeedContentState;
 use crate::repo;
 use crate::ssrf;
 
 use super::AppState;
 use super::errors::{
-    ApiResult, feed_already_exists, feed_not_found_with_id, feed_parse_error,
-    internal_anyhow_error, internal_error, ssrf_error,
+    ApiResult, feed_already_exists, feed_not_found_with_id, feed_parse_error, internal_error,
+    ssrf_error,
 };
 use super::folders::resolve_folder_id;
 
@@ -215,24 +215,6 @@ async fn add_feed_impl(
     .map_err(internal_error)?;
     let feed_id = result.last_insert_rowid();
 
-    let content_state = content::maybe_refresh_feed_content_state(
-        pool,
-        article_http_client,
-        config,
-        feed_id,
-        &input.url,
-        FeedContentState {
-            last_quality_check: None,
-            use_extracted_fulltext: false,
-            use_llm_summary: false,
-            manual_use_extracted_fulltext: None,
-            manual_use_llm_summary: None,
-        },
-        &parsed.entries,
-    )
-    .await
-    .map_err(internal_anyhow_error)?;
-
     for entry in parsed.entries.iter().take(50) {
         insert_article_from_entry(
             pool,
@@ -241,7 +223,13 @@ async fn add_feed_impl(
             feed_id,
             &input.url,
             entry,
-            content_state,
+            FeedContentState {
+                last_quality_check: None,
+                use_extracted_fulltext: false,
+                use_llm_summary: false,
+                manual_use_extracted_fulltext: None,
+                manual_use_llm_summary: None,
+            },
         )
         .await?;
     }

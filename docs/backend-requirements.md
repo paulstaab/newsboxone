@@ -99,6 +99,7 @@ The same requirements apply to all implementations.
   - shall be skipped with a warning that includes both TLDs when the article URL TLD and feed URL TLD do not match.
 - `CNT-003`: Feed content quality evaluation:
   - shall run when `last_quality_check` is missing or older than about 30 days,
+  - shall not run during initial feed creation, so newly created feeds keep `last_quality_check=NULL` until a later periodic update,
   - shall use a representative feed entry that has both a link and feed-provided content or summary,
   - shall evaluate `use_extracted_fulltext` and `use_llm_summary` in the same periodic quality-check pass,
   - shall compare normalized feed content against extracted article content from the selected article URL,
