@@ -104,6 +104,8 @@ docker run --rm -p 8000:8000 \
   newsboxone:local
 ```
 
+The image is compatible with arbitrary non-root UIDs. Persist backend state by mounting a writable volume at `/app/data`. If `/app/data` is not writable and `DATABASE_PATH` is unset, the entrypoint falls back to a temporary database under `/tmp/newsboxone-data`.
+
 Then verify:
 
 - `http://localhost:8000/`
