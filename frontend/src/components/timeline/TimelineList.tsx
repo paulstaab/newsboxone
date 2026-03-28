@@ -72,7 +72,7 @@ export function TimelineList({
     );
   }
 
-  const actionDisabled = disableActions ?? isUpdating;
+  const actionDisabled = Boolean(disableActions || isUpdating);
 
   const renderActionRow = () => (
     <div className="timeline-list__actions">
@@ -81,7 +81,7 @@ export function TimelineList({
           icon={<skipConfig.Icon className="h-5 w-5" />}
           label={skipConfig.label}
           tooltip={skipConfig.tooltip}
-          disabled={actionDisabled ?? isSkipping}
+          disabled={actionDisabled || isSkipping}
           isLoading={isSkipping}
           onClick={() => {
             void handleSkip();

@@ -1,4 +1,4 @@
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 
 use anyhow::{Context, Result};
@@ -23,13 +23,20 @@ impl SafeGetError {
     }
 }
 
+#[derive(Clone, Debug)]
+struct ValidatedUrl {
+    url: reqwest::Url,
+    hostname: Option<String>,
+    resolved_addrs: Vec<SocketAddr>,
+}
+
 /// Validates a remote URL against SSRF constraints used by feed operations.
 ///
 /// Rules:
 /// - Only `http` and `https` schemes are allowed.
 /// - Loopback/private/link-local/unspecified/multicast/metadata targets are blocked.
 /// - `localhost` is only allowed in testing mode.
-pub async fn validate_remote_url(url: &str, allow_localhost: bool) -> Result<reqwest::Url> {
+async fn validate_remote_url(url: &str, allow_localhost: bool) -> Result<ValidatedUrl> {
     let parsed =
         reqwest::Url::parse(url).with_context(|| format!("failed to parse remote URL `{url}`"))?;
 
@@ -40,31 +47,45 @@ pub async fn validate_remote_url(url: &str, allow_localhost: bool) -> Result<req
         );
     }
 
-    let Some(hostname) = parsed.host_str() else {
+    let Some(hostname) = parsed.host_str().map(str::to_owned) else {
         anyhow::bail!("URL must have a valid hostname.");
     };
 
-    if !allow_localhost && matches!(hostname, "localhost" | "127.0.0.1" | "::1") {
+    if !allow_localhost && matches!(hostname.as_str(), "localhost" | "127.0.0.1" | "::1") {
         anyhow::bail!("Access to localhost is not allowed.");
     }
 
-    if let Ok(ip) = IpAddr::from_str(hostname) {
+    let lookup_port = parsed.port_or_known_default().unwrap_or(80);
+    if let Ok(ip) = IpAddr::from_str(&hostname) {
         validate_ip_address(ip, allow_localhost)?;
-        return Ok(parsed);
+        return Ok(ValidatedUrl {
+            url: parsed,
+            hostname: None,
+            resolved_addrs: vec![SocketAddr::new(ip, lookup_port)],
+        });
     }
 
-    let lookup_port = parsed.port_or_known_default().unwrap_or(80);
-    let addrs = lookup_host((hostname, lookup_port))
+    let addrs = lookup_host((hostname.as_str(), lookup_port))
         .await
         .with_context(|| {
             format!("failed to resolve hostname `{hostname}` during SSRF validation")
         })?;
 
+    let mut resolved_addrs = Vec::new();
     for addr in addrs {
         validate_ip_address(addr.ip(), allow_localhost)?;
+        resolved_addrs.push(addr);
     }
 
-    Ok(parsed)
+    if resolved_addrs.is_empty() {
+        anyhow::bail!("hostname `{hostname}` resolved to no addresses during SSRF validation");
+    }
+
+    Ok(ValidatedUrl {
+        url: parsed,
+        hostname: Some(hostname),
+        resolved_addrs,
+    })
 }
 
 /// Sends a GET request while validating each redirect hop against the SSRF
@@ -79,11 +100,13 @@ pub async fn get_with_safe_redirects(
         .map_err(SafeGetError::Validation)?;
 
     for redirect_count in 0..=MAX_REDIRECTS {
-        let response = client
-            .get(current_url.clone())
-            .send()
-            .await
+        let request = client
+            .get(current_url.url.clone())
+            .build()
             .map_err(|error| SafeGetError::Request(error.into()))?;
+        let response = execute_pinned_request(request, &current_url)
+            .await
+            .map_err(SafeGetError::Request)?;
 
         let status = response.status();
         let is_follow_redirect = matches!(
@@ -119,7 +142,7 @@ pub async fn get_with_safe_redirects(
                 )
             })?;
 
-        current_url = validate_redirect_target(response.url(), location, allow_localhost)
+        current_url = validate_redirect_target_validated(response.url(), location, allow_localhost)
             .await
             .map_err(SafeGetError::Validation)?;
     }
@@ -131,16 +154,49 @@ pub async fn get_with_safe_redirects(
 
 /// Resolves a redirect target relative to the current URL and validates the
 /// resulting target before it is fetched.
+#[cfg(test)]
+#[allow(dead_code)]
 pub async fn validate_redirect_target(
     current_url: &reqwest::Url,
     location: &str,
     allow_localhost: bool,
 ) -> Result<reqwest::Url> {
+    Ok(
+        validate_redirect_target_validated(current_url, location, allow_localhost)
+            .await?
+            .url,
+    )
+}
+
+async fn validate_redirect_target_validated(
+    current_url: &reqwest::Url,
+    location: &str,
+    allow_localhost: bool,
+) -> Result<ValidatedUrl> {
     let redirect_url = current_url
         .join(location)
         .with_context(|| format!("invalid redirect target `{location}`"))?;
-    validate_remote_url(redirect_url.as_str(), allow_localhost).await?;
-    Ok(redirect_url)
+    validate_remote_url(redirect_url.as_str(), allow_localhost).await
+}
+
+async fn execute_pinned_request(
+    request: reqwest::Request,
+    validated_url: &ValidatedUrl,
+) -> Result<reqwest::Response> {
+    let mut builder = reqwest::Client::builder().redirect(reqwest::redirect::Policy::none());
+
+    if let Some(hostname) = &validated_url.hostname {
+        builder = builder.resolve_to_addrs(hostname, &validated_url.resolved_addrs);
+    }
+
+    let client = builder
+        .build()
+        .context("failed to build pinned reqwest client for validated SSRF request")?;
+
+    client
+        .execute(request)
+        .await
+        .context("failed to execute validated SSRF request")
 }
 
 fn validate_ip_address(ip: IpAddr, allow_localhost: bool) -> Result<()> {
@@ -177,7 +233,8 @@ fn validate_ip_address(ip: IpAddr, allow_localhost: bool) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{validate_redirect_target, validate_remote_url};
+    use super::{validate_ip_address, validate_redirect_target, validate_remote_url};
+    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
     #[tokio::test]
     async fn validate_remote_url_rejects_hostname_when_dns_lookup_fails() {
@@ -212,5 +269,32 @@ mod tests {
             .unwrap();
 
         assert_eq!(redirect_url.as_str(), "https://example.com/next.xml");
+    }
+
+    #[tokio::test]
+    async fn validate_remote_url_preserves_ip_literal_as_pinned_address() {
+        let validated = validate_remote_url("https://93.184.216.34/feed.xml", false)
+            .await
+            .unwrap();
+
+        assert!(validated.hostname.is_none());
+        assert_eq!(
+            validated.resolved_addrs,
+            vec![SocketAddr::new(
+                IpAddr::V4(Ipv4Addr::new(93, 184, 216, 34)),
+                443
+            )]
+        );
+    }
+
+    #[test]
+    fn validate_ip_address_blocks_metadata_service() {
+        let error =
+            validate_ip_address(IpAddr::V4(Ipv4Addr::new(169, 254, 169, 254)), false).unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "Access to link-local address 169.254.169.254 is not allowed."
+        );
     }
 }

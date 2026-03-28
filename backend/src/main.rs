@@ -221,8 +221,7 @@ async fn serve(config: Arc<Config>, host: String, port: u16) -> anyhow::Result<(
         )
         .await
         {
-            let _ = err;
-            tracing::warn!("startup forced feed update cycle failed");
+            tracing::warn!(error = %err, "startup forced feed update cycle failed");
         }
 
         loop {
