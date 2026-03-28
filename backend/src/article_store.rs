@@ -174,9 +174,9 @@ pub async fn ingest_article_if_new(
     .await;
 
     let mut tx = context.pool.begin().await?;
-    repo::insert_article_record(&mut tx, article.clone()).await?;
+    repo::insert_article_record(tx.as_mut(), article.clone()).await?;
     if let Some(pub_date) = article.pub_date {
-        repo::advance_feed_last_article_date(&mut tx, article.feed_id, pub_date).await?;
+        repo::advance_feed_last_article_date(tx.as_mut(), article.feed_id, pub_date).await?;
     }
     tx.commit().await?;
 

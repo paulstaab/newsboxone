@@ -1,6 +1,6 @@
 //! Shared persistence helpers for folders, feeds, and articles.
 
-use sqlx::{QueryBuilder, Sqlite, SqlitePool};
+use sqlx::{Executor, QueryBuilder, Sqlite, SqlitePool};
 
 use crate::article_store::ArticleRecord;
 
@@ -319,11 +319,14 @@ pub async fn create_mailing_list_feed(
 }
 
 /// Advances the stored feed last-article timestamp when the candidate is newer.
-pub async fn advance_feed_last_article_date(
-    pool: &SqlitePool,
+pub async fn advance_feed_last_article_date<'e, E>(
+    executor: E,
     feed_id: i64,
     candidate_timestamp: i64,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), sqlx::Error>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
     sqlx::query(
         "UPDATE feed
          SET last_article_date = CASE
@@ -335,16 +338,19 @@ pub async fn advance_feed_last_article_date(
     .bind(candidate_timestamp)
     .bind(candidate_timestamp)
     .bind(feed_id)
-    .execute(pool)
+    .execute(executor)
     .await?;
     Ok(())
 }
 
 /// Persists a fully prepared article record.
-pub async fn insert_article_record(
-    pool: &SqlitePool,
+pub async fn insert_article_record<'e, E>(
+    executor: E,
     article: ArticleRecord,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), sqlx::Error>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
     sqlx::query(
         "INSERT INTO article (title, content, author, content_hash, enclosure_link, enclosure_mime, feed_id, fingerprint, guid, guid_hash, last_modified, media_description, media_thumbnail, pub_date, rtl, starred, unread, updated_date, url, summary) VALUES (?, ?, ?, ?, NULL, NULL, ?, NULL, ?, ?, ?, NULL, ?, ?, 0, ?, ?, ?, ?, ?)",
     )
@@ -363,7 +369,7 @@ pub async fn insert_article_record(
     .bind(article.updated_date)
     .bind(article.url)
     .bind(article.summary)
-    .execute(pool)
+    .execute(executor)
     .await?;
     Ok(())
 }
