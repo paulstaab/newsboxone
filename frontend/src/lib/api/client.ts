@@ -135,9 +135,13 @@ export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions
         headers,
       });
 
+      const sentStoredAuth = !skipAuth && Boolean(session?.token);
+
       // Handle authentication errors
       if (response.status === 401) {
-        clearSession();
+        if (sentStoredAuth) {
+          clearSession();
+        }
         throw new AuthenticationError(ERROR_MESSAGES.SESSION_EXPIRED);
       }
 

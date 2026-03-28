@@ -265,7 +265,7 @@ export async function setupApiMocks(page: Page) {
         contentType: 'application/json',
         body: JSON.stringify({
           token: 'test-token',
-          expiresAt: body.rememberDevice ? '2026-04-30T00:00:00.000Z' : '2026-03-29T00:00:00.000Z',
+          expiresAt: body.rememberDevice ? 1_777_507_200 : 1_743_206_400,
         }),
       });
       return;

@@ -74,8 +74,12 @@ pub(super) async fn issue_token(
 /// Revokes the currently authenticated browser token.
 pub(super) async fn logout(
     State(state): State<AppState>,
-    axum::extract::Extension(authenticated): axum::extract::Extension<AuthenticatedToken>,
+    authenticated: Option<axum::extract::Extension<AuthenticatedToken>>,
 ) -> ApiResult<StatusCode> {
+    let Some(axum::extract::Extension(authenticated)) = authenticated else {
+        return Err(unauthorized_error("Not authenticated"));
+    };
+
     let _ = &authenticated.username;
     auth_tokens::revoke_token(&state.pool, &authenticated.token)
         .await
@@ -110,12 +114,10 @@ pub(super) async fn require_bearer_auth(
         return unauthorized("Invalid authentication credentials");
     }
 
-    let Some(record) = auth_tokens::find_active_token(&state.pool, token)
-        .await
-        .ok()
-        .flatten()
-    else {
-        return unauthorized("Invalid authentication credentials");
+    let record = match auth_tokens::find_active_token(&state.pool, token).await {
+        Ok(Some(record)) => record,
+        Ok(None) => return unauthorized("Invalid authentication credentials"),
+        Err(error) => return internal_error(error).into_response(),
     };
 
     request.extensions_mut().insert(AuthenticatedToken {

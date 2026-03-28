@@ -281,7 +281,7 @@ export const handlers: HttpHandler[] = [
     if (body.username === 'testuser' && body.password === 'testpass') {
       return HttpResponse.json({
         token: VALID_TOKEN,
-        expiresAt: body.rememberDevice ? '2026-04-30T00:00:00.000Z' : '2026-03-29T00:00:00.000Z',
+        expiresAt: body.rememberDevice ? 1_777_507_200 : 1_743_206_400,
       });
     }
 
