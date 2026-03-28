@@ -25,10 +25,10 @@ export function useAutoMarkRead({
   debounceMs = 100,
 }: UseAutoMarkReadOptions) {
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const elementsRef = useRef<Map<number, HTMLElement>>(new Map());
-  const seenRef = useRef<Set<number>>(new Set());
+  const elementsRef = useRef(new Map<number, HTMLElement>());
+  const seenRef = useRef(new Set<number>());
   const batcherRef = useRef<ReturnType<typeof createReadBatcher> | null>(null);
-  const unreadMapRef = useRef<Map<number, boolean>>(new Map());
+  const unreadMapRef = useRef(new Map<number, boolean>());
   const observerDisabledRef = useRef(false);
   const observerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
