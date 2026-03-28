@@ -45,9 +45,7 @@ test.describe('PWA install integration coverage', () => {
     });
   });
 
-  test('[TC-APP-005] install prompt can appear when install criteria are met', async ({
-    page,
-  }) => {
+  test('[TC-APP-005] install prompt can appear when install criteria are met', async ({ page }) => {
     await dispatchInstallPrompt(page);
     await page.waitForTimeout(PROMPT_DELAY_MS);
     await expect(page.getByRole('heading', { name: /install newsboxone/i })).toBeVisible();

@@ -167,7 +167,15 @@ test.describe('Timeline integration coverage', () => {
     });
 
     await page.goto('/timeline');
-    await page.locator('body').click();
+    await expect(page.getByTestId('active-folder-name')).toHaveText(/Engineering Updates/i);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.evaluate(() => {
+      const activeElement = document.activeElement;
+      if (activeElement instanceof HTMLElement) {
+        activeElement.blur();
+      }
+      window.focus();
+    });
     await page.keyboard.press('r');
     await page.keyboard.press('ArrowRight');
     await expect(page.getByTestId('active-folder-name')).toHaveText(
@@ -177,9 +185,7 @@ test.describe('Timeline integration coverage', () => {
     await expect(page.getByTestId('active-folder-name')).toHaveText(/Podcasts/i);
   });
 
-  test('[TC-TIMELINE-019] skipping through all folders leads to restart flow', async ({
-    page,
-  }) => {
+  test('[TC-TIMELINE-019] skipping through all folders leads to restart flow', async ({ page }) => {
     await page.goto('/timeline');
     await page.getByRole('button', { name: /^skip$/i }).click();
     await page.getByRole('button', { name: /^skip$/i }).click();

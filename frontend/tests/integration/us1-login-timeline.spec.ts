@@ -31,9 +31,7 @@ test.describe('Login integration coverage', () => {
     await page.waitForURL(/\/timeline/);
   });
 
-  test('[TC-LOGIN-004] invalid credentials keep the user on the login page', async ({
-    page,
-  }) => {
+  test('[TC-LOGIN-004] invalid credentials keep the user on the login page', async ({ page }) => {
     await page.getByLabel(/^username$/i).fill(TEST_USERNAME);
     await page.getByLabel(/^password$/i).fill('wrong-password');
     await page.getByRole('button', { name: /sign in/i }).click();

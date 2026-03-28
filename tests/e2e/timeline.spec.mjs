@@ -65,8 +65,19 @@ test.describe('Timeline and reading workflow e2e scenarios', () => {
   }) => {
     await seedTimelineFeeds(request);
     await loginViaUi(page);
-    await page.locator('body').click();
+    await expect(page.getByTestId('active-folder-name')).toHaveText(/engineering/i);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.evaluate(() => {
+      const activeElement = document.activeElement;
+      if (activeElement instanceof HTMLElement) {
+        activeElement.blur();
+      }
+      window.focus();
+    });
     await page.keyboard.press('r');
+    const refreshButton = page.getByRole('button', { name: /refresh/i });
+    await expect(refreshButton).toBeDisabled();
+    await expect(refreshButton).toBeEnabled();
     await page.keyboard.press('ArrowRight');
     await expect(page.getByTestId('active-folder-name')).toHaveText(/design/i);
     await page.keyboard.press('Enter');

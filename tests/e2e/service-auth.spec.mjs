@@ -1,5 +1,5 @@
 import test from '../../frontend/node_modules/@playwright/test/index.js';
-import { clearBrowserSession, loginViaUi } from './helpers/newsboxone.mjs';
+import { clearBrowserSession, loginViaUi, resetBackendState } from './helpers/newsboxone.mjs';
 
 const { expect } = test;
 const authHeaders = {
@@ -7,7 +7,8 @@ const authHeaders = {
 };
 
 test.describe('Service startup and authentication e2e scenarios', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, request }) => {
+    await resetBackendState(request);
     await clearBrowserSession(page);
   });
 
@@ -39,7 +40,8 @@ test.describe('Service startup and authentication e2e scenarios', () => {
 
   test('[TS-LOGIN-002] valid credentials create a working browser session', async ({ page }) => {
     await loginViaUi(page);
-    await expect(page.getByRole('heading', { name: /all caught up/i })).toBeVisible();
+    await expect(page).toHaveURL(/\/timeline/);
+    await expect(page.getByRole('heading', { name: /newsboxone/i })).toBeVisible();
 
     const [sessionValue, localValue] = await page.evaluate(() => [
       sessionStorage.getItem('newsboxone:session'),
