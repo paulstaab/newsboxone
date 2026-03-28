@@ -39,6 +39,7 @@ It covers the repository-level infrastructure needed to ship the frontend and ba
 - `API-002`: The public API contract shall be defined by `docs/api-contract.yaml`.
 - `API-003`: Backward compatibility with the Nextcloud News v1.2 or v1.3 specifications is not required.
 - `API-004`: The combined frontend shall call the NewsBoxOne API through same-origin requests and shall not require user-entered server base URLs.
+- `API-005`: The combined product shall expose feed-quality metadata and feed-quality mutation actions through the shared `/api/feeds` surface so the feed management page can manage per-feed quality behavior without CLI access.
 
 ### Developer Workflow
 - `DEV-001`: The repository shall provide a single root devcontainer configuration for working on frontend and backend together.

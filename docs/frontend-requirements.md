@@ -102,17 +102,22 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 - `FEEDS-006`: Failed subscription attempts shall preserve the user input and show actionable error feedback without removing the current page data.
 - `FEEDS-007`: The page shall group subscribed feeds by folder in a table and shall show feeds without a folder assignment in an `Uncategorized` group.
 - `FEEDS-008`: Feed groups and feed rows shall be ordered alphabetically by displayed name.
-- `FEEDS-009`: Each feed row shall display the feed ID, feed name, last article date relative to the current time, next scheduled update time relative to the current time, a dedicated status indicator, and row actions in separate table columns.
+- `FEEDS-009`: Each feed row shall display the feed ID and feed title together as the feed name, the last article date relative to the current time, a dedicated status indicator, and row actions in separate table columns.
 - `FEEDS-009b`: The `Last Article` value shall come from the feed metadata returned by the feeds API so it remains available even after article cleanup removes old item rows.
-- `FEEDS-009a`: Hovering the `Last Article` or `Next Update` value shall expose the exact timestamp in the viewer's local timezone formatted as `YYYY-MM-DD HH:mm:ss`.
+- `FEEDS-009a`: Hovering the `Last Article` value shall expose the exact timestamp in the viewer's local timezone formatted as `YYYY-MM-DD HH:mm:ss`.
 - `FEEDS-010`: The page shall show feed update status as a centered icon in the `Status` column, using hover text to expose the concrete error message when the last update failed.
-- `FEEDS-011`: The page shall provide a control to reassign a feed to a different folder, including moving it back to the uncategorized group, from a modal opened by a row action.
+- `FEEDS-011`: The page shall allow editing a feed's title and assigned folder, including moving it back to the uncategorized group, from the per-feed settings dialog opened by a row action.
 - `FEEDS-012`: The page shall allow deleting an individual feed only after explicit user confirmation.
 - `FEEDS-013`: The page shall provide a dialog for creating a new folder.
 - `FEEDS-014`: The page shall allow renaming an existing folder.
 - `FEEDS-015`: The page shall allow deleting an existing folder only after explicit user confirmation.
 - `FEEDS-016`: When confirming folder deletion, the page shall warn that deleting the folder will unsubscribe all feeds currently assigned to that folder.
 - `FEEDS-017`: Confirmed folder deletion shall unsubscribe all feeds currently assigned to that folder and then remove the folder.
-- `FEEDS-018`: The page shall expose the feed URL as hover text on the displayed feed name.
-- `FEEDS-019`: A floating add-feed action shall open the subscription modal.
+- `FEEDS-018`: The per-feed settings dialog shall display the feed URL as a clickable link that opens the source in a new tab.
+- `FEEDS-019`: The page shall provide a floating action cluster for updating feeds, creating folders, and opening the subscription modal.
 - `FEEDS-020`: Pressing the `+` key outside editable fields shall open the subscription modal.
+- `FEEDS-021`: The page shall provide a per-feed settings dialog from a row action.
+- `FEEDS-022`: The feed settings dialog shall let the user set `Extract full text` and `Create LLM Summaries` independently to `Automatic (Enabled/Disabled)`, `Enabled`, or `Disabled`.
+- `FEEDS-023`: Saving feed settings shall submit the current title, folder, and both selected feed-quality preferences together, refresh the displayed feed state, and surface a success message without requiring a full page reload.
+- `FEEDS-024`: The feed settings dialog shall show editable `Title`, editable `Folder`, a clickable `URL`, `Last Article`, `Next Scheduled Update`, and `Last Quality Check` for the selected feed.
+- `FEEDS-025`: The feed settings dialog shall provide `Cancel` and `Save` actions and shall not expose a separate re-evaluate action.

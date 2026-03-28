@@ -228,21 +228,21 @@ function TimelineContent() {
   } as CSSProperties;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[linear-gradient(180deg,hsl(var(--color-surface))_0%,hsl(var(--color-surface-muted))_100%)] text-[hsl(var(--color-text))]">
       <div
         className={`timeline-page${isPopoutOpen ? ' timeline-page--disabled' : ''}`}
         aria-hidden={isPopoutOpen}
       >
         {/* Header */}
-        <header className="bg-white">
-          <div className="max-w-4xl mx-auto px-4 py-4">
+        <header className="bg-[hsl(var(--color-surface))]/92">
+          <div className="mx-auto max-w-4xl px-4 py-4">
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold text-gray-900">NewsBoxOne</h1>
+              <h1 className="text-2xl font-bold text-[hsl(var(--color-text))]">NewsBoxOne</h1>
             </div>
           </div>
         </header>
 
-        <div className="max-w-4xl mx-auto px-4">
+        <div className="mx-auto max-w-4xl px-4">
           {/* Folder queue */}
           <div ref={sentinelRef} aria-hidden="true" className="folder-queue-sentinel" />
           <div

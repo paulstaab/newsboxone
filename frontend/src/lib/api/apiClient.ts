@@ -79,6 +79,18 @@ export interface FeedsApi {
    * Marks all items in a feed as read up to a specific item ID.
    */
   markRead(feedId: number, newestItemId: number): Promise<void>;
+
+  /**
+   * Updates manual feed-quality overrides.
+   */
+  updateQuality(
+    feedId: number,
+    input: {
+      useExtractedFulltext?: boolean | null;
+      useLlmSummary?: boolean | null;
+      reevaluate?: boolean;
+    },
+  ): Promise<Feed>;
 }
 
 /**
@@ -321,6 +333,21 @@ class ApiClientImpl implements ApiClient {
 
       markRead: async (feedId: number, newestItemId: number) => {
         await baseApiPost(`/feeds/${String(feedId)}/read`, { newestItemId });
+      },
+
+      updateQuality: async (
+        feedId: number,
+        input: {
+          useExtractedFulltext?: boolean | null;
+          useLlmSummary?: boolean | null;
+          reevaluate?: boolean;
+        },
+      ) => {
+        const response = await baseApiPost<{ feed: ApiFeed }>(
+          `/feeds/${String(feedId)}/quality`,
+          input,
+        );
+        return normalizeFeed(response.feed);
       },
     };
 

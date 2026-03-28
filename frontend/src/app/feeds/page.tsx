@@ -1,20 +1,19 @@
 'use client';
 
 import {
-  faArrowLeft,
   faCircleCheck,
   faCircleExclamation,
-  faFolderOpen,
   faFolderPlus,
   faPen,
   faPlus,
   faRotate,
+  faSliders,
   faTrash,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Fragment, Suspense, type ButtonHTMLAttributes } from 'react';
-import Link from 'next/link';
 import { formatExactLocalDateTime, formatRelativeDateTime } from '@/lib/feeds/feedManagement';
+import { TimelineActionButton } from '@/components/timeline/TimelineActionButton';
 import { FullscreenStatus } from '@/components/ui/FullscreenStatus';
 import { useFeedManagementPage } from '@/hooks/useFeedManagementPage';
 
@@ -56,6 +55,10 @@ function FeedActionButton({
   );
 }
 
+function formatAutomaticQualityLabel(value: boolean | undefined) {
+  return `Automatic (${value ? 'Enabled' : 'Disabled'})`;
+}
+
 /**
  * Feed management route for subscriptions and folders.
  */
@@ -74,7 +77,7 @@ function FeedManagementContent() {
     statusMessage,
     createFeedDialogRef,
     createFolderDialogRef,
-    moveFeedDialogRef,
+    qualityDialogRef,
     newFeedUrl,
     setNewFeedUrl,
     newFeedFolderId,
@@ -85,25 +88,26 @@ function FeedManagementContent() {
     setEditingFolderId,
     editingFolderName,
     setEditingFolderName,
-    editingFeedId,
-    setEditingFeedId,
-    editingFeedTitle,
-    setEditingFeedTitle,
-    moveFeedTitle,
-    moveFeedFolderId,
-    setMoveFeedFolderId,
+    qualityFeedTitle,
+    setQualityFeedTitle,
+    qualityFeedFolderId,
+    setQualityFeedFolderId,
+    qualityUseExtractedFulltext,
+    setQualityUseExtractedFulltext,
+    qualityUseLlmSummary,
+    setQualityUseLlmSummary,
+    selectedQualityFeed,
     openCreateFeedDialog,
     closeCreateFeedDialog,
-    openMoveFeedDialog,
-    resetMoveFeedDialog,
+    openQualityDialog,
+    resetQualityDialog,
     refreshPageData,
     handleSubscribe,
     handleCreateFolder,
     handleRenameFolder,
     handleDeleteFolder,
-    handleRenameFeed,
-    handleMoveFeedSubmit,
     handleDeleteFeed,
+    handleSaveFeedQuality,
   } = useFeedManagementPage();
 
   if (isInitializing || isLoading) {
@@ -123,46 +127,13 @@ function FeedManagementContent() {
     <div className="min-h-screen bg-[linear-gradient(180deg,hsl(var(--color-surface))_0%,hsl(var(--color-surface-muted))_100%)] px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
         <header className="rounded-[1.5rem] bg-[hsl(var(--color-surface))]/92 p-6 shadow-[0_20px_48px_rgba(5,10,25,0.18)] backdrop-blur sm:p-7">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl space-y-2">
-              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-[hsl(var(--color-text-muted))]">
-                Feed Management
-              </p>
-              <h1 className="text-3xl font-semibold tracking-tight text-[hsl(var(--color-text))] sm:text-4xl">
-                Manage subscriptions and folders
-              </h1>
-            </div>
-
-            <div className="flex flex-wrap gap-2 lg:justify-end">
-              <FeedActionButton
-                label="New folder"
-                onClick={() => {
-                  createFolderDialogRef.current?.showModal();
-                }}
-                variant="accent"
-                size="lg"
-              >
-                <FontAwesomeIcon icon={faFolderPlus} className="h-5 w-5" aria-hidden="true" />
-              </FeedActionButton>
-              <FeedActionButton
-                disabled={isRefreshing || busyLabel !== null}
-                label={isRefreshing ? 'Refreshing feeds' : 'Refresh feeds'}
-                onClick={() => {
-                  void refreshPageData(false);
-                }}
-                size="lg"
-              >
-                <FontAwesomeIcon icon={faRotate} className="h-5 w-5" aria-hidden="true" />
-              </FeedActionButton>
-              <Link
-                href="/timeline"
-                aria-label="Back to timeline"
-                title="Back to timeline"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/6 text-[hsl(var(--color-text))] transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--color-accent-strong))] focus:ring-offset-2 focus:ring-offset-[hsl(var(--color-surface-muted))]"
-              >
-                <FontAwesomeIcon icon={faArrowLeft} className="h-5 w-5" aria-hidden="true" />
-              </Link>
-            </div>
+          <div className="max-w-3xl space-y-2">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-[hsl(var(--color-text-muted))]">
+              Feed Management
+            </p>
+            <h1 className="text-3xl font-semibold tracking-tight text-[hsl(var(--color-text))] sm:text-4xl">
+              Manage subscriptions and folders
+            </h1>
           </div>
         </header>
 
@@ -199,9 +170,8 @@ function FeedManagementContent() {
                 className="w-full table-fixed border-collapse"
               >
                 <colgroup>
-                  <col className="w-[42%]" />
-                  <col className="w-[14%]" />
-                  <col className="w-[14%]" />
+                  <col className="w-[52%]" />
+                  <col className="w-[18%]" />
                   <col className="w-[10%]" />
                   <col className="w-[20%]" />
                 </colgroup>
@@ -212,9 +182,6 @@ function FeedManagementContent() {
                     </th>
                     <th className="px-4 py-4 text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-[hsl(var(--color-text-muted))]">
                       Last Article
-                    </th>
-                    <th className="px-4 py-4 text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-[hsl(var(--color-text-muted))]">
-                      Next Update
                     </th>
                     <th className="px-4 py-4 text-center text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-[hsl(var(--color-text-muted))]">
                       Status
@@ -232,7 +199,7 @@ function FeedManagementContent() {
                       <Fragment key={group.isUncategorized ? 'uncategorized' : String(group.id)}>
                         <tr className="border-b border-white/10 bg-[linear-gradient(90deg,rgba(255,255,255,0.05),rgba(255,255,255,0.015))]">
                           {isEditingFolder ? (
-                            <td colSpan={5} className="px-5 py-4">
+                            <td colSpan={4} className="px-5 py-4">
                               <form
                                 onSubmit={(event) => {
                                   event.preventDefault();
@@ -271,7 +238,7 @@ function FeedManagementContent() {
                             </td>
                           ) : (
                             <>
-                              <td colSpan={4} className="px-5 py-4 align-middle">
+                              <td colSpan={3} className="px-5 py-4 align-middle">
                                 <h2 className="text-lg font-semibold tracking-tight text-[hsl(var(--color-text))] sm:text-xl">
                                   {group.name}
                                 </h2>
@@ -318,69 +285,19 @@ function FeedManagementContent() {
                         </tr>
 
                         {group.feeds.map(({ feed, lastArticleDate }) => {
-                          const isEditingFeed = editingFeedId === feed.id;
-
                           return (
                             <tr
                               key={feed.id}
                               className="border-b border-white/8 align-middle transition last:border-b-0 hover:bg-white/[0.025]"
                             >
                               <td className="px-5 py-4">
-                                <div className="flex min-h-20 flex-col justify-center gap-2">
-                                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-[hsl(var(--color-text-muted))]">
-                                    Feed #{feed.id}
-                                  </p>
-
-                                  {isEditingFeed ? (
-                                    <form
-                                      onSubmit={(event) => {
-                                        event.preventDefault();
-                                        void handleRenameFeed(feed.id);
-                                      }}
-                                      className="flex flex-wrap items-center gap-3"
-                                    >
-                                      <input
-                                        type="text"
-                                        value={editingFeedTitle}
-                                        onChange={(event) => {
-                                          setEditingFeedTitle(event.target.value);
-                                        }}
-                                        className="min-w-[260px] rounded-xl border border-white/10 bg-black/10 px-4 py-2 text-sm outline-none transition focus:border-[hsl(var(--color-accent-strong))] focus:ring-2 focus:ring-[hsl(var(--color-accent-strong))]"
-                                        aria-label={`Feed name for ${feed.title}`}
-                                      />
-                                      <button
-                                        type="submit"
-                                        className="rounded-full bg-[hsl(var(--color-accent-strong))] px-4 py-2 text-sm font-semibold text-slate-950"
-                                      >
-                                        Save
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-[hsl(var(--color-text))]"
-                                        onClick={() => {
-                                          setEditingFeedId(null);
-                                          setEditingFeedTitle('');
-                                        }}
-                                      >
-                                        Cancel
-                                      </button>
-                                    </form>
-                                  ) : (
-                                    <div className="grid gap-1">
-                                      <h3
-                                        className="truncate text-base font-semibold leading-[1.25] text-[hsl(var(--color-text))] sm:text-lg"
-                                        title={feed.url}
-                                      >
-                                        {feed.title}
-                                      </h3>
-                                      <p
-                                        className="truncate text-sm text-[hsl(var(--color-text-muted))]"
-                                        title={feed.url}
-                                      >
-                                        {feed.url}
-                                      </p>
-                                    </div>
-                                  )}
+                                <div className="flex min-h-20 flex-col justify-center">
+                                  <h3
+                                    className="truncate text-base font-semibold leading-[1.25] text-[hsl(var(--color-text))] sm:text-lg"
+                                    title={feed.url}
+                                  >
+                                    {`#${String(feed.id)}: ${feed.title}`}
+                                  </h3>
                                 </div>
                               </td>
                               <td className="px-4 py-4 align-middle">
@@ -389,14 +306,6 @@ function FeedManagementContent() {
                                   title={formatExactLocalDateTime(lastArticleDate)}
                                 >
                                   {formatRelativeDateTime(lastArticleDate)}
-                                </p>
-                              </td>
-                              <td className="px-4 py-4 align-middle">
-                                <p
-                                  className="text-sm font-medium text-[hsl(var(--color-text))]"
-                                  title={formatExactLocalDateTime(feed.nextUpdateTime)}
-                                >
-                                  {formatRelativeDateTime(feed.nextUpdateTime)}
                                 </p>
                               </td>
                               <td className="px-4 py-4 text-center align-middle">
@@ -429,49 +338,32 @@ function FeedManagementContent() {
                               </td>
 
                               <td className="px-5 py-4 align-middle">
-                                <div className="flex items-center">
-                                  {isEditingFeed ? null : (
-                                    <div className="flex flex-wrap items-center gap-3">
-                                      <FeedActionButton
-                                        label={`Rename feed ${feed.title}`}
-                                        onClick={() => {
-                                          setEditingFeedId(feed.id);
-                                          setEditingFeedTitle(feed.title);
-                                        }}
-                                      >
-                                        <FontAwesomeIcon
-                                          icon={faPen}
-                                          className="h-4.5 w-4.5"
-                                          aria-hidden="true"
-                                        />
-                                      </FeedActionButton>
-                                      <FeedActionButton
-                                        label={`Delete feed ${feed.title}`}
-                                        variant="danger"
-                                        onClick={() => {
-                                          void handleDeleteFeed(feed);
-                                        }}
-                                      >
-                                        <FontAwesomeIcon
-                                          icon={faTrash}
-                                          className="h-4.5 w-4.5"
-                                          aria-hidden="true"
-                                        />
-                                      </FeedActionButton>
-                                      <FeedActionButton
-                                        label={`Move ${feed.title} to another folder`}
-                                        onClick={() => {
-                                          openMoveFeedDialog(feed);
-                                        }}
-                                      >
-                                        <FontAwesomeIcon
-                                          icon={faFolderOpen}
-                                          className="h-4.5 w-4.5"
-                                          aria-hidden="true"
-                                        />
-                                      </FeedActionButton>
-                                    </div>
-                                  )}
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <FeedActionButton
+                                    label={`Adjust feed quality for ${feed.title}`}
+                                    onClick={() => {
+                                      openQualityDialog(feed);
+                                    }}
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={faSliders}
+                                      className="h-4.5 w-4.5"
+                                      aria-hidden="true"
+                                    />
+                                  </FeedActionButton>
+                                  <FeedActionButton
+                                    label={`Delete feed ${feed.title}`}
+                                    variant="danger"
+                                    onClick={() => {
+                                      void handleDeleteFeed(feed);
+                                    }}
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={faTrash}
+                                      className="h-4.5 w-4.5"
+                                      aria-hidden="true"
+                                    />
+                                  </FeedActionButton>
                                 </div>
                               </td>
                             </tr>
@@ -486,26 +378,45 @@ function FeedManagementContent() {
           </section>
         )}
 
-        <button
-          type="button"
-          aria-label="Add feed"
-          title="Add feed (+)"
-          onClick={openCreateFeedDialog}
-          className="fixed bottom-6 right-6 z-50 inline-flex h-16 w-16 items-center justify-center rounded-full border border-white/15 bg-[linear-gradient(180deg,hsl(var(--color-accent-strong))_0%,hsl(var(--color-accent))_100%)] text-slate-950 shadow-[0_20px_45px_rgba(4,10,24,0.45)] transition hover:scale-[1.04] hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--color-accent-strong))] focus:ring-offset-2 focus:ring-offset-[hsl(var(--color-surface))]"
+        <div
+          className="z-[60] flex flex-col gap-3"
           style={{
             position: 'fixed',
-            right: '1.75rem',
-            bottom: '1.75rem',
-            width: '4.5rem',
-            height: '4.5rem',
+            right: '1.5rem',
+            bottom: '1.5rem',
           }}
         >
-          <FontAwesomeIcon icon={faPlus} className="h-7 w-7" aria-hidden="true" />
-        </button>
+          <TimelineActionButton
+            icon={<FontAwesomeIcon icon={faRotate} className="h-5 w-5" aria-hidden="true" />}
+            label={isRefreshing ? 'Updating feeds' : 'Update feeds'}
+            tooltip="Update feeds"
+            disabled={busyLabel !== null}
+            isLoading={isRefreshing}
+            onClick={() => {
+              void refreshPageData(false);
+            }}
+          />
+          <TimelineActionButton
+            icon={<FontAwesomeIcon icon={faFolderPlus} className="h-5 w-5" aria-hidden="true" />}
+            label="Add folder"
+            tooltip="Add folder"
+            disabled={busyLabel !== null}
+            onClick={() => {
+              createFolderDialogRef.current?.showModal();
+            }}
+          />
+          <TimelineActionButton
+            icon={<FontAwesomeIcon icon={faPlus} className="h-5 w-5" aria-hidden="true" />}
+            label="Subscribe to feed"
+            tooltip="Subscribe to feed"
+            disabled={busyLabel !== null}
+            onClick={openCreateFeedDialog}
+          />
+        </div>
 
         <dialog
           ref={createFeedDialogRef}
-          className="w-full max-w-2xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,hsl(var(--color-surface-muted))_0%,hsl(var(--color-surface))_100%)] p-0 text-[hsl(var(--color-text))] shadow-2xl backdrop:bg-black/60"
+          className="fixed inset-0 m-auto w-full max-w-2xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,hsl(var(--color-surface-muted))_0%,hsl(var(--color-surface))_100%)] p-0 text-[hsl(var(--color-text))] shadow-2xl backdrop:bg-black/60"
         >
           <form
             method="dialog"
@@ -587,51 +498,167 @@ function FeedManagementContent() {
         </dialog>
 
         <dialog
-          ref={moveFeedDialogRef}
-          className="w-full max-w-md rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,hsl(var(--color-surface-muted))_0%,hsl(var(--color-surface))_100%)] p-0 text-[hsl(var(--color-text))] shadow-2xl backdrop:bg-black/55"
-          onClose={resetMoveFeedDialog}
+          ref={qualityDialogRef}
+          className="fixed inset-0 m-auto w-[min(calc(100vw-3rem),56rem)] max-w-none rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,hsl(var(--color-surface-muted))_0%,hsl(var(--color-surface))_100%)] p-0 text-[hsl(var(--color-text))] shadow-2xl backdrop:bg-black/90"
+          onClose={resetQualityDialog}
         >
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              void handleMoveFeedSubmit();
+              void handleSaveFeedQuality();
             }}
-            className="space-y-5 p-6"
+            className="space-y-6 p-6 sm:p-7"
           >
             <div className="space-y-2">
-              <h2 className="text-2xl font-semibold">Move Feed</h2>
-              <p className="text-sm text-[hsl(var(--color-text-secondary))]">
-                Choose a new folder for {moveFeedTitle || 'this feed'}.
+              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[hsl(var(--color-text-muted))]">
+                Feed Settings
               </p>
+              <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                {selectedQualityFeed
+                  ? `#${String(selectedQualityFeed.id)}: ${qualityFeedTitle || selectedQualityFeed.title}`
+                  : qualityFeedTitle || 'Feed settings'}
+              </h2>
             </div>
 
-            <label className="flex flex-col gap-2 text-sm font-medium text-[hsl(var(--color-text))]">
-              <span className="text-[0.7rem] uppercase tracking-[0.18em] text-[hsl(var(--color-text-muted))]">
-                Destination folder
-              </span>
-              <select
-                value={moveFeedFolderId}
-                onChange={(event) => {
-                  setMoveFeedFolderId(event.target.value);
-                }}
-                className="rounded-2xl border border-white/10 bg-black/10 px-4 py-3 text-sm outline-none transition focus:border-[hsl(var(--color-accent-strong))] focus:ring-2 focus:ring-[hsl(var(--color-accent-strong))]"
-                aria-label="Target folder"
-              >
-                <option value="">Uncategorized</option>
-                {sortedFolders.map((folder) => (
-                  <option key={folder.id} value={String(folder.id)}>
-                    {folder.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="overflow-hidden bg-white/10">
+              <div className="grid grid-cols-[minmax(10rem,14rem)_minmax(0,1fr)] gap-px bg-white/10">
+                <div className="flex items-center bg-[hsl(var(--color-surface-muted))]/92 px-5 py-4 text-sm font-semibold text-[hsl(var(--color-text))]">
+                  Title
+                </div>
+                <div className="bg-[hsl(var(--color-surface))]/92 px-5 py-4">
+                  <input
+                    type="text"
+                    value={qualityFeedTitle}
+                    onChange={(event) => {
+                      setQualityFeedTitle(event.target.value);
+                    }}
+                    className="w-full rounded-2xl border border-white/10 bg-black/10 px-4 py-3 text-sm text-[hsl(var(--color-text))] outline-none transition focus:border-[hsl(var(--color-accent-strong))] focus:ring-2 focus:ring-[hsl(var(--color-accent-strong))]"
+                    aria-label="Feed title setting"
+                  />
+                </div>
+
+                <div className="flex items-center bg-[hsl(var(--color-surface-muted))]/92 px-5 py-4 text-sm font-semibold text-[hsl(var(--color-text))]">
+                  Folder
+                </div>
+                <div className="bg-[hsl(var(--color-surface))]/92 px-5 py-4">
+                  <select
+                    value={qualityFeedFolderId}
+                    onChange={(event) => {
+                      setQualityFeedFolderId(event.target.value);
+                    }}
+                    className="w-full rounded-2xl border border-white/10 bg-black/10 px-4 py-3 text-sm outline-none transition focus:border-[hsl(var(--color-accent-strong))] focus:ring-2 focus:ring-[hsl(var(--color-accent-strong))]"
+                    aria-label="Folder setting"
+                  >
+                    <option value="">Uncategorized</option>
+                    {sortedFolders.map((folder) => (
+                      <option key={folder.id} value={String(folder.id)}>
+                        {folder.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center bg-[hsl(var(--color-surface-muted))]/92 px-5 py-4 text-sm font-semibold text-[hsl(var(--color-text))]">
+                  URL
+                </div>
+                <div
+                  className="break-all bg-[hsl(var(--color-surface))]/92 px-5 py-4 text-sm text-[hsl(var(--color-text))]"
+                  title={selectedQualityFeed?.url ?? undefined}
+                >
+                  {selectedQualityFeed?.url ? (
+                    <a
+                      href={selectedQualityFeed.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[hsl(var(--color-accent-strong))] underline decoration-white/20 underline-offset-4 transition hover:decoration-current focus:outline-none focus:ring-2 focus:ring-[hsl(var(--color-accent-strong))] focus:ring-offset-2 focus:ring-offset-[hsl(var(--color-surface))]"
+                    >
+                      {selectedQualityFeed.url}
+                    </a>
+                  ) : (
+                    'Not available'
+                  )}
+                </div>
+
+                <div className="flex items-center bg-[hsl(var(--color-surface-muted))]/92 px-5 py-4 text-sm font-semibold text-[hsl(var(--color-text))]">
+                  Extract Full Text
+                </div>
+                <div className="bg-[hsl(var(--color-surface))]/92 px-5 py-4">
+                  <select
+                    value={qualityUseExtractedFulltext}
+                    onChange={(event) => {
+                      setQualityUseExtractedFulltext(
+                        event.target.value as typeof qualityUseExtractedFulltext,
+                      );
+                    }}
+                    className="w-full rounded-2xl border border-white/10 bg-black/10 px-4 py-3 text-sm outline-none transition focus:border-[hsl(var(--color-accent-strong))] focus:ring-2 focus:ring-[hsl(var(--color-accent-strong))]"
+                    aria-label="Extract full text setting"
+                  >
+                    <option value="automatic">
+                      {formatAutomaticQualityLabel(selectedQualityFeed?.useExtractedFulltext)}
+                    </option>
+                    <option value="enabled">Enabled</option>
+                    <option value="disabled">Disabled</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center bg-[hsl(var(--color-surface-muted))]/92 px-5 py-4 text-sm font-semibold text-[hsl(var(--color-text))]">
+                  Create LLM Summaries
+                </div>
+                <div className="bg-[hsl(var(--color-surface))]/92 px-5 py-4">
+                  <select
+                    value={qualityUseLlmSummary}
+                    onChange={(event) => {
+                      setQualityUseLlmSummary(event.target.value as typeof qualityUseLlmSummary);
+                    }}
+                    className="w-full rounded-2xl border border-white/10 bg-black/10 px-4 py-3 text-sm outline-none transition focus:border-[hsl(var(--color-accent-strong))] focus:ring-2 focus:ring-[hsl(var(--color-accent-strong))]"
+                    aria-label="Create LLM summaries setting"
+                  >
+                    <option value="automatic">
+                      {formatAutomaticQualityLabel(selectedQualityFeed?.useLlmSummary)}
+                    </option>
+                    <option value="enabled">Enabled</option>
+                    <option value="disabled">Disabled</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center bg-[hsl(var(--color-surface-muted))]/92 px-5 py-4 text-sm font-semibold text-[hsl(var(--color-text))]">
+                  Last Article
+                </div>
+                <div
+                  className="bg-[hsl(var(--color-surface))]/92 px-5 py-4 text-sm text-[hsl(var(--color-text))]"
+                  title={formatExactLocalDateTime(selectedQualityFeed?.lastArticleDate ?? null)}
+                >
+                  {formatExactLocalDateTime(selectedQualityFeed?.lastArticleDate ?? null)}
+                </div>
+
+                <div className="flex items-center bg-[hsl(var(--color-surface-muted))]/92 px-5 py-4 text-sm font-semibold text-[hsl(var(--color-text))]">
+                  Next Scheduled Update
+                </div>
+                <div
+                  className="bg-[hsl(var(--color-surface))]/92 px-5 py-4 text-sm text-[hsl(var(--color-text))]"
+                  title={formatExactLocalDateTime(selectedQualityFeed?.nextUpdateTime ?? null)}
+                >
+                  {formatExactLocalDateTime(selectedQualityFeed?.nextUpdateTime ?? null)}
+                </div>
+
+                <div className="flex items-center bg-[hsl(var(--color-surface-muted))]/92 px-5 py-4 text-sm font-semibold text-[hsl(var(--color-text))]">
+                  Last Quality Check
+                </div>
+                <div
+                  className="bg-[hsl(var(--color-surface))]/92 px-5 py-4 text-sm text-[hsl(var(--color-text))]"
+                  title={formatExactLocalDateTime(selectedQualityFeed?.lastQualityCheck ?? null)}
+                >
+                  {formatExactLocalDateTime(selectedQualityFeed?.lastQualityCheck ?? null)}
+                </div>
+              </div>
+            </div>
 
             <div className="flex justify-end gap-3">
               <button
                 type="button"
-                className="rounded-full border border-white/10 bg-white/6 px-4 py-2 text-sm font-medium text-[hsl(var(--color-text))]"
+                className="rounded-full border border-white/10 bg-white/6 px-5 py-3 text-sm font-medium text-[hsl(var(--color-text))]"
                 onClick={() => {
-                  moveFeedDialogRef.current?.close();
+                  qualityDialogRef.current?.close();
                 }}
               >
                 Cancel
@@ -639,9 +666,9 @@ function FeedManagementContent() {
               <button
                 type="submit"
                 disabled={busyLabel !== null}
-                className="rounded-full bg-[hsl(var(--color-accent-strong))] px-4 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-full bg-[hsl(var(--color-accent-strong))] px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--color-accent-strong))] focus:ring-offset-2 focus:ring-offset-[hsl(var(--color-surface-muted))] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Move Feed
+                {busyLabel === 'Update feed quality' ? 'Saving...' : 'Save'}
               </button>
             </div>
           </form>
@@ -649,7 +676,7 @@ function FeedManagementContent() {
 
         <dialog
           ref={createFolderDialogRef}
-          className="w-full max-w-md rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,hsl(var(--color-surface-muted))_0%,hsl(var(--color-surface))_100%)] p-0 text-[hsl(var(--color-text))] shadow-2xl backdrop:bg-black/55"
+          className="fixed inset-0 m-auto w-full max-w-md rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,hsl(var(--color-surface-muted))_0%,hsl(var(--color-surface))_100%)] p-0 text-[hsl(var(--color-text))] shadow-2xl backdrop:bg-black/55"
         >
           <form
             method="dialog"

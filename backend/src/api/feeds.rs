@@ -11,11 +11,12 @@ use crate::config::Config;
 use crate::content::FeedContentState;
 use crate::repo;
 use crate::ssrf;
+use crate::updater::{self, FeedQualityOverrideUpdate};
 
 use super::AppState;
 use super::errors::{
-    ApiResult, feed_already_exists, feed_not_found_with_id, feed_parse_error, internal_error,
-    ssrf_error,
+    ApiResult, bad_request_error, feed_already_exists, feed_not_found_with_id, feed_parse_error,
+    internal_error, ssrf_error,
 };
 use super::folders::resolve_folder_id;
 
@@ -34,6 +35,12 @@ struct FeedRow {
     pinned: bool,
     update_error_count: i64,
     last_update_error: Option<String>,
+    last_quality_check: Option<i64>,
+    use_extracted_fulltext: bool,
+    use_llm_summary: bool,
+    manual_use_extracted_fulltext: Option<bool>,
+    manual_use_llm_summary: Option<bool>,
+    last_manual_quality_override: Option<i64>,
 }
 
 #[derive(Serialize)]
@@ -52,6 +59,12 @@ pub(super) struct FeedOut {
     pinned: bool,
     update_error_count: i64,
     last_update_error: Option<String>,
+    last_quality_check: Option<i64>,
+    use_extracted_fulltext: bool,
+    use_llm_summary: bool,
+    manual_use_extracted_fulltext: Option<bool>,
+    manual_use_llm_summary: Option<bool>,
+    last_manual_quality_override: Option<i64>,
 }
 
 #[derive(Serialize)]
@@ -83,6 +96,12 @@ pub(super) struct FeedMoveIn {
 #[serde(rename_all = "camelCase")]
 pub(super) struct FeedRenameIn {
     pub(super) feed_title: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct FeedQualityOut {
+    feed: FeedOut,
 }
 
 /// Lists configured feeds and maps the internal root folder to `null`.
@@ -157,6 +176,52 @@ pub(super) async fn mark_feed_items_read(
     Json(input): Json<super::folders::MarkAllItemsReadIn>,
 ) -> ApiResult<StatusCode> {
     mark_feed_items_read_impl(&state.pool, feed_id, input.newest_item_id).await
+}
+
+/// Updates feed-quality overrides or forces re-evaluation for one feed.
+pub(super) async fn update_feed_quality(
+    State(state): State<AppState>,
+    Path(feed_id): Path<i64>,
+    Json(input): Json<serde_json::Value>,
+) -> ApiResult<Json<FeedQualityOut>> {
+    let object = input
+        .as_object()
+        .ok_or_else(|| bad_request_error("feed quality payload must be a JSON object"))?;
+    let reevaluate = parse_reevaluate_field(object.get("reevaluate"))?;
+    let use_extracted_fulltext =
+        parse_quality_field(object.get("useExtractedFulltext"), "useExtractedFulltext")?;
+    let use_llm_summary = parse_quality_field(object.get("useLlmSummary"), "useLlmSummary")?;
+
+    if reevaluate {
+        if use_extracted_fulltext.is_some() || use_llm_summary.is_some() {
+            return Err(bad_request_error(
+                "reevaluate cannot be combined with manual feed-quality fields",
+            ));
+        }
+
+        updater::reevaluate_feed_quality_with_pool(
+            &state.pool,
+            &state.config,
+            feed_id,
+            state.config.testing_mode,
+        )
+        .await
+        .map_err(map_feed_quality_error)?;
+    } else {
+        updater::update_feed_quality_overrides_with_pool(
+            &state.pool,
+            feed_id,
+            FeedQualityOverrideUpdate {
+                use_extracted_fulltext,
+                use_llm_summary,
+            },
+        )
+        .await
+        .map_err(map_feed_quality_error)?;
+    }
+
+    let feed = load_feed(&state.pool, feed_id).await?;
+    Ok(Json(FeedQualityOut { feed }))
 }
 
 /// Validates feed input, persists the feed row, and ingests the initial article set.
@@ -331,40 +396,119 @@ async fn mark_feed_items_read_impl(
 /// Loads feeds in API response format.
 /// Loads all feeds and normalizes the internal root folder to `null` in responses.
 pub(super) async fn load_feeds(pool: &SqlitePool) -> ApiResult<Vec<FeedOut>> {
+    let root_folder_id = load_root_folder_id(pool).await?;
+    let rows = load_feed_rows(pool, None).await?;
+    Ok(rows
+        .into_iter()
+        .map(|feed| map_feed_row(feed, root_folder_id))
+        .collect())
+}
+
+/// Loads one feed in API response format.
+async fn load_feed(pool: &SqlitePool, feed_id: i64) -> ApiResult<FeedOut> {
+    let root_folder_id = load_root_folder_id(pool).await?;
+    let mut rows = load_feed_rows(pool, Some(feed_id)).await?;
+    let Some(feed) = rows.pop() else {
+        return Err(feed_not_found_with_id(feed_id));
+    };
+
+    Ok(map_feed_row(feed, root_folder_id))
+}
+
+/// Loads the internal root folder identifier used for `null` normalization.
+async fn load_root_folder_id(pool: &SqlitePool) -> ApiResult<Option<i64>> {
     let root_folder_id: Option<i64> =
         sqlx::query_scalar("SELECT id FROM folder WHERE is_root = 1 LIMIT 1")
             .fetch_optional(pool)
             .await
             .map_err(internal_error)?;
 
-    let rows = sqlx::query_as::<_, FeedRow>(
-        "SELECT id, url, title, favicon_link, added, last_article_date, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error FROM feed ORDER BY id",
-    )
-    .fetch_all(pool)
-    .await
+    Ok(root_folder_id)
+}
+
+/// Loads one or all feed rows with quality metadata included.
+async fn load_feed_rows(pool: &SqlitePool, feed_id: Option<i64>) -> ApiResult<Vec<FeedRow>> {
+    let rows = if let Some(feed_id) = feed_id {
+        sqlx::query_as::<_, FeedRow>(
+            "SELECT id, url, title, favicon_link, added, last_article_date, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE id = ? ORDER BY id",
+        )
+        .bind(feed_id)
+        .fetch_all(pool)
+        .await
+    } else {
+        sqlx::query_as::<_, FeedRow>(
+            "SELECT id, url, title, favicon_link, added, last_article_date, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed ORDER BY id",
+        )
+        .fetch_all(pool)
+        .await
+    }
     .map_err(internal_error)?;
 
-    let feeds = rows
-        .into_iter()
-        .map(|feed| FeedOut {
-            id: feed.id,
-            url: feed.url,
-            title: feed.title,
-            favicon_link: feed.favicon_link,
-            added: feed.added,
-            last_article_date: feed.last_article_date,
-            next_update_time: feed.next_update_time,
-            folder_id: match root_folder_id {
-                Some(root_id) if root_id == feed.folder_id => None,
-                _ => Some(feed.folder_id),
-            },
-            ordering: feed.ordering,
-            link: feed.link,
-            pinned: feed.pinned,
-            update_error_count: feed.update_error_count,
-            last_update_error: feed.last_update_error,
-        })
-        .collect();
+    Ok(rows)
+}
 
-    Ok(feeds)
+/// Maps a database feed row into the public API shape.
+fn map_feed_row(feed: FeedRow, root_folder_id: Option<i64>) -> FeedOut {
+    FeedOut {
+        id: feed.id,
+        url: feed.url,
+        title: feed.title,
+        favicon_link: feed.favicon_link,
+        added: feed.added,
+        last_article_date: feed.last_article_date,
+        next_update_time: feed.next_update_time,
+        folder_id: match root_folder_id {
+            Some(root_id) if root_id == feed.folder_id => None,
+            _ => Some(feed.folder_id),
+        },
+        ordering: feed.ordering,
+        link: feed.link,
+        pinned: feed.pinned,
+        update_error_count: feed.update_error_count,
+        last_update_error: feed.last_update_error,
+        last_quality_check: feed.last_quality_check,
+        use_extracted_fulltext: feed.use_extracted_fulltext,
+        use_llm_summary: feed.use_llm_summary,
+        manual_use_extracted_fulltext: feed.manual_use_extracted_fulltext,
+        manual_use_llm_summary: feed.manual_use_llm_summary,
+        last_manual_quality_override: feed.last_manual_quality_override,
+    }
+}
+
+/// Maps updater-side feed-quality errors into public API errors.
+fn map_feed_quality_error(error: anyhow::Error) -> super::errors::ApiError {
+    let detail = error.to_string();
+    if let Some(feed_id) = detail
+        .strip_prefix("feed ")
+        .and_then(|rest| rest.split_whitespace().next())
+        .and_then(|value| value.parse::<i64>().ok())
+    {
+        return feed_not_found_with_id(feed_id);
+    }
+
+    bad_request_error(detail)
+}
+
+/// Parses one tri-state feed-quality field from JSON while preserving explicit `null`.
+fn parse_quality_field(
+    raw: Option<&serde_json::Value>,
+    field_name: &str,
+) -> ApiResult<Option<Option<bool>>> {
+    match raw {
+        None => Ok(None),
+        Some(serde_json::Value::Null) => Ok(Some(None)),
+        Some(serde_json::Value::Bool(value)) => Ok(Some(Some(*value))),
+        Some(_) => Err(bad_request_error(format!(
+            "{field_name} must be true, false, or null",
+        ))),
+    }
+}
+
+/// Parses the optional reevaluate flag from the raw JSON object.
+fn parse_reevaluate_field(raw: Option<&serde_json::Value>) -> ApiResult<bool> {
+    match raw {
+        None => Ok(false),
+        Some(serde_json::Value::Bool(value)) => Ok(*value),
+        Some(_) => Err(bad_request_error("reevaluate must be true or false")),
+    }
 }

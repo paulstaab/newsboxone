@@ -99,6 +99,10 @@ fn protected_router(state_for_middleware: AppState) -> Router<AppState> {
             axum::routing::post(feeds::mark_feed_items_read),
         )
         .route(
+            "/feeds/{feed_id}/quality",
+            axum::routing::post(feeds::update_feed_quality),
+        )
+        .route(
             "/items/{item_id}/read",
             axum::routing::post(items::mark_item_as_read),
         )

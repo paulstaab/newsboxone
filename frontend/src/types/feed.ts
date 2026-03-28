@@ -43,6 +43,24 @@ export interface Feed {
 
   /** Update mode: 0 = ignore, 1 = normal */
   updateMode: 0 | 1;
+
+  /** Unix timestamp (seconds) of the latest feed-quality evaluation */
+  lastQualityCheck: number | null;
+
+  /** Whether extracted full text is currently enabled for this feed */
+  useExtractedFulltext: boolean;
+
+  /** Whether LLM summaries are currently enabled for this feed */
+  useLlmSummary: boolean;
+
+  /** Manual override for extracted full text, null when automatic */
+  manualUseExtractedFulltext: boolean | null;
+
+  /** Manual override for LLM summary, null when automatic */
+  manualUseLlmSummary: boolean | null;
+
+  /** Unix timestamp (seconds) of the latest manual feed-quality change */
+  lastManualQualityOverride: number | null;
 }
 
 /** Raw feed object returned by the Nextcloud News API */
@@ -60,6 +78,12 @@ export interface ApiFeed {
   pinned: boolean;
   updateErrorCount: number;
   lastUpdateError: string | null;
+  lastQualityCheck: number | null;
+  useExtractedFulltext: boolean;
+  useLlmSummary: boolean;
+  manualUseExtractedFulltext: boolean | null;
+  manualUseLlmSummary: boolean | null;
+  lastManualQualityOverride: number | null;
 }
 
 /** Response wrapper for GET /feeds */
@@ -86,5 +110,11 @@ export function normalizeFeed(api: ApiFeed): Feed {
     pinned: api.pinned,
     lastUpdateError: api.lastUpdateError,
     updateMode: api.updateErrorCount > 0 ? 0 : 1,
+    lastQualityCheck: api.lastQualityCheck,
+    useExtractedFulltext: api.useExtractedFulltext,
+    useLlmSummary: api.useLlmSummary,
+    manualUseExtractedFulltext: api.manualUseExtractedFulltext,
+    manualUseLlmSummary: api.manualUseLlmSummary,
+    lastManualQualityOverride: api.lastManualQualityOverride,
   };
 }

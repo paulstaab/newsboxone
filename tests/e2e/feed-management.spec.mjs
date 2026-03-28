@@ -46,7 +46,7 @@ test.describe('Feed onboarding and management e2e scenarios', () => {
     await addFeedViaUi(page, FEED_URLS.engineering);
 
     const dialog = page.getByRole('dialog');
-    await page.getByRole('button', { name: /add feed/i }).click();
+    await page.getByRole('button', { name: /subscribe to feed/i }).click();
     await expect(dialog).toBeVisible();
     await page.getByLabel(/^feed url$/i).fill(FEED_URLS.engineering);
     await page.getByRole('button', { name: /^subscribe$/i }).click();
@@ -65,20 +65,24 @@ test.describe('Feed onboarding and management e2e scenarios', () => {
     await page.getByRole('button', { name: /^save$/i }).first().click();
     await expect(page.getByRole('heading', { name: 'Platform' })).toBeVisible();
 
-    await page.getByRole('button', { name: /rename feed engineering daily/i }).click();
-    await page.getByLabel(/feed name for engineering daily/i).fill('Platform Digest');
-    await page.getByRole('button', { name: /^save$/i }).last().click();
-    await expect(page.getByRole('heading', { name: 'Platform Digest', exact: true })).toBeVisible();
-
-    await page.getByRole('button', { name: /move platform digest to another folder/i }).click();
-    await page.getByLabel(/^target folder$/i).selectOption({ label: 'Archive' });
-    await page.getByRole('button', { name: /^move feed$/i }).click();
+    await page
+      .getByRole('button', { name: /adjust feed quality for engineering daily/i })
+      .click();
+    await page.getByLabel(/feed title setting/i).fill('Platform Digest');
+    await page.getByLabel(/folder setting/i).selectOption({ label: 'Archive' });
+    await page.getByRole('button', { name: /^save$/i }).click();
+    await expect(page.getByText(/updated settings for platform digest/i)).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Archive' })).toBeVisible();
+    await expect(page.getByRole('row', { name: /platform digest/i })).toBeVisible();
 
-    await page.getByRole('button', { name: /move platform digest to another folder/i }).click();
-    await page.getByLabel(/^target folder$/i).selectOption({ label: 'Uncategorized' });
-    await page.getByRole('button', { name: /^move feed$/i }).click();
+    await page
+      .getByRole('button', { name: /adjust feed quality for platform digest/i })
+      .click();
+    await page.getByLabel(/folder setting/i).selectOption({ label: 'Uncategorized' });
+    await page.getByRole('button', { name: /^save$/i }).click();
+    await expect(page.getByText(/updated settings for platform digest/i)).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Uncategorized' })).toBeVisible();
+    await expect(page.getByRole('row', { name: /platform digest/i })).toBeVisible();
   });
 
   test('[TS-FEED-MGMT-005] reader deletes a feed and its items', async ({ page }) => {

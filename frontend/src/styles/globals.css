@@ -1,11 +1,9 @@
 @import './tokens.css';
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@config "../../tailwind.config.mjs";
+@import 'tailwindcss';
 
 :root {
-  color-scheme: dark light;
+  color-scheme: dark;
 }
 
 * {
@@ -39,6 +37,12 @@ input:focus-visible,
 textarea:focus-visible {
   outline: 2px solid hsl(var(--color-accent-strong));
   outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+  }
 }
 
 @keyframes article-card-spin {
