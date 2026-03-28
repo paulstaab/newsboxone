@@ -1,11 +1,16 @@
+use axum::Router;
 use axum::body::Body;
 use axum::http::Request;
+use axum::http::header;
+use axum::routing::{get, post};
 use serde_json::Value;
 use tower::ServiceExt;
 
 use crate::api::app;
 
-use super::support::{setup_pool, start_fixture_feed_server, state, state_with_testing_mode};
+use super::support::{
+    setup_pool, start_fixture_feed_server, state, state_with_openai, state_with_testing_mode,
+};
 
 #[tokio::test]
 async fn feeds_endpoint_maps_root_folder_to_null() {
@@ -309,6 +314,61 @@ async fn add_feed_extracts_media_thumbnail_from_body_content() {
 }
 
 #[tokio::test]
+async fn add_feed_defers_quality_evaluation_until_later_updates() {
+    let fixture_base_url = start_quality_deferral_fixture_server().await;
+    let feed_url = format!("{fixture_base_url}/quality.xml");
+    let pool = setup_pool().await;
+
+    let response = app(state_with_openai(pool.clone(), &fixture_base_url))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/feeds")
+                .header("content-type", "application/json")
+                .body(Body::from(format!(
+                    r#"{{"url":"{feed_url}","folderId":0}}"#
+                )))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
+
+    let created_feed_id: i64 = sqlx::query_scalar("SELECT id FROM feed WHERE url = ?")
+        .bind(&feed_url)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+    let quality_state: (Option<i64>, bool, bool) = sqlx::query_as(
+        "SELECT last_quality_check, use_extracted_fulltext, use_llm_summary FROM feed WHERE id = ?",
+    )
+    .bind(created_feed_id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(quality_state.0, None);
+    assert!(!quality_state.1);
+    assert!(!quality_state.2);
+
+    let article_state: (Option<String>, Option<String>) =
+        sqlx::query_as("SELECT content, summary FROM article WHERE feed_id = ? LIMIT 1")
+            .bind(created_feed_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        article_state.0.as_deref(),
+        Some("<p>Short teaser only.</p>")
+    );
+    assert_eq!(
+        article_state.1.as_deref(),
+        Some("<p>Short teaser only.</p>")
+    );
+}
+
+#[tokio::test]
 async fn add_feed_unreadable_source_returns_422() {
     let feed_url = start_fixture_feed_server()
         .await
@@ -360,4 +420,69 @@ async fn delete_feed_removes_associated_articles() {
 
     assert_eq!(remaining_feed, 0);
     assert_eq!(remaining_articles, 0);
+}
+
+async fn start_quality_deferral_fixture_server() -> String {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let base_url = format!("http://{addr}");
+
+    let app = Router::new()
+        .route(
+            "/quality.xml",
+            get({
+                let base_url = base_url.clone();
+                move || {
+                    let body = format!(
+                        r#"<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Quality Deferral Fixture</title>
+  <link href="{base_url}/feed-home" />
+  <updated>2026-03-09T00:00:00Z</updated>
+  <id>tag:example.org,2026:quality-deferral</id>
+  <entry>
+    <title>Deferred Entry</title>
+    <link href="{base_url}/articles/deferred-entry" />
+    <id>tag:example.org,2026:deferred-entry</id>
+    <updated>2026-03-09T00:00:00Z</updated>
+    <content type="html"><![CDATA[<p>Short teaser only.</p>]]></content>
+  </entry>
+</feed>"#
+                    );
+                    async move { ([(header::CONTENT_TYPE, "application/atom+xml")], body) }
+                }
+            }),
+        )
+        .route(
+            "/articles/deferred-entry",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+                    r#"<!doctype html>
+<html>
+  <body>
+    <article>
+      <p>This extracted article is intentionally much longer than the feed teaser so a quality check would enable extraction immediately if the create path still ran it.</p>
+      <p>It also contains enough material to make a later AI summary worthwhile once the periodic updater evaluates this feed.</p>
+    </article>
+  </body>
+</html>"#,
+                )
+            }),
+        )
+        .route(
+            "/v1/chat/completions",
+            post(|| async {
+                (
+                    [(header::CONTENT_TYPE, "application/json")],
+                    r#"{"choices":[{"message":{"content":"{\"summary\":\"Fixture summary from mock LLM.\"}"}}]}"#,
+                )
+            }),
+        );
+
+    tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+
+    base_url
 }
