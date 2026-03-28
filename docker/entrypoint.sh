@@ -8,7 +8,7 @@ fallback_data_dir="${TMPDIR:-/tmp}/newsboxone-data"
 resolve_data_dir() {
   local data_dir="$1"
 
-  if mkdir -p "${data_dir}" 2>/dev/null && [[ -w "${data_dir}" ]]; then
+  if mkdir -p "${data_dir}" 2>/dev/null && [[ -w "${data_dir}" && -x "${data_dir}" ]]; then
     printf '%s\n' "${data_dir}"
     return 0
   fi
