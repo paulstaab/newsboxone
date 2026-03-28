@@ -2,7 +2,7 @@ import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
 const ROOT_DIR = path.resolve(__dirname, '..');
-const FRONTEND_PORT = 3000;
+const FRONTEND_PORT = 3001;
 const BACKEND_PORT = 8000;
 const FEED_FIXTURE_PORT = 4100;
 
@@ -60,7 +60,7 @@ export default defineConfig({
       },
     },
     {
-      command: 'npm run dev -- --hostname 127.0.0.1 --port 3000',
+      command: `npm run dev -- --hostname 127.0.0.1 --port ${String(FRONTEND_PORT)}`,
       cwd: path.join(ROOT_DIR, 'frontend'),
       url: frontendOrigin,
       reuseExistingServer: !process.env.CI,

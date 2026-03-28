@@ -160,7 +160,7 @@ pub(super) async fn mark_feed_items_read(
 /// Validates feed input, persists the feed row, and ingests the initial article set.
 async fn add_feed_impl(
     pool: &SqlitePool,
-    feed_http_client: &reqwest::Client,
+    _feed_http_client: &reqwest::Client,
     article_http_client: &reqwest::Client,
     config: &Config,
     input: FeedCreateIn,
@@ -174,12 +174,16 @@ async fn add_feed_impl(
         return Err(feed_already_exists());
     }
 
-    let response = ssrf::get_with_safe_redirects(feed_http_client, &input.url, config.testing_mode)
-        .await
-        .map_err(|error| match error {
-            ssrf::SafeGetError::Validation(error) => ssrf_error(error),
-            ssrf::SafeGetError::Request(error) => feed_parse_error(error),
-        })?;
+    let response = ssrf::get_with_safe_redirects(
+        crate::http_client::HttpClientProfile::Feed,
+        &input.url,
+        config.testing_mode,
+    )
+    .await
+    .map_err(|error| match error {
+        ssrf::SafeGetError::Validation(error) => ssrf_error(error),
+        ssrf::SafeGetError::Request(error) => feed_parse_error(error),
+    })?;
     if !response.status().is_success() {
         return Err(feed_parse_error(format!(
             "Error parsing feed from `{}`: HTTP {}",

@@ -5,6 +5,8 @@ use anyhow::{Context, Result};
 use reqwest::header::LOCATION;
 use tokio::net::lookup_host;
 
+use crate::http_client::{self, HttpClientProfile};
+
 const MAX_REDIRECTS: usize = 3;
 
 #[derive(Debug)]
@@ -91,7 +93,7 @@ async fn validate_remote_url(url: &str, allow_localhost: bool) -> Result<Validat
 /// Sends a GET request while validating each redirect hop against the SSRF
 /// policy before the client follows it.
 pub async fn get_with_safe_redirects(
-    client: &reqwest::Client,
+    client_profile: HttpClientProfile,
     url: &str,
     allow_localhost: bool,
 ) -> std::result::Result<reqwest::Response, SafeGetError> {
@@ -100,13 +102,13 @@ pub async fn get_with_safe_redirects(
         .map_err(SafeGetError::Validation)?;
 
     for redirect_count in 0..=MAX_REDIRECTS {
-        let request = client
+        let client =
+            build_pinned_client(client_profile, &current_url).map_err(SafeGetError::Request)?;
+        let response = client
             .get(current_url.url.clone())
-            .build()
-            .map_err(|error| SafeGetError::Request(error.into()))?;
-        let response = execute_pinned_request(request, &current_url)
+            .send()
             .await
-            .map_err(SafeGetError::Request)?;
+            .map_err(|err| SafeGetError::Request(err.into()))?;
 
         let status = response.status();
         let is_follow_redirect = matches!(
@@ -179,24 +181,18 @@ async fn validate_redirect_target_validated(
     validate_remote_url(redirect_url.as_str(), allow_localhost).await
 }
 
-async fn execute_pinned_request(
-    request: reqwest::Request,
+fn build_pinned_client(
+    client_profile: HttpClientProfile,
     validated_url: &ValidatedUrl,
-) -> Result<reqwest::Response> {
-    let mut builder = reqwest::Client::builder().redirect(reqwest::redirect::Policy::none());
-
-    if let Some(hostname) = &validated_url.hostname {
-        builder = builder.resolve_to_addrs(hostname, &validated_url.resolved_addrs);
+) -> Result<reqwest::Client> {
+    match &validated_url.hostname {
+        Some(hostname) => http_client::build_pinned_http_client(
+            client_profile,
+            hostname,
+            &validated_url.resolved_addrs,
+        ),
+        None => http_client::build_http_client(client_profile, None),
     }
-
-    let client = builder
-        .build()
-        .context("failed to build pinned reqwest client for validated SSRF request")?;
-
-    client
-        .execute(request)
-        .await
-        .context("failed to execute validated SSRF request")
 }
 
 fn validate_ip_address(ip: IpAddr, allow_localhost: bool) -> Result<()> {

@@ -476,7 +476,7 @@ fn should_enable_llm_summary_by_heuristic(
 
 /// Fetches a remote article document, logs the extraction request, and extracts cleaned main-content HTML.
 async fn extract_article(
-    article_http_client: &Client,
+    _article_http_client: &Client,
     config: &Config,
     feed_id: Option<i64>,
     article_id: Option<i64>,
@@ -489,30 +489,35 @@ async fn extract_article(
         "starting article extraction"
     );
 
-    let response =
-        match ssrf::get_with_safe_redirects(article_http_client, url, config.testing_mode).await {
-            Ok(response) => response,
-            Err(ssrf::SafeGetError::Validation(err)) => {
-                tracing::warn!(
-                    feed_id,
-                    article_id,
-                    loaded_url = url,
-                    error = %err,
-                    "blocked article url for extraction"
-                );
-                return None;
-            }
-            Err(ssrf::SafeGetError::Request(err)) => {
-                tracing::warn!(
-                    feed_id,
-                    article_id,
-                    loaded_url = url,
-                    error = %err,
-                    "failed to fetch article url for extraction"
-                );
-                return None;
-            }
-        };
+    let response = match ssrf::get_with_safe_redirects(
+        crate::http_client::HttpClientProfile::Article,
+        url,
+        config.testing_mode,
+    )
+    .await
+    {
+        Ok(response) => response,
+        Err(ssrf::SafeGetError::Validation(err)) => {
+            tracing::warn!(
+                feed_id,
+                article_id,
+                loaded_url = url,
+                error = %err,
+                "blocked article url for extraction"
+            );
+            return None;
+        }
+        Err(ssrf::SafeGetError::Request(err)) => {
+            tracing::warn!(
+                feed_id,
+                article_id,
+                loaded_url = url,
+                error = %err,
+                "failed to fetch article url for extraction"
+            );
+            return None;
+        }
+    };
 
     if !response.status().is_success() {
         tracing::warn!(

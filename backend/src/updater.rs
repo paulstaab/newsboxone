@@ -397,14 +397,18 @@ async fn set_single_feed_quality_overrides(
 
 /// Downloads a remote feed document and parses it into the shared feed model.
 async fn fetch_and_parse_feed(
-    feed_http_client: &reqwest::Client,
+    _feed_http_client: &reqwest::Client,
     url: &str,
     testing_mode: bool,
 ) -> Result<Feed> {
-    let response = ssrf::get_with_safe_redirects(feed_http_client, url, testing_mode)
-        .await
-        .map_err(ssrf::SafeGetError::into_anyhow)
-        .with_context(|| format!("request failed for {url}"))?;
+    let response = ssrf::get_with_safe_redirects(
+        crate::http_client::HttpClientProfile::Feed,
+        url,
+        testing_mode,
+    )
+    .await
+    .map_err(ssrf::SafeGetError::into_anyhow)
+    .with_context(|| format!("request failed for {url}"))?;
     if !response.status().is_success() {
         anyhow::bail!("request failed for {url}: HTTP {}", response.status());
     }

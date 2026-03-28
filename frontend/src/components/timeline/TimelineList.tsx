@@ -72,7 +72,7 @@ export function TimelineList({
     );
   }
 
-  const actionDisabled = Boolean(disableActions || isUpdating);
+  const actionDisabled = disableActions === true || isUpdating === true;
 
   const renderActionRow = () => (
     <div className="timeline-list__actions">

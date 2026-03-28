@@ -90,8 +90,11 @@ test.describe('Feed onboarding and management e2e scenarios', () => {
     await page.goto('/feeds');
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /delete feed engineering daily/i }).click();
+    await expect(page.getByRole('heading', { name: 'Engineering Daily' })).toHaveCount(0);
 
     await page.goto('/timeline');
+    await page.getByRole('button', { name: /^refresh$/i }).click();
+    await expect(page.getByRole('link', { name: /open engineering launch brief/i })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: /all caught up/i })).toBeVisible();
   });
 

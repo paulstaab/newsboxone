@@ -15,6 +15,7 @@ const DATABASE_CANDIDATES = [
 ];
 
 export const AUTH_HEADER = 'Basic dGVzdDp0ZXN0';
+export const BACKEND_ORIGIN = 'http://127.0.0.1:8000';
 export const FEED_FIXTURE_ORIGIN = 'http://127.0.0.1:4100';
 export const FEED_URLS = {
   engineering: `${FEED_FIXTURE_ORIGIN}/feeds/engineering.xml`,
@@ -45,7 +46,7 @@ function resolveDatabasePath() {
 }
 
 async function apiJson(request, url, init = {}) {
-  const response = await request.fetch(url, {
+  const response = await request.fetch(`${BACKEND_ORIGIN}${url}`, {
     ...init,
     headers: {
       Authorization: AUTH_HEADER,
@@ -81,7 +82,7 @@ export async function loginViaUi(page, options = {}) {
 export async function resetBackendState(request) {
   const feedsResponse = await apiJson(request, '/api/feeds');
   for (const feed of feedsResponse.feeds) {
-    const response = await request.fetch(`/api/feeds/${String(feed.id)}`, {
+    const response = await request.fetch(`${BACKEND_ORIGIN}/api/feeds/${String(feed.id)}`, {
       method: 'DELETE',
       headers: {
         Authorization: AUTH_HEADER,
@@ -92,7 +93,7 @@ export async function resetBackendState(request) {
 
   const foldersResponse = await apiJson(request, '/api/folders');
   for (const folder of foldersResponse.folders) {
-    const response = await request.fetch(`/api/folders/${String(folder.id)}`, {
+    const response = await request.fetch(`${BACKEND_ORIGIN}/api/folders/${String(folder.id)}`, {
       method: 'DELETE',
       headers: {
         Authorization: AUTH_HEADER,
