@@ -121,6 +121,7 @@ function buildFeed(partial: Partial<Feed>): Feed {
     link: partial.link ?? 'https://example.com',
     faviconLink: partial.faviconLink ?? null,
     added: partial.added ?? 0,
+    lastArticleDate: partial.lastArticleDate ?? null,
     nextUpdateTime: partial.nextUpdateTime ?? null,
     folderId: partial.folderId ?? null,
     unreadCount: partial.unreadCount ?? 0,

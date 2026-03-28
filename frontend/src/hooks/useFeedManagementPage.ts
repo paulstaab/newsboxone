@@ -5,10 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { createFeed, deleteFeed, getFeeds, moveFeed, renameFeed } from '@/lib/api/feeds';
 import { createFolder, deleteFolder, getFolders, renameFolder } from '@/lib/api/folders';
-import { getItems } from '@/lib/api/items';
 import { AuthenticationError } from '@/lib/api/client';
 import { formatError } from '@/lib/utils/errorFormatter';
-import { ItemFilterType, type Feed, type Folder } from '@/types';
+import { type Feed, type Folder } from '@/types';
 import {
   buildFeedManagementGroups,
   compareLabels,
@@ -18,18 +17,6 @@ import {
 interface FeedManagementData {
   folders: Folder[];
   feeds: Feed[];
-}
-
-/**
- * Removes a feed activity entry without mutating the source record.
- */
-function omitLatestArticleDate(
-  entries: Record<number, number | null>,
-  feedId: number,
-): Record<number, number | null> {
-  return Object.fromEntries(
-    Object.entries(entries).filter(([entryId]) => Number(entryId) !== feedId),
-  ) as Record<number, number | null>;
 }
 
 /**
@@ -60,7 +47,6 @@ export function useFeedManagementPage() {
   const moveFeedDialogRef = useRef<HTMLDialogElement>(null);
 
   const [data, setData] = useState<FeedManagementData>({ folders: [], feeds: [] });
-  const [latestArticleDates, setLatestArticleDates] = useState<Record<number, number | null>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
@@ -83,8 +69,8 @@ export function useFeedManagementPage() {
     [data.folders],
   );
   const groups = useMemo<FeedManagementGroup[]>(
-    () => buildFeedManagementGroups(data.folders, data.feeds, latestArticleDates),
-    [data.feeds, data.folders, latestArticleDates],
+    () => buildFeedManagementGroups(data.folders, data.feeds),
+    [data.feeds, data.folders],
   );
 
   const handleRequestError = useCallback(
@@ -122,37 +108,6 @@ export function useFeedManagementPage() {
     setMoveFeedFolderId('');
   }, []);
 
-  const refreshFeedActivity = useCallback(async (feeds: Feed[]) => {
-    if (feeds.length === 0) {
-      setLatestArticleDates({});
-      return;
-    }
-
-    try {
-      const items = await getItems({
-        type: ItemFilterType.ALL,
-        getRead: true,
-        batchSize: 200,
-      });
-
-      const datesByFeed: Record<number, number | null> = {};
-      for (const feed of feeds) {
-        datesByFeed[feed.id] = null;
-      }
-      for (const item of items) {
-        if (!(item.feedId in datesByFeed)) continue;
-        const current = datesByFeed[item.feedId];
-        if (current === null || item.pubDate > current) {
-          datesByFeed[item.feedId] = item.pubDate;
-        }
-      }
-
-      setLatestArticleDates(datesByFeed);
-    } catch {
-      setLatestArticleDates((current) => current);
-    }
-  }, []);
-
   const refreshPageData = useCallback(
     async (initialLoad = false) => {
       if (initialLoad) {
@@ -165,7 +120,6 @@ export function useFeedManagementPage() {
         const [folders, feedsResponse] = await Promise.all([getFolders(), getFeeds()]);
         setData({ folders, feeds: feedsResponse.feeds });
         setPageError(null);
-        void refreshFeedActivity(feedsResponse.feeds);
       } catch (error) {
         const message = handleRequestError(error, 'Unable to load feed management data.');
         setPageError(message);
@@ -177,7 +131,7 @@ export function useFeedManagementPage() {
         }
       }
     },
-    [handleRequestError, refreshFeedActivity],
+    [handleRequestError],
   );
 
   useEffect(() => {
@@ -241,10 +195,6 @@ export function useFeedManagementPage() {
       setData((current) => ({
         ...current,
         feeds: [...current.feeds, result.feed],
-      }));
-      setLatestArticleDates((current) => ({
-        ...current,
-        [result.feed.id]: null,
       }));
       setNewFeedUrl('');
       setNewFeedFolderId('');
@@ -326,12 +276,6 @@ export function useFeedManagementPage() {
               ...current,
               feeds: current.feeds.filter((feed) => !deletedFeedIds.includes(feed.id)),
             }));
-            setLatestArticleDates((current) =>
-              deletedFeedIds.reduce(
-                (nextEntries, feedId) => omitLatestArticleDate(nextEntries, feedId),
-                current,
-              ),
-            );
             throw new Error(
               `Unable to unsubscribe ${String(failedCount)} feed${failedCount === 1 ? '' : 's'} from "${folder.name}". The folder was not deleted.`,
             );
@@ -343,12 +287,6 @@ export function useFeedManagementPage() {
           folders: current.folders.filter((entry) => entry.id !== folder.id),
           feeds: current.feeds.filter((feed) => feed.folderId !== folder.id),
         }));
-        setLatestArticleDates((current) =>
-          assignedFeeds.reduce(
-            (nextEntries, feed) => omitLatestArticleDate(nextEntries, feed.id),
-            current,
-          ),
-        );
         setStatusMessage(`Deleted folder ${folder.name}.`);
       });
     },
@@ -420,7 +358,6 @@ export function useFeedManagementPage() {
           ...current,
           feeds: current.feeds.filter((entry) => entry.id !== feed.id),
         }));
-        setLatestArticleDates((current) => omitLatestArticleDate(current, feed.id));
         setStatusMessage(`Unsubscribed from ${feed.title}.`);
       });
     },

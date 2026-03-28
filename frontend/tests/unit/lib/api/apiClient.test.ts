@@ -171,7 +171,16 @@ describe('ApiClient', () => {
         id: 101,
         url: 'https://example.com/feed',
         title: 'Test Feed',
+        faviconLink: null,
+        added: 1234567890,
+        lastArticleDate: null,
+        nextUpdateTime: null,
         folderId: null,
+        ordering: 0,
+        link: 'https://example.com',
+        pinned: false,
+        updateErrorCount: 0,
+        lastUpdateError: null,
       };
 
       server.use(
@@ -207,6 +216,7 @@ describe('ApiClient', () => {
         folderId: 10,
         faviconLink: null,
         added: 1234567890,
+        lastArticleDate: 1234567000,
         nextUpdateTime: null,
         ordering: 0,
         link: 'https://example.com',
@@ -227,6 +237,7 @@ describe('ApiClient', () => {
       expect(result.feeds[0]).toHaveProperty('id');
       expect(result.feeds[0]).toHaveProperty('title');
       expect(result.feeds[0]).toHaveProperty('folderId');
+      expect(result.feeds[0]).toHaveProperty('lastArticleDate', 1234567000);
     });
   });
 

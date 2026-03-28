@@ -26,6 +26,7 @@ struct FeedRow {
     title: Option<String>,
     favicon_link: Option<String>,
     added: i64,
+    last_article_date: Option<i64>,
     next_update_time: Option<i64>,
     folder_id: i64,
     ordering: i64,
@@ -43,6 +44,7 @@ pub(super) struct FeedOut {
     title: Option<String>,
     favicon_link: Option<String>,
     added: i64,
+    last_article_date: Option<i64>,
     next_update_time: Option<i64>,
     folder_id: Option<i64>,
     ordering: i64,
@@ -202,7 +204,7 @@ async fn add_feed_impl(
     let link = parsed.links.first().map(|l| l.href.clone());
 
     let result = sqlx::query(
-        "INSERT INTO feed (url, title, favicon_link, added, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error) VALUES (?, ?, NULL, ?, ?, ?, 0, ?, 0, 0, NULL)",
+        "INSERT INTO feed (url, title, favicon_link, added, last_article_date, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error) VALUES (?, ?, NULL, ?, NULL, ?, ?, 0, ?, 0, 0, NULL)",
     )
     .bind(&input.url)
     .bind(title)
@@ -336,7 +338,7 @@ pub(super) async fn load_feeds(pool: &SqlitePool) -> ApiResult<Vec<FeedOut>> {
             .map_err(internal_error)?;
 
     let rows = sqlx::query_as::<_, FeedRow>(
-        "SELECT id, url, title, favicon_link, added, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error FROM feed ORDER BY id",
+        "SELECT id, url, title, favicon_link, added, last_article_date, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error FROM feed ORDER BY id",
     )
     .fetch_all(pool)
     .await
@@ -350,6 +352,7 @@ pub(super) async fn load_feeds(pool: &SqlitePool) -> ApiResult<Vec<FeedOut>> {
             title: feed.title,
             favicon_link: feed.favicon_link,
             added: feed.added,
+            last_article_date: feed.last_article_date,
             next_update_time: feed.next_update_time,
             folder_id: match root_folder_id {
                 Some(root_id) if root_id == feed.folder_id => None,

@@ -31,11 +31,7 @@ export function compareLabels(left: string, right: string): number {
 /**
  * Builds alphabetized feed groups and feed rows for the management page.
  */
-export function buildFeedManagementGroups(
-  folders: Folder[],
-  feeds: Feed[],
-  latestArticleDates: Record<number, number | null>,
-): FeedManagementGroup[] {
+export function buildFeedManagementGroups(folders: Folder[], feeds: Feed[]): FeedManagementGroup[] {
   const folderNameById = new Map(folders.map((folder) => [folder.id, folder.name]));
   const groupedFeeds = new Map<number | null, FeedManagementRow[]>();
 
@@ -44,7 +40,7 @@ export function buildFeedManagementGroups(
     const rows = groupedFeeds.get(folderId) ?? [];
     rows.push({
       feed,
-      lastArticleDate: latestArticleDates[feed.id] ?? null,
+      lastArticleDate: feed.lastArticleDate,
     });
     groupedFeeds.set(folderId, rows);
   }

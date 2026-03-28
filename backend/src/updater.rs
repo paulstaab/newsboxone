@@ -578,7 +578,7 @@ mod tests {
     async fn setup_pool() -> SqlitePool {
         let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
         sqlx::query(
-            "CREATE TABLE feed (id INTEGER PRIMARY KEY NOT NULL, url VARCHAR NOT NULL UNIQUE, title VARCHAR, favicon_link VARCHAR, added INTEGER NOT NULL, next_update_time INTEGER, folder_id INTEGER NOT NULL, ordering INTEGER NOT NULL, link VARCHAR, pinned BOOLEAN NOT NULL, update_error_count INTEGER NOT NULL, last_update_error VARCHAR, is_mailing_list BOOLEAN NOT NULL DEFAULT 0, last_quality_check INTEGER, use_extracted_fulltext BOOLEAN NOT NULL DEFAULT 0, use_llm_summary BOOLEAN NOT NULL DEFAULT 0, manual_use_extracted_fulltext BOOLEAN, manual_use_llm_summary BOOLEAN, last_manual_quality_override INTEGER)",
+            "CREATE TABLE feed (id INTEGER PRIMARY KEY NOT NULL, url VARCHAR NOT NULL UNIQUE, title VARCHAR, favicon_link VARCHAR, added INTEGER NOT NULL, last_article_date INTEGER, next_update_time INTEGER, folder_id INTEGER NOT NULL, ordering INTEGER NOT NULL, link VARCHAR, pinned BOOLEAN NOT NULL, update_error_count INTEGER NOT NULL, last_update_error VARCHAR, is_mailing_list BOOLEAN NOT NULL DEFAULT 0, last_quality_check INTEGER, use_extracted_fulltext BOOLEAN NOT NULL DEFAULT 0, use_llm_summary BOOLEAN NOT NULL DEFAULT 0, manual_use_extracted_fulltext BOOLEAN, manual_use_llm_summary BOOLEAN, last_manual_quality_override INTEGER)",
         )
         .execute(&pool)
         .await
@@ -642,6 +642,31 @@ mod tests {
     <summary>Update summary</summary>
         <content type="html"><![CDATA[<p>Body</p><img src="https://example.org/thumb.jpg" alt="thumb" />]]></content>
   </entry>
+</feed>"#,
+                )
+            }),
+        );
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+        format!("http://{addr}/atom.xml")
+    }
+
+    async fn start_empty_fixture_feed_server() -> String {
+        let app = Router::new().route(
+            "/atom.xml",
+            get(|| async {
+                (
+                    [(http_header::CONTENT_TYPE, "application/atom+xml")],
+                    r#"<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Empty Updater Fixture</title>
+  <link href="http://example.org/" />
+  <updated>2026-03-06T00:00:00Z</updated>
+  <id>tag:example.org,2026:empty-feed</id>
 </feed>"#,
                 )
             }),
@@ -726,6 +751,12 @@ mod tests {
                 .await
                 .unwrap();
         assert_eq!(article_count, 1);
+        let last_article_date: Option<i64> =
+            sqlx::query_scalar("SELECT last_article_date FROM feed WHERE id = 1")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(last_article_date, Some(1_772_755_200));
 
         let err_count: i64 = sqlx::query_scalar("SELECT update_error_count FROM feed WHERE id = 1")
             .fetch_one(&pool)
@@ -956,6 +987,37 @@ mod tests {
                 .await
                 .unwrap();
         assert!(in_payload_exists.is_some());
+    }
+
+    #[tokio::test]
+    async fn update_due_feeds_preserves_last_article_date_after_cleanup_removes_all_articles() {
+        let pool = setup_pool().await;
+        let url = start_empty_fixture_feed_server().await;
+        sqlx::query("INSERT INTO feed (id, url, title, favicon_link, added, last_article_date, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error, is_mailing_list, last_quality_check, use_extracted_fulltext, use_llm_summary) VALUES (17, ?, 'Empty Fixture', NULL, 1, 1234, 0, 1, 0, 'http://example.org', 0, 0, NULL, 0, NULL, 0, 0)")
+            .bind(url)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let stale = unix_now() - (NINETY_DAYS + ONE_DAY);
+        insert_test_article(&pool, 17, "stale-delete", stale, 0, 0).await;
+
+        let updated = update_due_feeds(&pool, &test_config(), true).await.unwrap();
+        assert_eq!(updated, 1);
+
+        let article_count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM article WHERE feed_id = 17")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        let last_article_date: Option<i64> =
+            sqlx::query_scalar("SELECT last_article_date FROM feed WHERE id = 17")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+
+        assert_eq!(article_count, 0);
+        assert_eq!(last_article_date, Some(1234));
     }
 
     #[tokio::test]

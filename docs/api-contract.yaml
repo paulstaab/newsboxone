@@ -673,6 +673,7 @@ components:
           id,
           url,
           title,
+          lastArticleDate,
           folderId,
           ordering,
           pinned,
@@ -696,6 +697,10 @@ components:
             - "null"
         added:
           type: integer
+        lastArticleDate:
+          type:
+            - integer
+            - "null"
         nextUpdateTime:
           type:
             - integer
