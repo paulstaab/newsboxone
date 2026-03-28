@@ -45,7 +45,7 @@ export function InstallPrompt({ delayMs = 3000, showDuringActivity = false }: In
     };
     window.addEventListener('appinstalled', handleInstalled);
 
-    let idleTimer: NodeJS.Timeout | null = null;
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
     // Check if we should show the prompt after delay
     const timer = setTimeout(() => {
