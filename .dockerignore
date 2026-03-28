@@ -1,0 +1,15 @@
+.git
+.devcontainer
+.github
+.vscode
+backend/target
+backend/data/*.sqlite3
+backend/data/*.sqlite3-shm
+backend/data/*.sqlite3-wal
+frontend/node_modules
+frontend/.next
+frontend/out
+frontend/playwright-report
+frontend/test-results
+frontend/log
+frontend/screenshots

@@ -1,0 +1,24 @@
+{
+  "chat.agent.maxRequests": 500,
+  "chat.tools.terminal.autoApprove": {
+    "cargo clippy": true,
+    "cargo fmt": true,
+    "cargo run": true,
+    "cargo test": true,
+    "npm ci": true,
+    "npm run build": true,
+    "npm run lint": true,
+    "npm run test": true,
+    "npm run typecheck": true,
+    "npx playwright install --with-deps": true,
+    "npx playwright test": true
+  },
+  "search.exclude": {
+    "backend/target": true,
+    "frontend/.next": true,
+    "frontend/node_modules": true,
+    "frontend/out": true,
+    "frontend/playwright-report": true,
+    "frontend/test-results": true
+  }
+}

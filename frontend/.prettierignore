@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+package-lock.json
+playwright-report/
+playwright-report-e2e/
+playwright-report-integration/
+test-results/
+tests/integration/.auth/
+.devcontainer/
+.github/agents/
+.specify/
+specs/

@@ -1,0 +1,14 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://127.0.0.1:3000",
+      "localStorage": [
+        {
+          "name": "newsboxone:session",
+          "value": "{\"username\":\"test\",\"credentials\":\"dGVzdDp0ZXN0\",\"rememberDevice\":true}"
+        }
+      ]
+    }
+  ]
+}
