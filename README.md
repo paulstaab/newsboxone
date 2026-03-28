@@ -1,7 +1,7 @@
 # NewsBoxOne
 
 NewsBoxOne is a self-hosted reading inbox for RSS, Atom, and email newsletters.
-It gives you one container, one web app, and one API for following sites and newsletters without depending on a hosted reader.
+It gives you a self-contained container for following sites and newsletters without depending on a hosted reader.
 
 It is built for homelab deployment: persistent local storage, required login protection for real deployments, optional AI-assisted summaries, and a single image that serves both the frontend and the API.
 
@@ -35,9 +35,6 @@ NewsBoxOne is intended for trusted users and trusted feeds only.
 - Do not give access to untrusted users who could add arbitrary feeds.
 - Only subscribe to feeds and newsletters from sources you trust.
 - Full-text extraction may trigger HTTP requests to article pages linked from a feed. If a feed points to illegal, abusive, or otherwise unsafe websites, NewsBoxOne may attempt to fetch that content during enrichment.
-
-`USERNAME` and `PASSWORD` are mandatory environment variables for running NewsBoxOne.
-Run the container only with both variables set.
 
 ## Quick Start
 
