@@ -90,7 +90,7 @@ export function useFeedManagementPage() {
   const handleRequestError = useCallback(
     (error: unknown, fallbackMessage: string) => {
       if (error instanceof AuthenticationError) {
-        logout();
+        void logout();
         router.push('/login');
         return fallbackMessage;
       }

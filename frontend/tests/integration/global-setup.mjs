@@ -4,7 +4,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const TEST_USERNAME = 'test';
-const TEST_PASSWORD = 'test';
 
 const storageStatePath = fileURLToPath(new URL('./.auth/user.json', import.meta.url));
 
