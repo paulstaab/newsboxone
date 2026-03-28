@@ -99,24 +99,28 @@ async fn token_issuance_returns_token_for_valid_credentials() {
 
 #[tokio::test]
 async fn token_issuance_rejects_invalid_credentials() {
-    let response = app(state_with_auth(setup_pool().await, TEST_USERNAME, TEST_PASSWORD))
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/api/auth/token")
-                .header("content-type", "application/json")
-                .body(Body::from(
-                    serde_json::json!({
-                        "username": TEST_USERNAME,
-                        "password": "wrongpass",
-                        "rememberDevice": false
-                    })
-                    .to_string(),
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
+    let response = app(state_with_auth(
+        setup_pool().await,
+        TEST_USERNAME,
+        TEST_PASSWORD,
+    ))
+    .oneshot(
+        Request::builder()
+            .method("POST")
+            .uri("/api/auth/token")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                serde_json::json!({
+                    "username": TEST_USERNAME,
+                    "password": "wrongpass",
+                    "rememberDevice": false
+                })
+                .to_string(),
+            ))
+            .unwrap(),
+    )
+    .await
+    .unwrap();
 
     assert_eq!(response.status(), 401);
 }
