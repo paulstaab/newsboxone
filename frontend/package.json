@@ -63,7 +63,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.11.2",
     "@eslint/js": "^9.39.4",
-    "@openai/codex": "^0.122.0",
+    "@openai/codex": "^0.123.0",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.4",
     "@testing-library/jest-dom": "^6.9.1",
@@ -86,7 +86,7 @@
     "jiti": "^2.6.1",
     "jsdom": "^29.0.2",
     "lint-staged": "^16.4.0",
-    "msw": "^2.13.4",
+    "msw": "^2.13.5",
     "postcss": "^8.5.10",
     "prettier": "^3.8.3",
     "tailwindcss": "^4.1.18",
