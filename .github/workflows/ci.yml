@@ -161,7 +161,7 @@ jobs:
         working-directory: frontend
 
   container:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     needs: [backend-lint, backend-test, frontend-lint, frontend-unit-test, frontend-integration-test, e2e-test]
     permissions:

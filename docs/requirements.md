@@ -54,6 +54,7 @@ It covers the repository-level infrastructure needed to ship the frontend and ba
 - `CI-001`: The repository shall provide a single root CI workflow that validates backend and frontend changes in one pipeline.
 - `CI-002`: The root CI workflow shall build the combined container image from the repository root.
 - `CI-003`: The root release automation shall publish only the combined container image for the unified project.
+- `CI-004`: The root CI workflow shall publish the combined container image after successful scheduled runs in addition to successful pushes to `main`.
 
 ### Documentation
 - `DOC-001`: Shared product requirements shall be maintained in this top-level document.
