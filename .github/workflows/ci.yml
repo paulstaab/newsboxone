@@ -184,7 +184,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          push: true
           tags: ghcr.io/${{ github.repository }}:latest
           platforms: linux/amd64
           cache-from: type=gha
