@@ -63,7 +63,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.11.2",
     "@eslint/js": "^9.39.4",
-    "@openai/codex": "^0.123.0",
+    "@openai/codex": "^0.124.0",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.4",
     "@testing-library/jest-dom": "^6.9.1",
