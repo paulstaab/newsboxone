@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWRImmutable from 'swr/immutable';
 import { getFolders } from '@/lib/api/folders';
 import { getFeeds } from '@/lib/api/feeds';
@@ -111,9 +111,14 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
 export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult {
   const { root, topOffset = 0, debounceMs = 100 } = options;
   const [envelope, setEnvelope] = useState<TimelineCacheEnvelope>(createEmptyTimelineCache);
+  const envelopeRef = useRef(envelope);
   const [isHydrated, setIsHydrated] = useState(false);
   const [lastUpdateError, setLastUpdateError] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    envelopeRef.current = envelope;
+  }, [envelope]);
 
   useEffect(() => {
     const cached = loadTimelineCache();
@@ -313,15 +318,19 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
 
   const markFolderRead = useCallback(
     async (folderId: number) => {
-      if (!(folderId in envelope.folders)) {
+      const currentEnvelope = envelopeRef.current;
+      if (!(folderId in currentEnvelope.folders)) {
         return;
       }
 
-      let itemIds: number[] = [];
+      const folder = currentEnvelope.folders[folderId];
+      const itemIds = folder.articles.map((article) => article.id);
+      if (itemIds.length === 0) {
+        return;
+      }
 
       setEnvelope((current) => {
         const result = markTimelineFolderRead(current, folderId);
-        itemIds = result.itemIds;
         const nextEnvelope = result.envelope;
 
         storeTimelineCache(nextEnvelope);
@@ -342,7 +351,7 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
         throw error;
       }
     },
-    [envelope.folders, refresh],
+    [refresh],
   );
 
   const skipFolder = useCallback((folderId: number) => {

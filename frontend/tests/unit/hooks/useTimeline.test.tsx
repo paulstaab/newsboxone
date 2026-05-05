@@ -4,6 +4,7 @@ import type { Article, Folder, Feed, ArticlePreview, FolderQueueEntry } from '@/
 import { useTimeline } from '@/hooks/useTimeline';
 import { CONFIG } from '@/lib/config/env';
 import { createEmptyTimelineCache } from '@/lib/storage';
+import { markItemsRead } from '@/lib/api/items';
 
 // Mock SWR immutable hook to return deterministic folder/feed payloads
 const mocks = vi.hoisted(() => ({
@@ -140,6 +141,7 @@ function buildFeed(partial: Partial<Feed>): Feed {
 
 describe('useTimeline', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     localStorage.clear();
     mocks.foldersData.value = [];
     mocks.feedsData.value = [];
@@ -281,6 +283,7 @@ describe('useTimeline', () => {
       expect(result.current.activeArticles).toHaveLength(1);
     });
 
+    expect(vi.mocked(markItemsRead)).toHaveBeenCalledWith([1, 2]);
     expect(result.current.totalUnread).toBe(1);
     expect(result.current.queue).toHaveLength(1);
   });
