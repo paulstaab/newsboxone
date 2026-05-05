@@ -437,6 +437,54 @@ describe('useTimeline', () => {
     expect(result.current.queue.map((entry) => entry.id)).toEqual([30, 10, 20]);
   });
 
+  it('marks the current folder after an immediate active-folder switch', async () => {
+    mocks.foldersData.value = [
+      { id: 10, name: 'Dev Updates', unreadCount: 0, feedIds: [] },
+      { id: 20, name: 'Design Notes', unreadCount: 0, feedIds: [] },
+    ];
+    mocks.feedsData.value = [
+      buildFeed({ id: 1, folderId: 10 }),
+      buildFeed({ id: 2, folderId: 20 }),
+    ];
+    mocks.unreadItems = [buildArticle({ id: 1, feedId: 1, folderId: 10, title: 'Dev A' })];
+
+    setCache(
+      [
+        buildEntry({
+          id: 10,
+          name: 'Dev Updates',
+          articles: [buildPreview({ id: 1, feedId: 1, folderId: 10, title: 'Dev A' })],
+        }),
+        buildEntry({
+          id: 20,
+          name: 'Design Notes',
+          articles: [buildPreview({ id: 3, feedId: 2, folderId: 20, title: 'Design A' })],
+        }),
+      ],
+      10,
+    );
+
+    const { result } = renderHook(() => useTimeline());
+
+    await waitFor(() => {
+      expect(result.current.activeFolder?.id).toBe(10);
+    });
+
+    act(() => {
+      result.current.setActiveFolder(20);
+    });
+
+    await waitFor(() => {
+      expect(result.current.activeFolder?.id).toBe(20);
+    });
+
+    await act(async () => {
+      await result.current.markFolderRead(20);
+    });
+
+    expect(vi.mocked(markItemsRead)).toHaveBeenCalledWith([3]);
+  });
+
   it('keeps read items in cache until the next sync reconciliation', async () => {
     mocks.foldersData.value = [{ id: 10, name: 'Dev Updates', unreadCount: 0, feedIds: [] }];
     mocks.feedsData.value = [buildFeed({ id: 1, folderId: 10 })];

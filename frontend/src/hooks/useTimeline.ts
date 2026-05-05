@@ -112,13 +112,10 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
   const { root, topOffset = 0, debounceMs = 100 } = options;
   const [envelope, setEnvelope] = useState<TimelineCacheEnvelope>(createEmptyTimelineCache);
   const envelopeRef = useRef(envelope);
+  envelopeRef.current = envelope;
   const [isHydrated, setIsHydrated] = useState(false);
   const [lastUpdateError, setLastUpdateError] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
-
-  useEffect(() => {
-    envelopeRef.current = envelope;
-  }, [envelope]);
 
   useEffect(() => {
     const cached = loadTimelineCache();
