@@ -731,24 +731,24 @@ fn build_openai_newsletter_payload(
                     "type": "object",
                     "properties": {
                         "mode": {"type": "string", "enum": ["single", "multi"]},
-                        "summary": {"type": "string"},
-                        "content": {"type": "string"},
+                        "summary": {"type": ["string", "null"]},
+                        "content": {"type": ["string", "null"]},
                         "items": {
-                            "type": "array",
+                            "type": ["array", "null"],
                             "items": {
                                 "type": "object",
                                 "properties": {
-                                    "title": {"type": "string"},
-                                    "url": {"type": "string"},
-                                    "summary": {"type": "string"},
-                                    "content": {"type": "string"}
+                                    "title": {"type": ["string", "null"]},
+                                    "url": {"type": ["string", "null"]},
+                                    "summary": {"type": ["string", "null"]},
+                                    "content": {"type": ["string", "null"]}
                                 },
-                                "required": ["url"],
+                                "required": ["title", "url", "summary", "content"],
                                 "additionalProperties": false
                             }
                         }
                     },
-                    "required": ["mode"],
+                    "required": ["mode", "summary", "content", "items"],
                     "additionalProperties": false
                 }
             }
@@ -815,17 +815,65 @@ fn truncate_chars(text: &str, limit: usize) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{Arc, Mutex};
+
+    use axum::{Json, Router, extract::State, routing::post};
+    use serde_json::{Value, json};
     use sqlx::SqlitePool;
+    use tokio::net::TcpListener;
 
     use crate::config::Config;
 
     use super::{
         EmailCredentialRow, NEWSLETTER_MAX_ITEMS, NEWSLETTER_SINGLE_SUMMARY_MAX_CHARS,
-        NewsletterItem, NewsletterLlmResult, build_articles_from_email, clean_newsletter_html,
-        clean_up_old_newsletters, fetch_emails_from_all_mailboxes_with_fetcher,
-        load_mock_messages_from_env, normalize_llm_result, parse_newsletter_llm_json_response,
-        process_email_message,
+        NewsletterItem, NewsletterLlmResult, build_articles_from_email,
+        build_openai_newsletter_payload, clean_newsletter_html, clean_up_old_newsletters,
+        fetch_emails_from_all_mailboxes_with_fetcher, load_mock_messages_from_env,
+        normalize_llm_result, parse_newsletter_llm_json_response, process_email_message,
     };
+
+    #[derive(Clone)]
+    struct MockLlmState {
+        request_count: Arc<AtomicUsize>,
+        last_payload: Arc<Mutex<Option<Value>>>,
+    }
+
+    async fn mock_newsletter_llm_handler(
+        State(state): State<MockLlmState>,
+        Json(payload): Json<Value>,
+    ) -> Json<Value> {
+        state.request_count.fetch_add(1, Ordering::SeqCst);
+        *state.last_payload.lock().unwrap() = Some(payload);
+
+        Json(json!({
+            "choices": [
+                {
+                    "message": {
+                        "content": "{\"mode\":\"single\",\"summary\":\"LLM summary\",\"content\":\"LLM cleaned content\",\"items\":null}"
+                    }
+                }
+            ]
+        }))
+    }
+
+    async fn start_mock_newsletter_llm_server() -> (String, MockLlmState) {
+        let state = MockLlmState {
+            request_count: Arc::new(AtomicUsize::new(0)),
+            last_payload: Arc::new(Mutex::new(None)),
+        };
+        let app = Router::new()
+            .route("/v1/chat/completions", post(mock_newsletter_llm_handler))
+            .with_state(state.clone());
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+
+        (format!("http://{addr}"), state)
+    }
 
     async fn setup_pool() -> SqlitePool {
         let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
@@ -974,6 +1022,76 @@ mod tests {
         assert!(!content.contains("hidden text"));
         assert!(!content.contains("tracking.gif"));
         assert!(!content.contains("<meta"));
+    }
+
+    #[tokio::test]
+    async fn newsletter_processing_requests_llm_when_configured() {
+        let pool = setup_pool().await;
+        let (mock_base_url, mock_state) = start_mock_newsletter_llm_server().await;
+        let mut llm_config = config();
+        llm_config.openai_api_key = Some("test-key".to_string());
+        llm_config.openai_base_url = format!("{mock_base_url}/v1");
+        llm_config.openai_model = "newsletter-test-model".to_string();
+
+        let raw_email = b"Subject: LLM Newsletter\r\nFrom: Example List <list@example.com>\r\nList-Unsubscribe: <mailto:unsubscribe@example.com>\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nOriginal newsletter body with several links and descriptions.";
+        let client = reqwest::Client::new();
+
+        process_email_message(&pool, &client, &llm_config, raw_email)
+            .await
+            .unwrap();
+
+        assert_eq!(mock_state.request_count.load(Ordering::SeqCst), 1);
+
+        let content: String = sqlx::query_scalar("SELECT content FROM article LIMIT 1")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        let summary: Option<String> = sqlx::query_scalar("SELECT summary FROM article LIMIT 1")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(content, "LLM cleaned content");
+        assert_eq!(summary.as_deref(), Some("LLM summary"));
+
+        let payload = mock_state
+            .last_payload
+            .lock()
+            .unwrap()
+            .clone()
+            .expect("missing captured LLM payload");
+        assert_eq!(payload["model"], "newsletter-test-model");
+    }
+
+    #[test]
+    fn newsletter_payload_uses_strict_schema_with_nullable_optional_fields() {
+        let payload =
+            build_openai_newsletter_payload("test-model", "Subject", "list@example.com", "Body");
+
+        let schema = &payload["response_format"]["json_schema"]["schema"];
+        assert_eq!(
+            schema["required"],
+            json!(["mode", "summary", "content", "items"])
+        );
+        assert_eq!(
+            schema["properties"]["summary"]["type"],
+            json!(["string", "null"])
+        );
+        assert_eq!(
+            schema["properties"]["content"]["type"],
+            json!(["string", "null"])
+        );
+        assert_eq!(
+            schema["properties"]["items"]["type"],
+            json!(["array", "null"])
+        );
+        assert_eq!(
+            schema["properties"]["items"]["items"]["required"],
+            json!(["title", "url", "summary", "content"])
+        );
+        assert_eq!(
+            schema["properties"]["items"]["items"]["properties"]["url"]["type"],
+            json!(["string", "null"])
+        );
     }
 
     #[tokio::test]
