@@ -109,6 +109,84 @@ pub async fn fetch_and_parse_feed_checked(
     feed_rs::parser::parse(&bytes[..]).map_err(|err| FeedFetchParseError::Parse(err.to_string()))
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::io::AsyncWriteExt;
+    use tokio::net::TcpListener;
+
+    async fn spawn_one_shot_server(response: &'static [u8]) -> String {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            stream.write_all(response).await.unwrap();
+            let _ = stream.shutdown().await;
+        });
+        format!("http://{addr}/feed.xml")
+    }
+
+    #[tokio::test]
+    async fn fetch_and_parse_feed_checked_returns_validation_error_for_blocked_loopback_url() {
+        let url = "http://127.0.0.1:1/feed.xml";
+
+        match fetch_and_parse_feed_checked(url, false).await {
+            Err(FeedFetchParseError::SafeGet(ssrf::SafeGetError::Validation(_))) => {}
+            other => panic!("expected SSRF validation error, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn fetch_and_parse_feed_checked_returns_bad_status_for_non_success_response() {
+        let url = spawn_one_shot_server(
+            b"HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+        )
+        .await;
+
+        match fetch_and_parse_feed_checked(&url, true).await {
+            Err(FeedFetchParseError::BadStatus(StatusCode::INTERNAL_SERVER_ERROR)) => {}
+            other => panic!("expected bad status error, got {other:?}"),
+        }
+
+        let error = fetch_and_parse_feed(&url, true).await.unwrap_err();
+        assert!(error.to_string().contains("HTTP 500 Internal Server Error"));
+    }
+
+    #[tokio::test]
+    async fn fetch_and_parse_feed_checked_returns_body_error_for_truncated_response() {
+        let url = spawn_one_shot_server(
+            b"HTTP/1.1 200 OK\r\nContent-Length: 32\r\nConnection: close\r\n\r\nabc",
+        )
+        .await;
+
+        match fetch_and_parse_feed_checked(&url, true).await {
+            Err(FeedFetchParseError::Body(_)) => {}
+            other => panic!("expected body read error, got {other:?}"),
+        }
+
+        let error = fetch_and_parse_feed(&url, true).await.unwrap_err();
+        assert!(error.to_string().contains("failed to read response body"));
+    }
+
+    #[tokio::test]
+    async fn fetch_and_parse_feed_checked_returns_parse_error_for_invalid_feed_document() {
+        let url = spawn_one_shot_server(
+            b"HTTP/1.1 200 OK\r\nContent-Type: application/xml\r\nContent-Length: 20\r\nConnection: close\r\n\r\nnot a valid feed xml",
+        )
+        .await;
+
+        match fetch_and_parse_feed_checked(&url, true).await {
+            Err(FeedFetchParseError::Parse(message)) => {
+                assert!(!message.is_empty(), "parse error message should not be empty");
+            }
+            other => panic!("expected parse error, got {other:?}"),
+        }
+
+        let error = fetch_and_parse_feed(&url, true).await.unwrap_err();
+        assert!(error.to_string().contains("failed to parse feed"));
+    }
+}
+
 /// Ingests the bounded entry set from one parsed feed payload.
 pub async fn ingest_feed_entries(
     context: &FeedEntryIngestionContext<'_>,
