@@ -57,7 +57,7 @@ The same requirements apply to all implementations.
 - `FEED-001`: The system shall parse and ingest both RSS and Atom feeds.
 - `FEED-002`: Feed URLs shall be unique; duplicate feed creation shall be rejected.
 - `FEED-003`: Feed creation shall reject non-existent target folders.
-- `FEED-004`: Deleting a feed shall delete associated articles.
+- `FEED-004`: Deleting a feed shall delete associated articles. Mailing-list/newsletter feeds shall be soft-deleted so the sender remains suppressed while the feed is hidden from normal API listings.
 - `FEED-005`: The system shall support moving feeds between folders.
 - `FEED-006`: The system shall support renaming feeds.
 - `FEED-007`: Refresh scheduling shall persist `next_update_time` dynamically from recent publishing frequency.
@@ -148,6 +148,7 @@ The same requirements apply to all implementations.
 - `EML-003`: Update cycles shall fetch unread emails from configured mailboxes.
 - `EML-004`: Only messages identified as mailing-list emails (for example via `List-Unsubscribe`) shall be treated as newsletters.
 - `EML-005`: Mailing-list feeds shall be auto-created on first encounter of a sender.
+- `EML-005a`: Incoming mailing-list emails from a soft-deleted sender shall be silently ignored and shall not recreate the feed or articles.
 - `EML-006`: Newsletter HTML shall be cleaned before article persistence.
 - `EML-007`: Optional LLM-based newsletter parsing:
   - Optional LLM-based newsletter parsing shall be enabled only when LLM support is configured.

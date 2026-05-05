@@ -161,6 +161,13 @@ async fn process_email_message(
         return Ok(0);
     }
 
+    if repo::mailing_list_sender_is_deleted(pool, &from_address)
+        .await
+        .context("failed to check deleted mailing-list sender")?
+    {
+        return Ok(0);
+    }
+
     let feed_title = extract_feed_title(&from_header, &from_address);
     let feed_id = find_or_create_mailing_list_feed(pool, &from_address, &feed_title).await?;
     let raw_content = extract_message_content(&parsed);
@@ -326,11 +333,13 @@ async fn find_or_create_mailing_list_feed(
     from_address: &str,
     feed_title: &str,
 ) -> Result<i64> {
-    let existing_id: Option<i64> = sqlx::query_scalar("SELECT id FROM feed WHERE url = ? LIMIT 1")
-        .bind(from_address)
-        .fetch_optional(pool)
-        .await
-        .context("failed to query mailing-list feed")?;
+    let existing_id: Option<i64> = sqlx::query_scalar(
+        "SELECT id FROM feed WHERE url = ? AND is_mailing_list = 1 AND deleted_at IS NULL LIMIT 1",
+    )
+    .bind(from_address)
+    .fetch_optional(pool)
+    .await
+    .context("failed to query mailing-list feed")?;
 
     if let Some(feed_id) = existing_id {
         return Ok(feed_id);
@@ -827,7 +836,7 @@ mod tests {
         .await
         .unwrap();
         sqlx::query(
-            "CREATE TABLE feed (id INTEGER PRIMARY KEY NOT NULL, url VARCHAR NOT NULL UNIQUE, title VARCHAR, favicon_link VARCHAR, added INTEGER NOT NULL, last_article_date INTEGER, next_update_time INTEGER, folder_id INTEGER NOT NULL, ordering INTEGER NOT NULL DEFAULT 0, link VARCHAR, pinned BOOLEAN NOT NULL DEFAULT 0, update_error_count INTEGER NOT NULL DEFAULT 0, last_update_error VARCHAR, is_mailing_list BOOLEAN NOT NULL DEFAULT 0, last_quality_check INTEGER, use_extracted_fulltext BOOLEAN NOT NULL DEFAULT 0, use_llm_summary BOOLEAN NOT NULL DEFAULT 0, manual_use_extracted_fulltext BOOLEAN, manual_use_llm_summary BOOLEAN, last_manual_quality_override INTEGER)",
+            "CREATE TABLE feed (id INTEGER PRIMARY KEY NOT NULL, url VARCHAR NOT NULL UNIQUE, title VARCHAR, favicon_link VARCHAR, added INTEGER NOT NULL, last_article_date INTEGER, next_update_time INTEGER, folder_id INTEGER NOT NULL, ordering INTEGER NOT NULL DEFAULT 0, link VARCHAR, pinned BOOLEAN NOT NULL DEFAULT 0, update_error_count INTEGER NOT NULL DEFAULT 0, last_update_error VARCHAR, is_mailing_list BOOLEAN NOT NULL DEFAULT 0, last_quality_check INTEGER, use_extracted_fulltext BOOLEAN NOT NULL DEFAULT 0, use_llm_summary BOOLEAN NOT NULL DEFAULT 0, manual_use_extracted_fulltext BOOLEAN, manual_use_llm_summary BOOLEAN, last_manual_quality_override INTEGER, deleted_at INTEGER)",
         )
         .execute(&pool)
         .await
@@ -915,6 +924,36 @@ mod tests {
         .unwrap();
         assert_eq!(list1_count, 2);
         assert_eq!(list2_count, 1);
+    }
+
+    #[tokio::test]
+    async fn deleted_mailing_list_sender_is_ignored_without_readding_feed() {
+        let pool = setup_pool().await;
+        sqlx::query(
+            "INSERT INTO feed (id, url, title, added, folder_id, ordering, pinned, update_error_count, is_mailing_list, use_extracted_fulltext, use_llm_summary, deleted_at) VALUES (1, 'list@example.com', 'Example List', 1, 0, 0, 0, 0, 1, 0, 0, 123)",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let raw_email = b"Subject: Deleted Newsletter\r\nFrom: Example List <list@example.com>\r\nList-Unsubscribe: <mailto:unsubscribe@example.com>\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nBody";
+        let client = reqwest::Client::new();
+        let inserted = process_email_message(&pool, &client, &config(), raw_email)
+            .await
+            .unwrap();
+
+        let feed_count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM feed WHERE url = 'list@example.com'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        let article_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM article")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(inserted, 0);
+        assert_eq!(feed_count, 1);
+        assert_eq!(article_count, 0);
     }
 
     #[tokio::test]

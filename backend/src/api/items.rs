@@ -340,14 +340,10 @@ async fn query_items(pool: &SqlitePool, input: QueryItemsInput) -> ApiResult<Vec
     } = input;
 
     let mut qb: QueryBuilder<'_, Sqlite> = QueryBuilder::new(
-        "SELECT article.id, article.title, article.content, article.author, article.content_hash, article.enclosure_link, article.enclosure_mime, article.feed_id, article.fingerprint, article.guid, article.guid_hash, article.last_modified, article.media_description, article.media_thumbnail, article.pub_date, article.rtl, article.starred, article.unread, article.updated_date, article.url, article.summary FROM article",
+        "SELECT article.id, article.title, article.content, article.author, article.content_hash, article.enclosure_link, article.enclosure_mime, article.feed_id, article.fingerprint, article.guid, article.guid_hash, article.last_modified, article.media_description, article.media_thumbnail, article.pub_date, article.rtl, article.starred, article.unread, article.updated_date, article.url, article.summary FROM article JOIN feed ON feed.id = article.feed_id",
     );
 
-    if selection_type == 1 {
-        qb.push(" JOIN feed ON feed.id = article.feed_id");
-    }
-
-    qb.push(" WHERE 1=1");
+    qb.push(" WHERE feed.deleted_at IS NULL");
 
     match selection_type {
         0 => {

@@ -119,6 +119,7 @@ paths:
     delete:
       tags: [Feeds]
       summary: Delete feed
+      description: Deletes the feed's articles. Email newsletter feeds are soft-deleted so future emails from the same sender are ignored while the feed remains hidden from normal feed listings.
       operationId: deleteFeed
       security:
         - bearerAuth: []

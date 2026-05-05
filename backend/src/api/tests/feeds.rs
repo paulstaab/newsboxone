@@ -613,6 +613,71 @@ async fn delete_feed_removes_associated_articles() {
     assert_eq!(remaining_articles, 0);
 }
 
+#[tokio::test]
+async fn delete_mailing_list_feed_soft_deletes_feed_and_removes_articles() {
+    let pool = setup_pool().await;
+    sqlx::query(
+        "INSERT INTO feed (id, url, title, favicon_link, added, last_article_date, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error, is_mailing_list, last_quality_check, use_extracted_fulltext, use_llm_summary) VALUES (11, 'newsletter@example.com', 'Newsletter', NULL, 123, 200, NULL, 1, 0, NULL, 0, 2, 'stale error', 1, NULL, 0, 0)",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query("INSERT INTO article (id, title, content, author, content_hash, enclosure_link, enclosure_mime, feed_id, fingerprint, guid, guid_hash, last_modified, media_description, media_thumbnail, pub_date, rtl, starred, unread, updated_date, url, summary) VALUES (101, 'Newsletter Article', 'content', 'Author', NULL, NULL, NULL, 11, NULL, 'guid-101', 'guid-hash-101', 200, NULL, NULL, 200, 0, 0, 1, 200, NULL, NULL)")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let response = app(state(pool.clone()))
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri("/api/feeds/11")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
+
+    let feed_state: (Option<i64>, i64, Option<String>) = sqlx::query_as(
+        "SELECT deleted_at, update_error_count, last_update_error FROM feed WHERE id = 11",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    let remaining_articles: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM article WHERE feed_id = 11")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(feed_state.0.is_some());
+    assert_eq!(feed_state.1, 0);
+    assert_eq!(feed_state.2, None);
+    assert_eq!(remaining_articles, 0);
+
+    let response = app(state(pool.clone()))
+        .oneshot(
+            Request::builder()
+                .uri("/api/feeds")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let parsed: Value = serde_json::from_slice(&body).unwrap();
+    let feeds = parsed["feeds"].as_array().unwrap();
+    assert!(
+        feeds
+            .iter()
+            .all(|feed| feed["url"].as_str() != Some("newsletter@example.com"))
+    );
+}
+
 async fn start_quality_deferral_fixture_server() -> String {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
