@@ -665,6 +665,7 @@ async fn delete_mailing_list_feed_soft_deletes_feed_and_removes_articles() {
         )
         .await
         .unwrap();
+    assert_eq!(response.status(), 200);
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();

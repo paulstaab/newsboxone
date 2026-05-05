@@ -19,9 +19,6 @@
       ]
     }
   },
-  "containerEnv": {
-    "CODEX_HOME": "/workspaces/newsboxone/.codex"
-  },
   "forwardPorts": [3000, 8000],
   "postCreateCommand": "bash -lc 'sudo apt-get update && sudo apt-get install -y --no-install-recommends ripgrep && sudo rm -rf /var/lib/apt/lists/* && cd backend && cargo fetch && cd ../frontend && npm ci && npx playwright install --with-deps'"
 }

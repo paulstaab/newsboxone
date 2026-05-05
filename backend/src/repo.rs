@@ -104,6 +104,7 @@ pub async fn delete_folder_cascade(
     pool: &SqlitePool,
     folder_id: i64,
 ) -> Result<FolderDeleteCounts, sqlx::Error> {
+    let root_folder_id = get_root_folder_id(pool).await?;
     let deleted_articles = sqlx::query(
         "DELETE FROM article WHERE feed_id IN (SELECT id FROM feed WHERE folder_id = ?)",
     )
@@ -123,9 +124,10 @@ pub async fn delete_folder_cascade(
              next_update_time = NULL,
              update_error_count = 0,
              last_update_error = NULL,
-             folder_id = (SELECT id FROM folder WHERE is_root = 1 LIMIT 1)
+             folder_id = ?
          WHERE folder_id = ? AND is_mailing_list = 1 AND deleted_at IS NULL",
     )
+    .bind(root_folder_id)
     .bind(folder_id)
     .execute(pool)
     .await?
@@ -234,14 +236,17 @@ pub async fn delete_feed_cascade(
         .await?
         .rows_affected();
     let deleted_feeds = if is_mailing_list {
+        let root_folder_id = get_root_folder_id(pool).await?;
         sqlx::query(
             "UPDATE feed
              SET deleted_at = CAST(strftime('%s','now') AS INTEGER),
                  next_update_time = NULL,
                  update_error_count = 0,
-                 last_update_error = NULL
+                 last_update_error = NULL,
+                 folder_id = ?
              WHERE id = ? AND deleted_at IS NULL",
         )
+        .bind(root_folder_id)
         .bind(feed_id)
         .execute(pool)
         .await?
