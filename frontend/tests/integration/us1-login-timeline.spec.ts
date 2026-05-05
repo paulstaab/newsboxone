@@ -22,6 +22,35 @@ test.describe('Login integration coverage', () => {
     await expect(page.getByLabel(/^password$/i)).toHaveAttribute('required', '');
   });
 
+  test('[TC-LOGIN-008] dark mode login inputs remain readable', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    const username = page.getByLabel(/^username$/i);
+    const password = page.getByLabel(/^password$/i);
+
+    const usernameStyles = await username.evaluate((element) => {
+      const styles = window.getComputedStyle(element);
+      return {
+        color: styles.color,
+        backgroundColor: styles.backgroundColor,
+      };
+    });
+    const passwordStyles = await password.evaluate((element) => {
+      const styles = window.getComputedStyle(element);
+      return {
+        color: styles.color,
+        backgroundColor: styles.backgroundColor,
+      };
+    });
+
+    expect(usernameStyles.backgroundColor).not.toBe('rgb(255, 255, 255)');
+    expect(usernameStyles.color).not.toBe(usernameStyles.backgroundColor);
+    expect(passwordStyles.backgroundColor).not.toBe('rgb(255, 255, 255)');
+    expect(passwordStyles.color).not.toBe(passwordStyles.backgroundColor);
+  });
+
   test('[TC-LOGIN-003] authentication progress is visible', async ({ page }) => {
     await page.getByLabel(/^username$/i).fill(TEST_USERNAME);
     await page.getByLabel(/^password$/i).fill(TEST_PASSWORD);

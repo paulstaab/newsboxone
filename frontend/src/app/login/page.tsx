@@ -24,13 +24,15 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-[hsl(var(--color-surface))] px-4 py-12 text-[hsl(var(--color-text))]">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-lg shadow-md p-8">
+        <div className="rounded-lg border border-[hsl(var(--color-border))] bg-[hsl(var(--color-surface-muted))] p-8 shadow-md">
           {/* Header */}
           <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to NewsBoxOne</h1>
-            <p className="text-gray-600">
+            <h1 className="mb-2 text-3xl font-bold text-[hsl(var(--color-text))]">
+              Welcome to NewsBoxOne
+            </h1>
+            <p className="text-[hsl(var(--color-text-muted))]">
               {step === LoginStep.CREDENTIALS && 'Sign in to your NewsBoxOne reader'}
               {step === LoginStep.AUTHENTICATING && 'Verifying credentials...'}
             </p>
@@ -39,16 +41,16 @@ function LoginContent() {
           {/* Step indicator */}
           <div className="mb-8 flex justify-center space-x-2">
             <div
-              className={`h-2 w-12 rounded-full ${step >= LoginStep.CREDENTIALS ? 'bg-blue-600' : 'bg-gray-300'}`}
+              className={`h-2 w-12 rounded-full ${step >= LoginStep.CREDENTIALS ? 'bg-[hsl(var(--color-accent-strong))]' : 'bg-[hsl(var(--color-border))]'}`}
             />
             <div
-              className={`h-2 w-12 rounded-full ${step >= LoginStep.AUTHENTICATING ? 'bg-blue-600' : 'bg-gray-300'}`}
+              className={`h-2 w-12 rounded-full ${step >= LoginStep.AUTHENTICATING ? 'bg-[hsl(var(--color-accent-strong))]' : 'bg-[hsl(var(--color-border))]'}`}
             />
           </div>
 
           {/* Error display */}
           {(validationError ?? authError) && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
+            <div className="mb-6 rounded-md border border-red-400/40 bg-red-500/10 p-4">
               <p className="text-sm text-red-800">{validationError ?? authError}</p>
             </div>
           )}
@@ -62,7 +64,10 @@ function LoginContent() {
               className="space-y-6"
             >
               <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="username"
+                  className="mb-2 block text-sm font-medium text-[hsl(var(--color-text))]"
+                >
                   Username
                 </label>
                 <input
@@ -72,7 +77,7 @@ function LoginContent() {
                   onChange={(e) => {
                     setUsername(e.target.value);
                   }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full rounded-md border border-[hsl(var(--color-border))] bg-[hsl(var(--color-surface))] px-4 py-2 text-[hsl(var(--color-text))] placeholder:text-[hsl(var(--color-text-muted))] focus:border-transparent focus:ring-2 focus:ring-[hsl(var(--color-accent-strong))]"
                   autoFocus
                   required
                   autoComplete="username"
@@ -80,7 +85,10 @@ function LoginContent() {
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="password"
+                  className="mb-2 block text-sm font-medium text-[hsl(var(--color-text))]"
+                >
                   Password
                 </label>
                 <input
@@ -90,7 +98,7 @@ function LoginContent() {
                   onChange={(e) => {
                     setPassword(e.target.value);
                   }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full rounded-md border border-[hsl(var(--color-border))] bg-[hsl(var(--color-surface))] px-4 py-2 text-[hsl(var(--color-text))] placeholder:text-[hsl(var(--color-text-muted))] focus:border-transparent focus:ring-2 focus:ring-[hsl(var(--color-accent-strong))]"
                   required
                   autoComplete="current-password"
                 />
@@ -104,16 +112,19 @@ function LoginContent() {
                   onChange={(e) => {
                     setRememberDevice(e.target.checked);
                   }}
-                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-[hsl(var(--color-border))] bg-[hsl(var(--color-surface))] text-[hsl(var(--color-accent-strong))] focus:ring-[hsl(var(--color-accent-strong))]"
                 />
-                <label htmlFor="rememberDevice" className="ml-2 block text-sm text-gray-700">
+                <label
+                  htmlFor="rememberDevice"
+                  className="ml-2 block text-sm text-[hsl(var(--color-text-muted))]"
+                >
                   Remember this device
                 </label>
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                className="w-full rounded-md bg-[hsl(var(--color-accent))] px-4 py-2 text-white transition-colors hover:bg-[hsl(var(--color-accent-strong))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--color-accent-strong))] focus:ring-offset-2 focus:ring-offset-[hsl(var(--color-surface-muted))]"
               >
                 Sign In
               </button>
@@ -124,13 +135,17 @@ function LoginContent() {
           {step === LoginStep.AUTHENTICATING && (
             <div className="text-center py-8">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-              <p className="text-gray-600">Authenticating with the NewsBoxOne API...</p>
+              <p className="text-[hsl(var(--color-text-muted))]">
+                Authenticating with the NewsBoxOne API...
+              </p>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <p className="mt-6 text-center text-sm text-gray-600">Powered by NewsBoxOne</p>
+        <p className="mt-6 text-center text-sm text-[hsl(var(--color-text-muted))]">
+          Powered by NewsBoxOne
+        </p>
       </div>
     </div>
   );

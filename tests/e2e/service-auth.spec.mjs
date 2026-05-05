@@ -94,4 +94,41 @@ test.describe('Service startup and authentication e2e scenarios', () => {
     await expect(page).toHaveURL(/\/login/);
     await expect(page.getByLabel(/^username$/i)).toBeVisible();
   });
+
+  test('[TS-LOGIN-006] dropdown logout revokes the active browser token', async ({
+    page,
+    request,
+  }) => {
+    await loginViaUi(page);
+
+    const token = await page.evaluate(() => {
+      const session = sessionStorage.getItem('newsboxone:session');
+      return session ? JSON.parse(session).token : null;
+    });
+
+    expect(token).toBeTruthy();
+
+    await page.getByRole('button', { name: /burger menu/i }).click();
+    await page.getByRole('menuitem', { name: /logout/i }).click();
+
+    await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByLabel(/^username$/i)).toBeVisible();
+
+    const storedSession = await page.evaluate(() => ({
+      session: sessionStorage.getItem('newsboxone:session'),
+      local: localStorage.getItem('newsboxone:session'),
+    }));
+    expect(storedSession.session).toBeNull();
+    expect(storedSession.local).toBeNull();
+
+    const revokedResponse = await request.get('/api/feeds', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    expect(revokedResponse.status()).toBe(401);
+
+    await page.goto('/timeline');
+    await expect(page).toHaveURL(/\/login/);
+  });
 });

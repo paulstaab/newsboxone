@@ -24,6 +24,22 @@ test.describe('Feed management integration coverage', () => {
     ).toBeVisible();
   });
 
+  test('[TC-APP-011] shared burger menu logs out the active session', async ({ page }) => {
+    await page.goto('/timeline');
+
+    await page.getByRole('button', { name: /burger menu/i }).click();
+
+    const logoutRequest = page.waitForRequest((request) =>
+      request.url().endsWith('/api/auth/logout'),
+    );
+
+    await page.getByRole('menuitem', { name: /logout/i }).click();
+
+    await logoutRequest;
+    await page.waitForURL(/\/login/);
+    await expect(page.getByLabel(/^username$/i)).toBeVisible();
+  });
+
   test('[TC-FEEDS-003] feed creation entry points open the subscription modal', async ({
     page,
   }) => {
