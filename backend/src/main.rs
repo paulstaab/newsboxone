@@ -6,6 +6,7 @@ mod content;
 mod db;
 mod email;
 mod email_credentials;
+mod feed_ingestion;
 mod http_client;
 mod llm;
 mod repo;

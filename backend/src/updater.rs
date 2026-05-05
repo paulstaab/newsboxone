@@ -1,30 +1,15 @@
 //! Scheduled feed refresh logic, dynamic cadence calculation, and stale-article cleanup.
 
 use anyhow::{Context, Result};
-use feed_rs::model::Feed;
-use rand::RngExt;
 use sqlx::{FromRow, SqlitePool};
 
-use crate::article_store::{self, InsertArticleOutcome};
+use crate::article_store;
 use crate::config::Config;
 use crate::content::{self, FeedContentState};
 use crate::db;
 use crate::email;
+use crate::feed_ingestion::{self, FeedEntryIngestionContext};
 use crate::http_client;
-use crate::ssrf;
-
-/// Jitter window (in seconds) used for low-activity feeds.
-///
-/// This spreads daily checks by +/-30 minutes so many feeds do not refresh at the same timestamp.
-const THIRTY_MINUTES: i64 = 1_800;
-/// Maximum interval for active feeds.
-///
-/// For active feeds we may compute shorter intervals, but never wait longer than 12 hours.
-const TWELVE_HOURS: i64 = 43_200;
-/// One day in seconds.
-const ONE_DAY: i64 = 86_400;
-/// Retention window for stale feed-article cleanup.
-const NINETY_DAYS: i64 = 90 * ONE_DAY;
 
 /// Projection of the feed metadata needed to decide whether and how a feed should be refreshed.
 #[derive(FromRow)]
@@ -38,16 +23,6 @@ struct FeedToUpdate {
     manual_use_extracted_fulltext: Option<bool>,
     manual_use_llm_summary: Option<bool>,
     last_manual_quality_override: Option<i64>,
-}
-
-/// Shared context for ingesting entries from one feed refresh cycle.
-struct FeedEntryIngestionContext<'a> {
-    pool: &'a SqlitePool,
-    article_http_client: &'a reqwest::Client,
-    config: &'a Config,
-    feed_id: i64,
-    feed_url: &'a str,
-    content_state: FeedContentState,
 }
 
 /// Human-readable result of a forced feed-quality re-evaluation.
@@ -195,7 +170,6 @@ async fn update_feed_batch(
     feeds: Vec<FeedToUpdate>,
     batch_kind: &str,
 ) -> Result<usize> {
-    let feed_http_client = http_client::build_feed_http_client()?;
     let article_http_client = http_client::build_article_http_client()?;
 
     tracing::debug!(
@@ -209,15 +183,8 @@ async fn update_feed_batch(
     let mut failed = 0usize;
 
     for feed in &feeds {
-        if let Err(err) = update_single_feed(
-            pool,
-            &feed_http_client,
-            &article_http_client,
-            config,
-            feed,
-            testing_mode,
-        )
-        .await
+        if let Err(err) =
+            update_single_feed(pool, &article_http_client, config, feed, testing_mode).await
         {
             let detail = err.to_string();
             tracing::warn!(feed_id = feed.id, "feed update failed");
@@ -251,7 +218,6 @@ async fn update_feed_batch(
 /// Refreshes one feed, ingests up to 50 entries, updates dynamic cadence, and clears error state.
 async fn update_single_feed(
     pool: &SqlitePool,
-    feed_http_client: &reqwest::Client,
     article_http_client: &reqwest::Client,
     config: &Config,
     feed: &FeedToUpdate,
@@ -260,7 +226,7 @@ async fn update_single_feed(
     let feed_id = feed.id;
     let url = feed.url.as_str();
     tracing::debug!(feed_id, testing_mode, "starting feed update");
-    let parsed = fetch_and_parse_feed(feed_http_client, url, testing_mode).await?;
+    let parsed = feed_ingestion::fetch_and_parse_feed(url, testing_mode).await?;
     let content_state = content::maybe_refresh_feed_content_state(
         pool,
         article_http_client,
@@ -278,9 +244,6 @@ async fn update_single_feed(
     )
     .await?;
 
-    let mut inserted = 0usize;
-    let mut processed = 0usize;
-    let mut current_feed_guid_hashes = Vec::new();
     let entry_context = FeedEntryIngestionContext {
         pool,
         article_http_client,
@@ -290,17 +253,15 @@ async fn update_single_feed(
         content_state,
     };
 
-    for entry in parsed.entries.iter().take(50) {
-        processed += 1;
-        if insert_article_from_entry(&entry_context, entry, &mut current_feed_guid_hashes).await? {
-            inserted += 1;
-        }
-    }
+    let stats = feed_ingestion::ingest_feed_entries(&entry_context, &parsed.entries).await?;
 
-    let removed = cleanup_stale_feed_articles(pool, feed_id, &current_feed_guid_hashes).await?;
+    let removed =
+        feed_ingestion::cleanup_stale_feed_articles(pool, feed_id, &stats.current_feed_guid_hashes)
+            .await?;
 
     let now_ts = article_store::unix_now();
-    let next_update_time = calculate_next_update_time(pool, feed_id, now_ts).await?;
+    let next_update_time =
+        feed_ingestion::calculate_next_update_time(pool, feed_id, now_ts).await?;
     sqlx::query(
         "UPDATE feed SET update_error_count = 0, last_update_error = NULL, next_update_time = ? WHERE id = ?",
     )
@@ -310,12 +271,11 @@ async fn update_single_feed(
     .await
     .context("failed to update feed metadata")?;
 
-    let skipped = processed.saturating_sub(inserted);
     tracing::info!(
         feed_id,
-        processed,
-        inserted,
-        skipped,
+        processed = stats.processed,
+        inserted = stats.inserted,
+        skipped = stats.skipped(),
         removed,
         "feed update completed"
     );
@@ -329,7 +289,6 @@ async fn reevaluate_single_feed_quality(
     feed_id: i64,
     testing_mode: bool,
 ) -> Result<FeedQualityReevaluationResult> {
-    let feed_http_client = http_client::build_feed_http_client()?;
     let article_http_client = http_client::build_article_http_client()?;
     let feed: FeedToUpdate = sqlx::query_as(
         "SELECT id, url, title, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE id = ? AND is_mailing_list = 0 AND deleted_at IS NULL",
@@ -339,7 +298,7 @@ async fn reevaluate_single_feed_quality(
     .await
     .context("failed to load feed for quality re-evaluation")?
     .with_context(|| format!("feed {feed_id} not found"))?;
-    let parsed = fetch_and_parse_feed(&feed_http_client, &feed.url, testing_mode).await?;
+    let parsed = feed_ingestion::fetch_and_parse_feed(&feed.url, testing_mode).await?;
     tracing::info!(
         feed_id,
         "starting forced feed content quality re-evaluation"
@@ -472,158 +431,6 @@ async fn update_single_feed_quality_overrides(
     })
 }
 
-/// Downloads a remote feed document and parses it into the shared feed model.
-async fn fetch_and_parse_feed(
-    _feed_http_client: &reqwest::Client,
-    url: &str,
-    testing_mode: bool,
-) -> Result<Feed> {
-    let response = ssrf::get_with_safe_redirects(
-        crate::http_client::HttpClientProfile::Feed,
-        url,
-        testing_mode,
-    )
-    .await
-    .map_err(ssrf::SafeGetError::into_anyhow)
-    .with_context(|| format!("request failed for {url}"))?;
-    if !response.status().is_success() {
-        anyhow::bail!("request failed for {url}: HTTP {}", response.status());
-    }
-
-    let bytes = response
-        .bytes()
-        .await
-        .context("failed to read response body")?;
-    feed_rs::parser::parse(&bytes[..]).context("failed to parse feed")
-}
-
-/// Removes stale feed articles that are no longer present in the latest payload.
-///
-/// Articles are only eligible when they are old, read, and unstarred so refreshes do not
-/// delete recent unread content or user-saved items.
-async fn cleanup_stale_feed_articles(
-    pool: &SqlitePool,
-    feed_id: i64,
-    current_feed_guid_hashes: &[String],
-) -> Result<u64> {
-    let stale_before = article_store::unix_now() - NINETY_DAYS;
-
-    let result = if current_feed_guid_hashes.is_empty() {
-        sqlx::query(
-            "DELETE FROM article WHERE feed_id = ? AND last_modified < ? AND unread = 0 AND starred = 0",
-        )
-        .bind(feed_id)
-        .bind(stale_before)
-        .execute(pool)
-        .await
-        .context("failed stale article cleanup query")?
-    } else {
-        let placeholders = vec!["?"; current_feed_guid_hashes.len()].join(", ");
-        let query = format!(
-            "DELETE FROM article WHERE feed_id = ? AND last_modified < ? AND unread = 0 AND starred = 0 AND guid_hash NOT IN ({placeholders})"
-        );
-
-        let mut cleanup_query = sqlx::query(&query).bind(feed_id).bind(stale_before);
-        for guid_hash in current_feed_guid_hashes {
-            cleanup_query = cleanup_query.bind(guid_hash);
-        }
-
-        cleanup_query
-            .execute(pool)
-            .await
-            .context("failed stale article cleanup query")?
-    };
-
-    Ok(result.rows_affected())
-}
-
-/// Calculates the next refresh timestamp from the last 7 days of observed article output.
-async fn calculate_next_update_time(pool: &SqlitePool, feed_id: i64, now_ts: i64) -> Result<i64> {
-    // Derive cadence from recent output over the last 7 days.
-    let weekly_count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM article WHERE feed_id = ? AND pub_date > ?")
-            .bind(feed_id)
-            .bind(now_ts - 7 * ONE_DAY)
-            .fetch_one(pool)
-            .await
-            .context("failed to query recent article frequency")?;
-
-    let avg_articles_per_day = weekly_count as f64 / 7.0;
-    let next_update_in =
-        compute_next_update_interval(avg_articles_per_day, random_jitter_seconds());
-
-    tracing::info!(
-        feed_id,
-        avg_articles_per_day,
-        next_update_in_minutes = (next_update_in as f64 / 60.0),
-        "calculated next dynamic update time"
-    );
-
-    Ok(now_ts + next_update_in)
-}
-
-/// Returns a signed jitter value in seconds in [-30m, +30m].
-///
-/// This is only applied to sparse feeds to avoid synchronized daily polling.
-fn random_jitter_seconds() -> i64 {
-    let mut rng = rand::rng();
-    rng.random_range(-THIRTY_MINUTES..=THIRTY_MINUTES)
-}
-
-/// Computes the next refresh interval in seconds from recent publishing frequency.
-///
-/// Cleanup policy for stale feed articles:
-/// - Sparse feeds ($\le 0.1$ articles/day): refresh roughly daily with +/-30m jitter.
-/// - Active feeds: refresh at 4x observed daily rate, capped so interval is at most 12h.
-fn compute_next_update_interval(avg_articles_per_day: f64, jitter_seconds: i64) -> i64 {
-    if avg_articles_per_day <= 0.1 {
-        return ONE_DAY + jitter_seconds.clamp(-THIRTY_MINUTES, THIRTY_MINUTES);
-    }
-
-    ((ONE_DAY as f64 / avg_articles_per_day / 4.0).round() as i64).min(TWELVE_HOURS)
-}
-
-/// Converts one parsed feed entry into a persisted article when it is not a duplicate.
-async fn insert_article_from_entry(
-    entry_context: &FeedEntryIngestionContext<'_>,
-    entry: &feed_rs::model::Entry,
-    current_feed_guid_hashes: &mut Vec<String>,
-) -> Result<bool> {
-    let Some(article) = article_store::article_record_from_feed_entry(entry_context.feed_id, entry)
-    else {
-        tracing::debug!(
-            feed_id = entry_context.feed_id,
-            "skipping entry without guid/link/title"
-        );
-        return Ok(false);
-    };
-
-    current_feed_guid_hashes.push(article.guid_hash.clone());
-
-    let ingestion_context = article_store::ArticleIngestionContext {
-        pool: entry_context.pool,
-        article_http_client: entry_context.article_http_client,
-        config: entry_context.config,
-        feed_url: Some(entry_context.feed_url),
-        content_state: entry_context.content_state,
-    };
-
-    match article_store::ingest_article_if_new(&ingestion_context, article)
-        .await
-        .context("failed to insert article")?
-    {
-        InsertArticleOutcome::Inserted { .. } => Ok(true),
-        InsertArticleOutcome::Duplicate { guid_hash } => {
-            tracing::debug!(
-                feed_id = entry_context.feed_id,
-                guid_hash,
-                "skipping duplicate entry"
-            );
-            Ok(false)
-        }
-    }
-}
-
 #[cfg(test)]
 fn unix_now() -> i64 {
     article_store::unix_now()
@@ -644,12 +451,13 @@ mod tests {
 
     use crate::config::Config;
 
-    use super::{
-        NINETY_DAYS, ONE_DAY, THIRTY_MINUTES, TWELVE_HOURS, compute_next_update_interval, unix_now,
-    };
+    use super::unix_now;
     use super::{
         reevaluate_single_feed_quality, set_single_feed_quality_overrides,
         update_all_regular_feeds, update_due_feeds, update_single_feed_quality_overrides,
+    };
+    use crate::feed_ingestion::{
+        NINETY_DAYS, ONE_DAY, THIRTY_MINUTES, TWELVE_HOURS, compute_next_update_interval,
     };
 
     async fn setup_pool() -> SqlitePool {
