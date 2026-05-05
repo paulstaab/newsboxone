@@ -9,7 +9,7 @@ RUN --mount=type=cache,target=/root/.npm npm ci
 COPY frontend/ ./
 RUN npm run build
 
-FROM rust:1.88-bookworm AS backend-builder
+FROM rust:1.95-bookworm AS backend-builder
 WORKDIR /app/backend
 
 COPY backend/Cargo.toml backend/Cargo.lock ./
