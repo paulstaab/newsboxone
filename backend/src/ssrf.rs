@@ -15,16 +15,6 @@ pub enum SafeGetError {
     Request(anyhow::Error),
 }
 
-impl SafeGetError {
-    /// Converts the wrapped error into an anyhow error for callers that do not
-    /// need to distinguish validation failures from transport failures.
-    pub fn into_anyhow(self) -> anyhow::Error {
-        match self {
-            Self::Validation(error) | Self::Request(error) => error,
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 struct ValidatedUrl {
     url: reqwest::Url,

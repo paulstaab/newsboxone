@@ -1,48 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuthGuard } from '@/hooks/useAuthGuard';
-import {
-  createFeed,
-  deleteFeed,
-  getFeeds,
-  moveFeed,
-  renameFeed,
-  updateFeedQuality,
-} from '@/lib/api/feeds';
-import { createFolder, deleteFolder, getFolders, renameFolder } from '@/lib/api/folders';
-import { AuthenticationError } from '@/lib/api/client';
-import { formatError } from '@/lib/utils/errorFormatter';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createFeed, deleteFeed, moveFeed, renameFeed, updateFeedQuality } from '@/lib/api/feeds';
+import { createFolder, deleteFolder, renameFolder } from '@/lib/api/folders';
 import { type Feed, type Folder } from '@/types';
 import {
   buildFeedManagementGroups,
   compareLabels,
   type FeedManagementGroup,
 } from '@/lib/feeds/feedManagement';
-
-interface FeedManagementData {
-  folders: Folder[];
-  feeds: Feed[];
-}
-
-export type FeedQualityPreference = 'automatic' | 'enabled' | 'disabled';
-
-function boolToQualityPreference(value: boolean | null): FeedQualityPreference {
-  if (value === null) {
-    return 'automatic';
-  }
-
-  return value ? 'enabled' : 'disabled';
-}
-
-function qualityPreferenceToBool(value: FeedQualityPreference): boolean | null {
-  if (value === 'automatic') {
-    return null;
-  }
-
-  return value === 'enabled';
-}
+import { useFeedManagementData } from '@/hooks/useFeedManagementData';
+import { useFeedManagementDialogs } from '@/hooks/useFeedManagementDialogs';
+import { useFeedManagementMutationRunner } from '@/hooks/useFeedManagementMutationRunner';
+import { qualityPreferenceToBool, useFeedQualityForm } from '@/hooks/useFeedQualityForm';
 
 /**
  * Returns true when keyboard shortcuts should be ignored because focus is inside an editable field.
@@ -65,31 +35,51 @@ function isEditableTarget(target: EventTarget | null): boolean {
  * Owns feed-management page data loading, dialogs, and mutations.
  */
 export function useFeedManagementPage() {
-  const router = useRouter();
-  const { isAuthenticated, isInitializing, logout } = useAuthGuard();
-  const createFeedDialogRef = useRef<HTMLDialogElement>(null);
-  const createFolderDialogRef = useRef<HTMLDialogElement>(null);
-  const qualityDialogRef = useRef<HTMLDialogElement>(null);
+  const {
+    isAuthenticated,
+    isInitializing,
+    isLoading,
+    isRefreshing,
+    data,
+    setData,
+    pageError,
+    handleRequestError,
+    refreshPageData,
+  } = useFeedManagementData();
+  const {
+    createFeedDialogRef,
+    createFolderDialogRef,
+    qualityDialogRef,
+    openCreateFeedDialog,
+    closeCreateFeedDialog,
+  } = useFeedManagementDialogs();
+  const {
+    qualityFeedId,
+    qualityFeedTitle,
+    qualityFeedFolderId,
+    qualityUseExtractedFulltext,
+    qualityUseLlmSummary,
+    setQualityFeedTitle,
+    setQualityFeedFolderId,
+    setQualityUseExtractedFulltext,
+    setQualityUseLlmSummary,
+    loadQualityForm,
+    resetQualityDialog,
+  } = useFeedQualityForm();
 
-  const [data, setData] = useState<FeedManagementData>({ folders: [], feeds: [] });
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [busyLabel, setBusyLabel] = useState<string | null>(null);
-  const [pageError, setPageError] = useState<string | null>(null);
-  const [mutationError, setMutationError] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const {
+    busyLabel,
+    mutationError,
+    statusMessage,
+    setMutationError,
+    setStatusMessage,
+    runMutation,
+  } = useFeedManagementMutationRunner(refreshPageData, handleRequestError);
   const [newFeedUrl, setNewFeedUrl] = useState('');
   const [newFeedFolderId, setNewFeedFolderId] = useState('');
   const [newFolderName, setNewFolderName] = useState('');
   const [editingFolderId, setEditingFolderId] = useState<number | null>(null);
   const [editingFolderName, setEditingFolderName] = useState('');
-  const [qualityFeedId, setQualityFeedId] = useState<number | null>(null);
-  const [qualityFeedTitle, setQualityFeedTitle] = useState('');
-  const [qualityFeedFolderId, setQualityFeedFolderId] = useState('');
-  const [qualityUseExtractedFulltext, setQualityUseExtractedFulltext] =
-    useState<FeedQualityPreference>('automatic');
-  const [qualityUseLlmSummary, setQualityUseLlmSummary] =
-    useState<FeedQualityPreference>('automatic');
 
   const sortedFolders = useMemo(
     () => [...data.folders].sort((left, right) => compareLabels(left.name, right.name)),
@@ -100,81 +90,18 @@ export function useFeedManagementPage() {
     [data.feeds, data.folders],
   );
 
-  const handleRequestError = useCallback(
-    (error: unknown, fallbackMessage: string) => {
-      if (error instanceof AuthenticationError) {
-        void logout();
-        router.push('/login');
-        return fallbackMessage;
-      }
-
-      const formatted = formatError(error);
-      return [formatted.message || fallbackMessage, formatted.action].filter(Boolean).join(' ');
-    },
-    [logout, router],
-  );
-
-  const openCreateFeedDialog = useCallback(() => {
-    createFeedDialogRef.current?.showModal();
-  }, []);
-
-  const closeCreateFeedDialog = useCallback(() => {
-    createFeedDialogRef.current?.close();
-  }, []);
-
   const selectedQualityFeed = useMemo(
     () => data.feeds.find((feed) => feed.id === qualityFeedId) ?? null,
     [data.feeds, qualityFeedId],
   );
 
-  const openQualityDialog = useCallback((feed: Feed) => {
-    setQualityFeedId(feed.id);
-    setQualityFeedTitle(feed.title);
-    setQualityFeedFolderId(feed.folderId === null ? '' : String(feed.folderId));
-    setQualityUseExtractedFulltext(boolToQualityPreference(feed.manualUseExtractedFulltext));
-    setQualityUseLlmSummary(boolToQualityPreference(feed.manualUseLlmSummary));
-    qualityDialogRef.current?.showModal();
-  }, []);
-
-  const resetQualityDialog = useCallback(() => {
-    setQualityFeedId(null);
-    setQualityFeedTitle('');
-    setQualityFeedFolderId('');
-    setQualityUseExtractedFulltext('automatic');
-    setQualityUseLlmSummary('automatic');
-  }, []);
-
-  const refreshPageData = useCallback(
-    async (initialLoad = false) => {
-      if (initialLoad) {
-        setIsLoading(true);
-      } else {
-        setIsRefreshing(true);
-      }
-
-      try {
-        const [folders, feedsResponse] = await Promise.all([getFolders(), getFeeds()]);
-        setData({ folders, feeds: feedsResponse.feeds });
-        setPageError(null);
-      } catch (error) {
-        const message = handleRequestError(error, 'Unable to load feed management data.');
-        setPageError(message);
-      } finally {
-        if (initialLoad) {
-          setIsLoading(false);
-        } else {
-          setIsRefreshing(false);
-        }
-      }
+  const openQualityDialog = useCallback(
+    (feed: Feed) => {
+      loadQualityForm(feed);
+      qualityDialogRef.current?.showModal();
     },
-    [handleRequestError],
+    [loadQualityForm, qualityDialogRef],
   );
-
-  useEffect(() => {
-    if (!isInitializing && isAuthenticated) {
-      void refreshPageData(true);
-    }
-  }, [isAuthenticated, isInitializing, refreshPageData]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -196,27 +123,6 @@ export function useFeedManagementPage() {
     };
   }, [openCreateFeedDialog]);
 
-  const runMutation = useCallback(
-    async (label: string, action: () => Promise<void>) => {
-      setBusyLabel(label);
-      setMutationError(null);
-      setStatusMessage(null);
-
-      try {
-        await action();
-        await refreshPageData(false);
-        return true;
-      } catch (error) {
-        const message = handleRequestError(error, `${label} failed.`);
-        setMutationError(message);
-        return false;
-      } finally {
-        setBusyLabel(null);
-      }
-    },
-    [handleRequestError, refreshPageData],
-  );
-
   const handleSubscribe = useCallback(async () => {
     const trimmedUrl = newFeedUrl.trim();
     if (!trimmedUrl) {
@@ -237,7 +143,15 @@ export function useFeedManagementPage() {
       closeCreateFeedDialog();
       setStatusMessage(`Subscribed to ${result.feed.title}.`);
     });
-  }, [closeCreateFeedDialog, newFeedFolderId, newFeedUrl, runMutation]);
+  }, [
+    closeCreateFeedDialog,
+    newFeedFolderId,
+    newFeedUrl,
+    runMutation,
+    setData,
+    setMutationError,
+    setStatusMessage,
+  ]);
 
   const handleCreateFolder = useCallback(async () => {
     const trimmedName = newFolderName.trim();
@@ -256,7 +170,14 @@ export function useFeedManagementPage() {
       createFolderDialogRef.current?.close();
       setStatusMessage(`Created folder ${createdFolder.name}.`);
     });
-  }, [newFolderName, runMutation]);
+  }, [
+    createFolderDialogRef,
+    newFolderName,
+    runMutation,
+    setData,
+    setMutationError,
+    setStatusMessage,
+  ]);
 
   const handleRenameFolder = useCallback(
     async (folderId: number) => {
@@ -279,7 +200,7 @@ export function useFeedManagementPage() {
         setStatusMessage(`Renamed folder to ${trimmedName}.`);
       });
     },
-    [editingFolderName, runMutation],
+    [editingFolderName, runMutation, setData, setMutationError, setStatusMessage],
   );
 
   const handleDeleteFolder = useCallback(
@@ -326,7 +247,7 @@ export function useFeedManagementPage() {
         setStatusMessage(`Deleted folder ${folder.name}.`);
       });
     },
-    [data.feeds, runMutation],
+    [data.feeds, runMutation, setData, setStatusMessage],
   );
 
   const handleDeleteFeed = useCallback(
@@ -345,7 +266,7 @@ export function useFeedManagementPage() {
         setStatusMessage(`Unsubscribed from ${feed.title}.`);
       });
     },
-    [runMutation],
+    [runMutation, setData, setStatusMessage],
   );
 
   const handleSaveFeedQuality = useCallback(async () => {
@@ -399,9 +320,13 @@ export function useFeedManagementPage() {
     qualityFeedTitle,
     qualityUseExtractedFulltext,
     qualityUseLlmSummary,
+    qualityDialogRef,
     refreshPageData,
     resetQualityDialog,
     runMutation,
+    setData,
+    setMutationError,
+    setStatusMessage,
   ]);
 
   return {

@@ -9,7 +9,6 @@ import { fetchUnreadItemsForSync } from '@/lib/api/itemsSync';
 import { reconcileTimelineCache } from '@/lib/storage/timelineCache';
 import {
   deriveFolderProgress,
-  moveFolderToEnd,
   pinActiveFolder,
   sortFolderQueueEntries,
 } from '@/lib/utils/unreadAggregator';
@@ -34,7 +33,14 @@ import {
   resolveFolderId,
   toArticlePreview,
 } from '@/lib/timeline/articlePreview';
-import { buildFolderMap, findNextActiveId } from '@/lib/timeline/envelope';
+import {
+  activateTimelineFolder,
+  clearPendingReadIds,
+  markTimelineFolderRead,
+  markTimelineItemRead,
+  restartTimelineQueue,
+  skipTimelineFolder,
+} from '@/lib/timeline/envelopeTransitions';
 import { useTimelineSelection } from '@/hooks/useTimelineSelection';
 import { useAutoMarkRead } from '@/hooks/useAutoMarkRead';
 
@@ -299,25 +305,7 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
 
   const setActiveFolder = useCallback((folderId: number) => {
     setEnvelope((current) => {
-      if (!(folderId in current.folders)) {
-        return current;
-      }
-
-      const target = current.folders[folderId];
-      const updatedFolders = { ...current.folders };
-      if (target.status === 'skipped') {
-        updatedFolders[folderId] = {
-          ...target,
-          status: 'queued',
-        };
-      }
-
-      const nextEnvelope: TimelineCacheEnvelope = {
-        ...current,
-        folders: updatedFolders,
-        activeFolderId: folderId,
-      };
-
+      const nextEnvelope = activateTimelineFolder(current, folderId);
       storeTimelineCache(nextEnvelope);
       return nextEnvelope;
     });
@@ -329,23 +317,12 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
         return;
       }
 
-      const folder = envelope.folders[folderId];
-
-      const itemIds = folder.articles.map((article) => article.id);
+      let itemIds: number[] = [];
 
       setEnvelope((current) => {
-        const { [folderId]: _removed, ...updatedFolders } = current.folders;
-        void _removed;
-
-        const remainingQueue = sortFolderQueueEntries(Object.values(updatedFolders));
-        const nextActiveId = findNextActiveId(remainingQueue);
-
-        const nextEnvelope: TimelineCacheEnvelope = {
-          ...current,
-          folders: buildFolderMap(remainingQueue),
-          activeFolderId: nextActiveId,
-          pendingReadIds: [...current.pendingReadIds, ...itemIds],
-        };
+        const result = markTimelineFolderRead(current, folderId);
+        itemIds = result.itemIds;
+        const nextEnvelope = result.envelope;
 
         storeTimelineCache(nextEnvelope);
         return nextEnvelope;
@@ -355,10 +332,7 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
         await markItemsRead(itemIds);
 
         setEnvelope((current) => {
-          const nextEnvelope: TimelineCacheEnvelope = {
-            ...current,
-            pendingReadIds: current.pendingReadIds.filter((id) => !itemIds.includes(id)),
-          };
+          const nextEnvelope = clearPendingReadIds(current, itemIds);
           storeTimelineCache(nextEnvelope);
           return nextEnvelope;
         });
@@ -374,17 +348,7 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
   const skipFolder = useCallback((folderId: number) => {
     return new Promise<void>((resolve) => {
       setEnvelope((current) => {
-        const updatedEntries = moveFolderToEnd(Object.values(current.folders), folderId);
-        const remainingQueue = sortFolderQueueEntries(updatedEntries);
-        const nextActiveId = findNextActiveId(remainingQueue);
-
-        const nextEnvelope: TimelineCacheEnvelope = {
-          ...current,
-          folders: buildFolderMap(remainingQueue),
-          activeFolderId: nextActiveId,
-          pendingSkipFolderIds: [...current.pendingSkipFolderIds, folderId],
-        };
-
+        const nextEnvelope = skipTimelineFolder(current, folderId);
         storeTimelineCache(nextEnvelope);
         return nextEnvelope;
       });
@@ -395,27 +359,7 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
   const restart = useCallback(() => {
     return new Promise<void>((resolve) => {
       setEnvelope((current) => {
-        const updatedFolders = { ...current.folders };
-
-        Object.values(updatedFolders).forEach((folder) => {
-          if (folder.status === 'skipped') {
-            updatedFolders[folder.id] = {
-              ...folder,
-              status: 'queued',
-            };
-          }
-        });
-
-        const remainingQueue = sortFolderQueueEntries(Object.values(updatedFolders));
-        const nextActiveId = findNextActiveId(remainingQueue);
-
-        const nextEnvelope: TimelineCacheEnvelope = {
-          ...current,
-          folders: buildFolderMap(remainingQueue),
-          activeFolderId: nextActiveId,
-          pendingSkipFolderIds: [],
-        };
-
+        const nextEnvelope = restartTimelineQueue(current);
         storeTimelineCache(nextEnvelope);
         return nextEnvelope;
       });
@@ -425,46 +369,7 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
 
   const markItemRead = useCallback(async (itemId: number) => {
     setEnvelope((current) => {
-      const updatedFolders = { ...current.folders };
-
-      let targetFolderId: number | null = null;
-      for (const folderIdStr in updatedFolders) {
-        const fid = Number(folderIdStr);
-        const folder = updatedFolders[fid];
-        if (folder.articles.some((a) => a.id === itemId)) {
-          targetFolderId = fid;
-          break;
-        }
-      }
-
-      if (targetFolderId === null) return current;
-
-      const folder = updatedFolders[targetFolderId];
-      const updatedArticles = folder.articles.map((article) =>
-        article.id === itemId ? { ...article, unread: false } : article,
-      );
-
-      const unreadCount = updatedArticles.filter((a) => a.unread).length;
-
-      updatedFolders[targetFolderId] = {
-        ...folder,
-        articles: updatedArticles,
-        unreadCount,
-      };
-
-      const remainingQueue = sortFolderQueueEntries(Object.values(updatedFolders));
-      const nextActiveId =
-        current.activeFolderId === targetFolderId && targetFolderId in updatedFolders
-          ? targetFolderId
-          : findNextActiveId(remainingQueue);
-
-      const nextEnvelope: TimelineCacheEnvelope = {
-        ...current,
-        folders: buildFolderMap(remainingQueue),
-        activeFolderId: nextActiveId,
-        pendingReadIds: [...current.pendingReadIds, itemId],
-      };
-
+      const nextEnvelope = markTimelineItemRead(current, itemId);
       storeTimelineCache(nextEnvelope);
       return nextEnvelope;
     });
@@ -473,10 +378,7 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
       await apiMarkItemRead(itemId);
 
       setEnvelope((current) => {
-        const nextEnvelope: TimelineCacheEnvelope = {
-          ...current,
-          pendingReadIds: current.pendingReadIds.filter((id) => id !== itemId),
-        };
+        const nextEnvelope = clearPendingReadIds(current, [itemId]);
         storeTimelineCache(nextEnvelope);
         return nextEnvelope;
       });

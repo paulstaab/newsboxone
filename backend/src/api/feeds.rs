@@ -9,8 +9,8 @@ use sqlx::{FromRow, SqlitePool};
 use crate::article_store;
 use crate::config::Config;
 use crate::content::FeedContentState;
+use crate::feed_ingestion::{self, FeedEntryIngestionContext};
 use crate::repo;
-use crate::ssrf;
 use crate::updater::{self, FeedQualityOverrideUpdate};
 
 use super::AppState;
@@ -249,28 +249,22 @@ async fn add_feed_impl(
         return Err(feed_already_exists());
     }
 
-    let response = ssrf::get_with_safe_redirects(
-        crate::http_client::HttpClientProfile::Feed,
-        &input.url,
-        config.testing_mode,
-    )
-    .await
-    .map_err(|error| match error {
-        ssrf::SafeGetError::Validation(error) => ssrf_error(error),
-        ssrf::SafeGetError::Request(error) => feed_parse_error(error),
-    })?;
-    if !response.status().is_success() {
-        return Err(feed_parse_error(format!(
-            "Error parsing feed from `{}`: HTTP {}",
-            input.url,
-            response.status()
-        )));
-    }
-
-    let bytes = response.bytes().await.map_err(feed_parse_error)?;
-    let parsed = feed_rs::parser::parse(&bytes[..]).map_err(|err| {
-        feed_parse_error(format!("Error parsing feed from `{}`: {err}", input.url))
-    })?;
+    let parsed = feed_ingestion::fetch_and_parse_feed_checked(&input.url, config.testing_mode)
+        .await
+        .map_err(|error| match error {
+            feed_ingestion::FeedFetchParseError::SafeGet(safe_error) => match safe_error {
+                crate::ssrf::SafeGetError::Validation(error) => ssrf_error(error),
+                crate::ssrf::SafeGetError::Request(error) => feed_parse_error(error),
+            },
+            feed_ingestion::FeedFetchParseError::BadStatus(status) => feed_parse_error(format!(
+                "Error parsing feed from `{}`: HTTP {}",
+                input.url, status
+            )),
+            feed_ingestion::FeedFetchParseError::Body(error) => feed_parse_error(error),
+            feed_ingestion::FeedFetchParseError::Parse(error) => {
+                feed_parse_error(format!("Error parsing feed from `{}`: {error}", input.url))
+            }
+        })?;
 
     let now_ts = article_store::unix_now();
     let title = parsed.title.map(|t| t.content);
@@ -297,51 +291,23 @@ async fn add_feed_impl(
         manual_use_llm_summary: None,
     };
 
-    for entry in parsed.entries.iter().take(50) {
-        insert_article_from_entry(
-            pool,
-            article_http_client,
-            config,
-            feed_id,
-            &input.url,
-            entry,
-            content_state,
-        )
-        .await?;
-    }
+    let context = FeedEntryIngestionContext {
+        pool,
+        article_http_client,
+        config,
+        feed_id,
+        feed_url: &input.url,
+        content_state,
+    };
+    feed_ingestion::ingest_feed_entries(&context, &parsed.entries)
+        .await
+        .map_err(anyhow_internal_error)?;
 
     let feeds = load_feeds(pool).await?;
     Ok(Json(FeedCreateOut {
         feeds,
         newest_item_id: feed_id,
     }))
-}
-
-async fn insert_article_from_entry(
-    pool: &SqlitePool,
-    article_http_client: &reqwest::Client,
-    config: &Config,
-    feed_id: i64,
-    feed_url: &str,
-    entry: &feed_rs::model::Entry,
-    content_state: FeedContentState,
-) -> ApiResult<()> {
-    let Some(article) = article_store::article_record_from_feed_entry(feed_id, entry) else {
-        return Ok(());
-    };
-
-    let context = article_store::ArticleIngestionContext {
-        pool,
-        article_http_client,
-        config,
-        feed_url: Some(feed_url),
-        content_state,
-    };
-    let _ = article_store::ingest_article_if_new(&context, article)
-        .await
-        .map_err(internal_error)?;
-
-    Ok(())
 }
 
 /// Moves a feed to the requested folder after validating both identifiers.
