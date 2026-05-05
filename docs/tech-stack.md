@@ -14,7 +14,7 @@ It describes the shared runtime, major technologies, development workflow, and p
 
 ## Backend Stack
 
-- Language: Rust 2024 edition
+- Language: Rust 2024 edition on Rust 1.95.0
 - Web framework: `axum`
 - Async runtime: `tokio`
 - HTTP client: `reqwest`
@@ -35,6 +35,7 @@ It describes the shared runtime, major technologies, development workflow, and p
 - Styling: Tailwind CSS 4.1
 - Date utilities: `date-fns` 4.1
 - Test and mock tooling: Playwright, Vitest, Testing Library, MSW
+- Frontend dependency resolution: npm lockfile with an override that keeps transitive `postcss` consumers on the patched 8.5.x line
 
 ## API And Auth
 
@@ -56,6 +57,7 @@ It describes the shared runtime, major technologies, development workflow, and p
 - Dev container: root `.devcontainer/devcontainer.json`
 - CI: GitHub Actions under `.github/workflows/`
 - Container packaging: root `Dockerfile` plus `docker/nginx.conf`
+- Container backend build: Rust 1.95.0 Debian Bookworm image
 
 ## Local Development
 
