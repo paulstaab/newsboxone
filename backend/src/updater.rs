@@ -160,7 +160,7 @@ pub async fn update_due_feeds(
 ) -> Result<usize> {
     let now_ts = article_store::unix_now();
     let feeds: Vec<FeedToUpdate> = sqlx::query_as(
-        "SELECT id, url, title, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE is_mailing_list = 0 AND (next_update_time IS NULL OR next_update_time <= ?)",
+        "SELECT id, url, title, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE is_mailing_list = 0 AND deleted_at IS NULL AND (next_update_time IS NULL OR next_update_time <= ?)",
     )
     .bind(now_ts)
     .fetch_all(pool)
@@ -178,7 +178,7 @@ pub async fn update_all_regular_feeds(
 ) -> Result<usize> {
     let feeds: Vec<FeedToUpdate> =
         sqlx::query_as(
-            "SELECT id, url, title, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE is_mailing_list = 0",
+            "SELECT id, url, title, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE is_mailing_list = 0 AND deleted_at IS NULL",
         )
             .fetch_all(pool)
             .await
@@ -332,7 +332,7 @@ async fn reevaluate_single_feed_quality(
     let feed_http_client = http_client::build_feed_http_client()?;
     let article_http_client = http_client::build_article_http_client()?;
     let feed: FeedToUpdate = sqlx::query_as(
-        "SELECT id, url, title, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE id = ? AND is_mailing_list = 0",
+        "SELECT id, url, title, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE id = ? AND is_mailing_list = 0 AND deleted_at IS NULL",
     )
     .bind(feed_id)
     .fetch_optional(pool)
@@ -410,7 +410,7 @@ async fn update_single_feed_quality_overrides(
     use_llm_summary: Option<Option<bool>>,
 ) -> Result<FeedQualityReevaluationResult> {
     let feed: FeedToUpdate = sqlx::query_as(
-        "SELECT id, url, title, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE id = ? AND is_mailing_list = 0",
+        "SELECT id, url, title, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE id = ? AND is_mailing_list = 0 AND deleted_at IS NULL",
     )
     .bind(feed_id)
     .fetch_optional(pool)
@@ -655,7 +655,7 @@ mod tests {
     async fn setup_pool() -> SqlitePool {
         let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
         sqlx::query(
-            "CREATE TABLE feed (id INTEGER PRIMARY KEY NOT NULL, url VARCHAR NOT NULL UNIQUE, title VARCHAR, favicon_link VARCHAR, added INTEGER NOT NULL, last_article_date INTEGER, next_update_time INTEGER, folder_id INTEGER NOT NULL, ordering INTEGER NOT NULL, link VARCHAR, pinned BOOLEAN NOT NULL, update_error_count INTEGER NOT NULL, last_update_error VARCHAR, is_mailing_list BOOLEAN NOT NULL DEFAULT 0, last_quality_check INTEGER, use_extracted_fulltext BOOLEAN NOT NULL DEFAULT 0, use_llm_summary BOOLEAN NOT NULL DEFAULT 0, manual_use_extracted_fulltext BOOLEAN, manual_use_llm_summary BOOLEAN, last_manual_quality_override INTEGER)",
+            "CREATE TABLE feed (id INTEGER PRIMARY KEY NOT NULL, url VARCHAR NOT NULL UNIQUE, title VARCHAR, favicon_link VARCHAR, added INTEGER NOT NULL, last_article_date INTEGER, next_update_time INTEGER, folder_id INTEGER NOT NULL, ordering INTEGER NOT NULL, link VARCHAR, pinned BOOLEAN NOT NULL, update_error_count INTEGER NOT NULL, last_update_error VARCHAR, is_mailing_list BOOLEAN NOT NULL DEFAULT 0, last_quality_check INTEGER, use_extracted_fulltext BOOLEAN NOT NULL DEFAULT 0, use_llm_summary BOOLEAN NOT NULL DEFAULT 0, manual_use_extracted_fulltext BOOLEAN, manual_use_llm_summary BOOLEAN, last_manual_quality_override INTEGER, deleted_at INTEGER)",
         )
         .execute(&pool)
         .await

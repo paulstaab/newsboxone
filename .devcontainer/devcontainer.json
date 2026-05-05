@@ -6,8 +6,7 @@
       "version": "24"
     },
     "ghcr.io/devcontainers/features/python:1": {},
-    "ghcr.io/rails/devcontainer/features/sqlite3:latest": {},
-    "ghcr.io/jsburckhardt/devcontainer-features/codex:1": {}
+    "ghcr.io/rails/devcontainer/features/sqlite3:latest": {}
   },
   "customizations": {
     "vscode": {
@@ -15,7 +14,8 @@
         "alexcvzz.vscode-sqlite",
         "dbaeumer.vscode-eslint",
         "ms-playwright.playwright",
-        "rust-lang.rust-analyzer"
+        "rust-lang.rust-analyzer",
+        "openai.chatgpt"
       ]
     }
   },

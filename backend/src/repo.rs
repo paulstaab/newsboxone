@@ -8,7 +8,7 @@ use crate::article_store::ArticleRecord;
 pub struct FeedDeleteCounts {
     /// Number of article rows deleted before the feed row was removed.
     pub deleted_articles: u64,
-    /// Number of feed rows removed for the requested identifier.
+    /// Number of feed rows removed or soft-deleted for the requested identifier.
     pub deleted_feeds: u64,
 }
 
@@ -16,7 +16,7 @@ pub struct FeedDeleteCounts {
 pub struct FolderDeleteCounts {
     /// Number of article rows deleted from feeds that belonged to the folder.
     pub deleted_articles: u64,
-    /// Number of feed rows deleted from the folder.
+    /// Number of feed rows removed or soft-deleted from the folder.
     pub deleted_feeds: u64,
     /// Number of folder rows deleted for the requested identifier.
     pub deleted_folders: u64,
@@ -111,11 +111,25 @@ pub async fn delete_folder_cascade(
     .execute(pool)
     .await?
     .rows_affected();
-    let deleted_feeds = sqlx::query("DELETE FROM feed WHERE folder_id = ?")
-        .bind(folder_id)
-        .execute(pool)
-        .await?
-        .rows_affected();
+    let deleted_regular_feeds =
+        sqlx::query("DELETE FROM feed WHERE folder_id = ? AND is_mailing_list = 0")
+            .bind(folder_id)
+            .execute(pool)
+            .await?
+            .rows_affected();
+    let deleted_mailing_list_feeds = sqlx::query(
+        "UPDATE feed
+         SET deleted_at = CAST(strftime('%s','now') AS INTEGER),
+             next_update_time = NULL,
+             update_error_count = 0,
+             last_update_error = NULL,
+             folder_id = (SELECT id FROM folder WHERE is_root = 1 LIMIT 1)
+         WHERE folder_id = ? AND is_mailing_list = 1 AND deleted_at IS NULL",
+    )
+    .bind(folder_id)
+    .execute(pool)
+    .await?
+    .rows_affected();
     let deleted_folders = sqlx::query("DELETE FROM folder WHERE id = ?")
         .bind(folder_id)
         .execute(pool)
@@ -124,7 +138,7 @@ pub async fn delete_folder_cascade(
 
     Ok(FolderDeleteCounts {
         deleted_articles,
-        deleted_feeds,
+        deleted_feeds: deleted_regular_feeds + deleted_mailing_list_feeds,
         deleted_folders,
     })
 }
@@ -164,27 +178,29 @@ pub async fn get_root_folder_id(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
 
 /// Returns whether a feed with the given identifier exists.
 pub async fn feed_exists(pool: &SqlitePool, feed_id: i64) -> Result<bool, sqlx::Error> {
-    let existing: Option<i64> = sqlx::query_scalar("SELECT id FROM feed WHERE id = ? LIMIT 1")
-        .bind(feed_id)
-        .fetch_optional(pool)
-        .await?;
+    let existing: Option<i64> =
+        sqlx::query_scalar("SELECT id FROM feed WHERE id = ? AND deleted_at IS NULL LIMIT 1")
+            .bind(feed_id)
+            .fetch_optional(pool)
+            .await?;
 
     Ok(existing.is_some())
 }
 
 /// Returns whether a feed URL already exists.
 pub async fn feed_exists_by_url(pool: &SqlitePool, url: &str) -> Result<bool, sqlx::Error> {
-    let existing: Option<i64> = sqlx::query_scalar("SELECT id FROM feed WHERE url = ? LIMIT 1")
-        .bind(url)
-        .fetch_optional(pool)
-        .await?;
+    let existing: Option<i64> =
+        sqlx::query_scalar("SELECT id FROM feed WHERE url = ? AND deleted_at IS NULL LIMIT 1")
+            .bind(url)
+            .fetch_optional(pool)
+            .await?;
 
     Ok(existing.is_some())
 }
 
 /// Updates the folder assignment for a feed.
 pub async fn move_feed(pool: &SqlitePool, feed_id: i64, folder_id: i64) -> Result<(), sqlx::Error> {
-    sqlx::query("UPDATE feed SET folder_id = ? WHERE id = ?")
+    sqlx::query("UPDATE feed SET folder_id = ? WHERE id = ? AND deleted_at IS NULL")
         .bind(folder_id)
         .bind(feed_id)
         .execute(pool)
@@ -194,7 +210,7 @@ pub async fn move_feed(pool: &SqlitePool, feed_id: i64, folder_id: i64) -> Resul
 
 /// Updates the display title for a feed and returns the affected row count.
 pub async fn rename_feed(pool: &SqlitePool, feed_id: i64, title: &str) -> Result<u64, sqlx::Error> {
-    let result = sqlx::query("UPDATE feed SET title = ? WHERE id = ?")
+    let result = sqlx::query("UPDATE feed SET title = ? WHERE id = ? AND deleted_at IS NULL")
         .bind(title)
         .bind(feed_id)
         .execute(pool)
@@ -202,26 +218,61 @@ pub async fn rename_feed(pool: &SqlitePool, feed_id: i64, title: &str) -> Result
     Ok(result.rows_affected())
 }
 
-/// Deletes a feed and its articles.
+/// Deletes a feed and its articles, retaining deleted newsletter senders as an ingest blocklist.
 pub async fn delete_feed_cascade(
     pool: &SqlitePool,
     feed_id: i64,
 ) -> Result<FeedDeleteCounts, sqlx::Error> {
+    let is_mailing_list: bool =
+        sqlx::query_scalar("SELECT is_mailing_list FROM feed WHERE id = ? AND deleted_at IS NULL")
+            .bind(feed_id)
+            .fetch_one(pool)
+            .await?;
     let deleted_articles = sqlx::query("DELETE FROM article WHERE feed_id = ?")
         .bind(feed_id)
         .execute(pool)
         .await?
         .rows_affected();
-    let deleted_feeds = sqlx::query("DELETE FROM feed WHERE id = ?")
+    let deleted_feeds = if is_mailing_list {
+        sqlx::query(
+            "UPDATE feed
+             SET deleted_at = CAST(strftime('%s','now') AS INTEGER),
+                 next_update_time = NULL,
+                 update_error_count = 0,
+                 last_update_error = NULL
+             WHERE id = ? AND deleted_at IS NULL",
+        )
         .bind(feed_id)
         .execute(pool)
         .await?
-        .rows_affected();
+        .rows_affected()
+    } else {
+        sqlx::query("DELETE FROM feed WHERE id = ?")
+            .bind(feed_id)
+            .execute(pool)
+            .await?
+            .rows_affected()
+    };
 
     Ok(FeedDeleteCounts {
         deleted_articles,
         deleted_feeds,
     })
+}
+
+/// Returns whether a mailing-list sender has been soft-deleted.
+pub async fn mailing_list_sender_is_deleted(
+    pool: &SqlitePool,
+    from_address: &str,
+) -> Result<bool, sqlx::Error> {
+    let deleted_at: Option<Option<i64>> = sqlx::query_scalar(
+        "SELECT deleted_at FROM feed WHERE url = ? AND is_mailing_list = 1 LIMIT 1",
+    )
+    .bind(from_address)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(matches!(deleted_at, Some(Some(_))))
 }
 
 /// Marks all items in a feed as read up to the provided newest item boundary.

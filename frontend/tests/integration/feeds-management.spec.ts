@@ -101,4 +101,22 @@ test.describe('Feed management integration coverage', () => {
     await expect(page.getByLabel(/extract full text setting/i)).toHaveValue('disabled');
     await expect(page.getByLabel(/create llm summaries setting/i)).toHaveValue('enabled');
   });
+
+  test('[TC-FEEDS-006] confirmed feed deletion removes the row', async ({ page }) => {
+    await page.goto('/feeds');
+
+    const feedTable = page.getByRole('table', { name: /feed management table/i });
+    const backendRow = feedTable.getByRole('row', { name: /#102: backend briefing/i });
+    await expect(backendRow).toBeVisible();
+
+    page.once('dialog', async (dialog) => {
+      expect(dialog.message()).toContain('Backend Briefing');
+      await dialog.accept();
+    });
+
+    await backendRow.getByRole('button', { name: /delete feed backend briefing/i }).click();
+
+    await expect(page.getByText(/unsubscribed from backend briefing/i)).toBeVisible();
+    await expect(feedTable.getByRole('row', { name: /#102: backend briefing/i })).toHaveCount(0);
+  });
 });
