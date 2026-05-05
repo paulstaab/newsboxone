@@ -42,6 +42,7 @@ These scenarios are preferred over frontend integration tests whenever the behav
 | `TS-LOGIN-003`   | Invalid credentials are rejected safely                    | Backend auth is enabled with known credentials.               | Submit the login form with an invalid password.                            | The app stays on `/login`, keeps the username, clears the password, and shows an inline auth error.                     |
 | `TS-LOGIN-004`   | Remember-device choice controls storage persistence        | Backend auth is enabled with known credentials.               | Complete login once with remember disabled and once with remember enabled. | The default token-backed session lands in `sessionStorage`; remembered login lands in `localStorage`.                   |
 | `TS-LOGIN-005`   | Signed-out visitor is routed to login from feed management | Browser storage is empty.                                     | Open `/feeds`.                                                             | The app redirects to `/login` instead of exposing the authenticated feed-management page.                               |
+| `TS-LOGIN-006`   | Dropdown logout revokes the active browser token           | Backend auth is enabled with known credentials.               | Sign in, trigger `Logout` from the burger menu, and retry a protected API request with the old token.           | The app returns to `/login`, browser session storage is cleared, and the revoked token is rejected with `401`.          |
 
 ### Feed Onboarding and Management
 

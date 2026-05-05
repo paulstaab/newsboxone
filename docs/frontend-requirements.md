@@ -36,6 +36,7 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 - `APP-009`: Dismissing the install prompt shall persist a 7-day cooldown in `localStorage`.
 - `APP-010`: An `appinstalled` event shall suppress future install prompts and clear dismissal state.
 - `APP-011`: The shared burger menu shall list timeline before feed management and use the feed management entry to navigate to the feed management page.
+- `APP-012`: When an authenticated session exists, the shared burger menu shall expose a logout action that revokes the current backend-issued browser token, clears frontend session storage, and routes the user to `/login`; if backend revocation fails, local sign-out shall still complete.
 
 ### Login Page
 
@@ -46,6 +47,7 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 - `LOGIN-005`: The login flow shall exchange credentials for a backend-issued browser token before persisting a session.
 - `LOGIN-006`: Successful login shall store the issued auth token in browser session data and redirect to `/timeline`.
 - `LOGIN-007`: Failed authentication shall keep the user on the login page, preserve the username field, clear the password field, and show an inline error.
+- `LOGIN-008`: The login page shall preserve readable text and input contrast in both light and dark browser color schemes.
 - `LOGIN-011`: Token-backed session data shall be stored in `sessionStorage` by default.
 - `LOGIN-012`: When “remember device” is enabled, token-backed session data shall be stored in `localStorage` instead.
 - `LOGIN-013`: When a remembered session exists, it shall be preferred over `sessionStorage` on startup.

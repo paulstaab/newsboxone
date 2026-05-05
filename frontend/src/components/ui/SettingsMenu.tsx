@@ -6,7 +6,8 @@
 
 import { useState, useRef, useEffect, type CSSProperties } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 import { triggerInstallPrompt, canPromptInstall } from '@/lib/pwa/installPrompt';
 
 export interface SettingsMenuProps {
@@ -27,14 +28,16 @@ export interface SettingsMenuProps {
  */
 export function SettingsMenu({ position = 'top-right', className = '' }: SettingsMenuProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { isAuthenticated, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showInstallOption, setShowInstallOption] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Check if install is available
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setShowInstallOption(canPromptInstall());
   }, []);
 
@@ -78,6 +81,18 @@ export function SettingsMenu({ position = 'top-right', className = '' }: Setting
 
     // Check again if install is still available
     setShowInstallOption(canPromptInstall());
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+
+    try {
+      await logout();
+    } finally {
+      setIsOpen(false);
+      setIsLoggingOut(false);
+      router.push('/login');
+    }
   };
 
   const positionStyles: Record<NonNullable<SettingsMenuProps['position']>, CSSProperties> = {
@@ -233,6 +248,41 @@ export function SettingsMenu({ position = 'top-right', className = '' }: Setting
               </svg>
               <span>About NewsBoxOne</span>
             </button>
+
+            {isAuthenticated ? (
+              <button
+                type="button"
+                className="app-menu__item"
+                role="menuitem"
+                onClick={() => {
+                  void handleLogout();
+                }}
+                disabled={isLoggingOut}
+                aria-label={isLoggingOut ? 'Signing out' : 'Logout'}
+              >
+                <svg
+                  className="app-menu__icon"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 17l5-5m0 0l-5-5m5 5H9"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 22H6a2 2 0 01-2-2V4a2 2 0 012-2h7"
+                  />
+                </svg>
+                <span>{isLoggingOut ? 'Signing out...' : 'Logout'}</span>
+              </button>
+            ) : null}
 
             {/* Divider */}
             <div className="app-menu__divider" />
