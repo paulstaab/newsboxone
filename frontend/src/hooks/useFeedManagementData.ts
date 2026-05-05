@@ -66,9 +66,17 @@ export function useFeedManagementData() {
   );
 
   useEffect(() => {
-    if (!isInitializing && isAuthenticated) {
-      void refreshPageData(true);
+    if (isInitializing) {
+      return;
     }
+
+    if (isAuthenticated) {
+      void refreshPageData(true);
+      return;
+    }
+
+    setIsLoading(false);
+    setIsRefreshing(false);
   }, [isAuthenticated, isInitializing, refreshPageData]);
 
   return {
