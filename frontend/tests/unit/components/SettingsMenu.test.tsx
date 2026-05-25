@@ -112,4 +112,21 @@ describe('SettingsMenu', () => {
 
     expect(screen.queryByRole('menuitem', { name: /logout/i })).toBeNull();
   });
+
+  it('shows the about entry and closes the menu after it is selected', async () => {
+    const user = userEvent.setup();
+
+    render(<SettingsMenu />);
+
+    await user.click(screen.getByRole('button', { name: /burger menu/i }));
+
+    const aboutLink = screen.getByRole('menuitem', { name: /about newsboxone/i });
+    expect(aboutLink).toHaveAttribute('href', '/about');
+
+    await user.click(aboutLink);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('menuitem', { name: /about newsboxone/i })).toBeNull();
+    });
+  });
 });

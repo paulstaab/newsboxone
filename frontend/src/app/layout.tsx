@@ -12,7 +12,10 @@ import { ClientOverlays } from '@/components/ui/ClientOverlays';
  * App metadata for the root layout.
  */
 export const metadata: Metadata = {
-  title: 'NewsBoxOne',
+  title: {
+    default: 'NewsBoxOne',
+    template: '%s | NewsBoxOne',
+  },
   description: 'Static headless RSS reader for Nextcloud News.',
   manifest: `${APP_BASE_PATH}/manifest.json`,
   icons: {

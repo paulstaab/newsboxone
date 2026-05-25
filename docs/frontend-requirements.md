@@ -37,6 +37,8 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 - `APP-010`: An `appinstalled` event shall suppress future install prompts and clear dismissal state.
 - `APP-011`: The shared burger menu shall list timeline before feed management and use the feed management entry to navigate to the feed management page.
 - `APP-012`: When an authenticated session exists, the shared burger menu shall expose a logout action that revokes the current backend-issued browser token, clears frontend session storage, and routes the user to `/login`; if backend revocation fails, local sign-out shall still complete.
+- `APP-013`: The shared burger menu shall expose an About entry that routes to `/about`.
+- `APP-014`: Login, timeline, feed management, and about routes shall set a descriptive document title for the active page.
 
 ### Login Page
 
