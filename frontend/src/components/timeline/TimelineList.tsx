@@ -89,11 +89,7 @@ export function TimelineList({
         />
       )}
       {onMarkAllRead && (
-        <MarkAllReadButton
-          onMarkAllRead={onMarkAllRead}
-          disabled={actionDisabled}
-          className="border border-gray-200 shadow-sm text-gray-700 hover:bg-gray-50"
-        />
+        <MarkAllReadButton onMarkAllRead={onMarkAllRead} disabled={actionDisabled} />
       )}
     </div>
   );

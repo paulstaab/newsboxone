@@ -106,7 +106,7 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 - `FEEDS-006`: Failed subscription attempts shall preserve the user input and show actionable error feedback without removing the current page data.
 - `FEEDS-007`: The page shall group subscribed feeds by folder in a table and shall show feeds without a folder assignment in an `Uncategorized` group.
 - `FEEDS-008`: Feed groups and feed rows shall be ordered alphabetically by displayed name.
-- `FEEDS-009`: Each feed row shall display the feed ID and feed title together as the feed name, the last article date relative to the current time, a dedicated status indicator, and row actions in separate table columns.
+- `FEEDS-009`: Each feed row shall display the feed title as the feed name without exposing the internal feed ID, the last article date relative to the current time, a dedicated status indicator, and row actions in separate table columns.
 - `FEEDS-009b`: The `Last Article` value shall come from the feed metadata returned by the feeds API so it remains available even after article cleanup removes old item rows.
 - `FEEDS-009a`: Hovering the `Last Article` value shall expose the exact timestamp in the viewer's local timezone formatted as `YYYY-MM-DD HH:mm:ss`.
 - `FEEDS-010`: The page shall show feed update status as a centered icon in the `Status` column, using hover text to expose the concrete error message when the last update failed.

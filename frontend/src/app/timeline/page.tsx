@@ -207,6 +207,9 @@ function TimelineContent() {
   const hasUnread = !progress.allViewed;
 
   const showEmptyState = !activeFolder;
+  const activeFolderUnread =
+    activeFolder?.unreadCount ?? activeArticles.filter((article) => article.unread).length;
+  const remainingFolders = queue.filter((entry) => entry.status !== 'skipped').length;
   const lastUpdatedLabel = activeFolder
     ? new Date(activeFolder.lastUpdated).toLocaleTimeString([], {
         hour: '2-digit',
@@ -228,22 +231,42 @@ function TimelineContent() {
   } as CSSProperties;
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,hsl(var(--color-surface))_0%,hsl(var(--color-surface-muted))_100%)] text-[hsl(var(--color-text))]">
+    <div className="min-h-screen bg-[hsl(var(--color-surface))] text-[hsl(var(--color-text))]">
       <div
         className={`timeline-page${isPopoutOpen ? ' timeline-page--disabled' : ''}`}
         aria-hidden={isPopoutOpen}
       >
-        {/* Header */}
-        <header className="bg-[hsl(var(--color-surface))]/92">
-          <div className="mx-auto max-w-4xl px-4 py-4">
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold text-[hsl(var(--color-text))]">NewsBoxOne</h1>
+        <header className="timeline-header">
+          <div className="timeline-shell timeline-header__inner">
+            <div className="timeline-header__copy">
+              <p className="timeline-header__eyebrow">Timeline</p>
+              <h1 className="timeline-header__title">NewsBoxOne</h1>
+              <p className="timeline-header__subtitle">
+                {activeFolder
+                  ? `${activeFolder.name} is in focus`
+                  : totalUnread === 0
+                    ? 'All caught up'
+                    : 'Choose a folder to continue'}
+              </p>
+            </div>
+            <div className="timeline-header__stats" aria-label="Timeline summary">
+              <div>
+                <span className="timeline-header__stat-value">{totalUnread}</span>
+                <span className="timeline-header__stat-label">Unread</span>
+              </div>
+              <div>
+                <span className="timeline-header__stat-value">{activeFolderUnread}</span>
+                <span className="timeline-header__stat-label">In Focus</span>
+              </div>
+              <div>
+                <span className="timeline-header__stat-value">{remainingFolders}</span>
+                <span className="timeline-header__stat-label">Folders</span>
+              </div>
             </div>
           </div>
         </header>
 
-        <div className="mx-auto max-w-4xl px-4">
-          {/* Folder queue */}
+        <div className="timeline-shell">
           <div ref={sentinelRef} aria-hidden="true" className="folder-queue-sentinel" />
           <div
             ref={queueRef}
@@ -260,8 +283,32 @@ function TimelineContent() {
             </span>
           </div>
 
-          {/* Main content */}
-          <main className="py-6" style={timelineStyle}>
+          <PinnedActionCluster
+            onSync={() => {
+              markTimelineUpdateStart();
+              void refresh({ forceSync: true })
+                .then(() => {
+                  markTimelineUpdateComplete();
+                })
+                .catch(() => {
+                  markTimelineUpdateComplete();
+                });
+            }}
+            onSkip={async () => {
+              if (!activeFolder) return;
+              await skipFolder(activeFolder.id);
+            }}
+            onMarkAllRead={async () => {
+              if (!activeFolder) return;
+              scrollToTopOnNextFolderRef.current = true;
+              await markFolderRead(activeFolder.id);
+            }}
+            disableSkip={!hasUnread}
+            disableMarkAllRead={!hasUnread}
+            isSyncing={isRefreshing}
+          />
+
+          <main className="timeline-main" style={timelineStyle}>
             {showEmptyState ? (
               <EmptyState
                 type={emptyStateType}
@@ -303,37 +350,10 @@ function TimelineContent() {
               </div>
             )}
             {lastUpdatedLabel && (
-              <div className="mt-14 text-center text-sm text-gray-500">
-                Last updated at {lastUpdatedLabel}
-              </div>
+              <div className="timeline-last-updated">Last updated at {lastUpdatedLabel}</div>
             )}
           </main>
         </div>
-
-        <PinnedActionCluster
-          onSync={() => {
-            markTimelineUpdateStart();
-            void refresh({ forceSync: true })
-              .then(() => {
-                markTimelineUpdateComplete();
-              })
-              .catch(() => {
-                markTimelineUpdateComplete();
-              });
-          }}
-          onSkip={async () => {
-            if (!activeFolder) return;
-            await skipFolder(activeFolder.id);
-          }}
-          onMarkAllRead={async () => {
-            if (!activeFolder) return;
-            scrollToTopOnNextFolderRef.current = true;
-            await markFolderRead(activeFolder.id);
-          }}
-          disableSkip={!hasUnread}
-          disableMarkAllRead={!hasUnread}
-          isSyncing={isRefreshing}
-        />
 
         {/* Toast notifications for errors */}
         {toasts.map((toast) => (
