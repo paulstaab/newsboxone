@@ -523,7 +523,7 @@ function FeedManagementContent() {
 
           <dialog
             ref={qualityDialogRef}
-            className="feed-management-dialog feed-management-dialog--quality"
+            className="feed-management-dialog"
             onClose={resetQualityDialog}
           >
             <form
