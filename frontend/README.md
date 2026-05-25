@@ -22,7 +22,7 @@ offer a compatible feed-reader API surface (untested).
 
 ### Prerequisites
 
-- Node.js 24 or higher
+- Node.js 26 or higher
 - npm
 
 ### Installation
