@@ -100,7 +100,7 @@ function restoreUnreadPreviews(
     const folderId = preview.folderId;
     const fallbackFolder = fallbackById.get(folderId);
     const existingFolder = updatedFolders[folderId] ?? fallbackFolder;
-    const article = { ...preview, unread: true };
+    const article = { ...preview };
 
     if (!existingFolder) {
       updatedFolders[folderId] = {
@@ -108,7 +108,7 @@ function restoreUnreadPreviews(
         name: folderId === UNCATEGORIZED_FOLDER_ID ? 'Uncategorized' : `Folder ${String(folderId)}`,
         sortOrder: 0,
         status: 'queued',
-        unreadCount: 1,
+        unreadCount: article.unread ? 1 : 0,
         articles: [article],
         lastUpdated: now,
       };

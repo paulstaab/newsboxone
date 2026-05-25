@@ -80,6 +80,7 @@ These scenarios are preferred over frontend integration tests whenever the behav
 ## Scenarios Moved Out Of The Cross-Stack Baseline
 
 - Frontend-only app-shell, accessibility, offline, and PWA checks should remain tracked in `docs/frontend-test-cases.md` rather than this document.
+- Frontend-only unread-sync pagination and optimistic-read rollback coverage (`TIMELINE-038` and `TIMELINE-039`, tracked as `TC-TIMELINE-017a` and `TC-TIMELINE-017b`) remains unit-level in `docs/frontend-test-cases.md` because it validates client cache reconciliation internals rather than a browser-visible cross-stack journey.
 - Backend-only API contract, incremental sync, star or unstar API, updater, and newsletter-ingestion flows should remain tracked in `docs/backend-test-cases.md` unless they are rewritten as browser-visible cross-stack journeys.
 
 ## Recommended Next Step
