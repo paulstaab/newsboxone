@@ -551,7 +551,10 @@ fn clean_newsletter_html(html_content: &str) -> String {
         return String::new();
     }
 
-    let without_tracking_pixels = tracking_pixel_regex().replace_all(html_content, "");
+    let without_comments = html_comment_regex().replace_all(html_content, "");
+    let without_head = head_tag_regex().replace_all(&without_comments, "");
+    let without_style_scripts = style_script_tag_regex().replace_all(&without_head, "");
+    let without_tracking_pixels = tracking_pixel_regex().replace_all(&without_style_scripts, "");
     let without_meta = meta_tag_regex().replace_all(&without_tracking_pixels, "");
     let without_hidden = hidden_div_regex().replace_all(&without_meta, "");
     let simplified_tables = table_tag_regex().replace_all(&without_hidden, "");
@@ -715,7 +718,7 @@ fn build_openai_newsletter_payload(
         "messages": [
             {
                 "role": "system",
-                "content": "You are parsing a newsletter email. Decide if it is a list of distinct article links with short descriptions. If yes, return mode=multi with an ordered list of items. If no, return mode=single with a cleaned content field and a concise summary. Always keep formatting minimal: paragraphs, lists, and links only."
+                "content": "You are parsing a newsletter email. Return mode=multi whenever the email is a digest or roundup containing two or more distinct article/headline links, each with an optional short description. Ignore navigation, social, unsubscribe, tracking, view-in-browser, advertisement, commercial, promotion, and sponsor links or sections. Remove advertisements, commercial copy, promotions, and sponsorship segments from returned content, summaries, and items unless the sponsored item is clearly one of the newsletter's editorial article links. Do not infer the item count only from the subject line. In multi mode, return the ordered article links as items with their URLs. Return mode=single only for one main article/message, with a cleaned content field and a concise summary. Always keep formatting minimal: paragraphs, lists, and links only."
             },
             {
                 "role": "user",
@@ -753,6 +756,27 @@ fn build_openai_newsletter_payload(
                 }
             }
         }
+    })
+}
+
+/// Returns the compiled regex used to remove HTML comments before prompt truncation.
+fn html_comment_regex() -> &'static Regex {
+    static REGEX: OnceLock<Regex> = OnceLock::new();
+    REGEX.get_or_init(|| Regex::new(r"(?is)<!--.*?-->").expect("valid HTML comment regex"))
+}
+
+/// Returns the compiled regex used to remove document head blocks that usually contain CSS.
+fn head_tag_regex() -> &'static Regex {
+    static REGEX: OnceLock<Regex> = OnceLock::new();
+    REGEX.get_or_init(|| Regex::new(r"(?is)<head\b[^>]*>.*?</head>").expect("valid head regex"))
+}
+
+/// Returns the compiled regex used to remove script and style blocks from newsletter HTML.
+fn style_script_tag_regex() -> &'static Regex {
+    static REGEX: OnceLock<Regex> = OnceLock::new();
+    REGEX.get_or_init(|| {
+        Regex::new(r"(?is)<(?:script|style)\b[^>]*>.*?</(?:script|style)>")
+            .expect("valid script/style regex")
     })
 }
 
@@ -826,11 +850,12 @@ mod tests {
     use crate::config::Config;
 
     use super::{
-        EmailCredentialRow, NEWSLETTER_MAX_ITEMS, NEWSLETTER_SINGLE_SUMMARY_MAX_CHARS,
-        NewsletterItem, NewsletterLlmResult, build_articles_from_email,
-        build_openai_newsletter_payload, clean_newsletter_html, clean_up_old_newsletters,
-        fetch_emails_from_all_mailboxes_with_fetcher, load_mock_messages_from_env,
-        normalize_llm_result, parse_newsletter_llm_json_response, process_email_message,
+        EmailCredentialRow, NEWSLETTER_MAX_CHARS, NEWSLETTER_MAX_ITEMS,
+        NEWSLETTER_SINGLE_SUMMARY_MAX_CHARS, NewsletterItem, NewsletterLlmResult,
+        build_articles_from_email, build_openai_newsletter_payload, clean_newsletter_html,
+        clean_up_old_newsletters, fetch_emails_from_all_mailboxes_with_fetcher,
+        load_mock_messages_from_env, normalize_llm_result, parse_newsletter_llm_json_response,
+        process_email_message,
     };
 
     #[derive(Clone)]
@@ -1066,6 +1091,12 @@ mod tests {
     fn newsletter_payload_uses_strict_schema_with_nullable_optional_fields() {
         let payload =
             build_openai_newsletter_payload("test-model", "Subject", "list@example.com", "Body");
+
+        let system_prompt = payload["messages"][0]["content"].as_str().unwrap();
+        assert!(system_prompt.contains("digest or roundup"));
+        assert!(system_prompt.contains("two or more distinct article/headline links"));
+        assert!(system_prompt.contains("advertisement"));
+        assert!(system_prompt.contains("sponsorship segments"));
 
         let schema = &payload["response_format"]["json_schema"]["schema"];
         assert_eq!(
@@ -1329,6 +1360,24 @@ mod tests {
         assert!(cleaned.contains("hello"));
         assert!(!cleaned.contains("hidden"));
         assert!(!cleaned.contains("pixel.gif"));
+    }
+
+    #[test]
+    fn html_cleanup_removes_template_css_before_article_links() {
+        let html = format!(
+            r#"<html><head><style>{}</style></head><body><p><a href="https://example.com/one">First article</a> Short description.</p><p><a href="https://example.com/two">Second article</a> Another description.</p></body></html>"#,
+            ".template { color: #000; }".repeat(400)
+        );
+
+        let cleaned = clean_newsletter_html(&html);
+        let payload =
+            build_openai_newsletter_payload("test-model", "Digest", "list@example.com", &cleaned);
+        let prompt_content = payload["messages"][1]["content"].as_str().unwrap();
+
+        assert!(!cleaned.contains(".template"));
+        assert!(prompt_content.len() < NEWSLETTER_MAX_CHARS + 200);
+        assert!(prompt_content.contains("https://example.com/one"));
+        assert!(prompt_content.contains("https://example.com/two"));
     }
 
     #[test]

@@ -149,12 +149,13 @@ The same requirements apply to all implementations.
 - `EML-004`: Only messages identified as mailing-list emails (for example via `List-Unsubscribe`) shall be treated as newsletters.
 - `EML-005`: Mailing-list feeds shall be auto-created on first encounter of a sender.
 - `EML-005a`: Incoming mailing-list emails from a soft-deleted sender shall be silently ignored and shall not recreate the feed or articles.
-- `EML-006`: Newsletter HTML shall be cleaned before article persistence.
+- `EML-006`: Newsletter HTML shall be cleaned before article persistence and LLM parsing, including removal of hidden blocks, metadata, tracking pixels, document head blocks, template CSS, scripts, and layout table wrappers while preserving readable content and article links.
 - `EML-007`: Optional LLM-based newsletter parsing:
   - Optional LLM-based newsletter parsing shall be enabled only when LLM support is configured.
   - Before LLM-based newsletter parsing, newsletter content shall be truncated to the first 5000 characters.
   - LLM-based newsletter parsing shall support `single` mode and `multi` mode.
   - If a newsletter is a collection of links to different articles, it shall be parsed in `multi` mode. Otherwise, it shall be parsed in `single` mode.
+  - The newsletter parser shall ignore and remove advertisements, commercial copy, promotions, and sponsorship segments from returned content, summaries, and multi-item entries unless a sponsored item is clearly one of the newsletter's editorial article links.
   - In `single` mode, the parser should return the cleaned newsletter content as article and a concise, generated summary.
   - In `multi` mode, the parser should return an list of articles linked in the newsletter, so that they can be shown as separate entries in the generated feed.
   - LLM-based multi-item parsing shall create at most 25 articles from a single newsletter email.
