@@ -13,5 +13,5 @@ Use these instructions when generating a Git commit message for this repository.
 Example:
 
   Redesign app
-  
+
   Refresh the main layout, update the visual hierarchy across shared surfaces, and adjust component styling to match the new app presentation.
