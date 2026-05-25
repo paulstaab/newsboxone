@@ -6,7 +6,7 @@
       "version": "26"
     },
     "ghcr.io/devcontainers/features/python:1": {},
-    "ghcr.io/rails/devcontainer/features/sqlite3:latest": {}
+    "ghcr.io/rails/devcontainer/features/sqlite3:1.0.0": {}
   },
   "customizations": {
     "vscode": {
