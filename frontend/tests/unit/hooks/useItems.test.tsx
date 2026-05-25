@@ -1,9 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useItems } from '@/hooks/useItems';
-import { getItems } from '@/lib/api/items';
 import { UNCATEGORIZED_FOLDER_ID } from '@/types';
 import type { UserSessionConfig } from '@/types';
+
+const apiMocks = vi.hoisted(() => ({
+  getItems: vi.fn(),
+}));
 
 interface MockAuthReturn {
   isAuthenticated: boolean;
@@ -30,11 +33,13 @@ vi.mock('@/hooks/useAuth', () => ({
   useAuth: (): MockAuthReturn => mockAuthReturn,
 }));
 
-vi.mock('@/lib/api/items', () => ({
-  getItems: vi.fn(),
+vi.mock('@/lib/api', () => ({
+  api: {
+    items: {
+      get: apiMocks.getItems,
+    },
+  },
 }));
-
-const mockedGetItems = vi.mocked(getItems);
 
 beforeEach(() => {
   mockAuthReturn = {
@@ -51,7 +56,7 @@ beforeEach(() => {
       lastSyncAt: null,
     },
   };
-  mockedGetItems.mockClear();
+  apiMocks.getItems.mockClear();
 });
 
 describe('useItems', () => {
@@ -71,7 +76,7 @@ describe('useItems', () => {
       },
     };
 
-    mockedGetItems.mockResolvedValueOnce([
+    apiMocks.getItems.mockResolvedValueOnce([
       {
         id: 1,
         guid: 'guid-1',
@@ -144,7 +149,7 @@ describe('useItems', () => {
       },
     };
 
-    mockedGetItems.mockResolvedValueOnce([
+    apiMocks.getItems.mockResolvedValueOnce([
       {
         id: 1,
         guid: 'guid-1',

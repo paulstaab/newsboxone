@@ -522,11 +522,13 @@ export async function setupApiMocks(page: Page) {
       filteredItems = filteredItems.filter((item) => item.folderId === id);
     }
 
-    filteredItems.sort((left, right) =>
-      oldestFirst ? left.pubDate - right.pubDate : right.pubDate - left.pubDate,
-    );
+    if (offset > 0) {
+      filteredItems = filteredItems.filter((item) => item.id <= offset);
+    }
 
-    filteredItems = filteredItems.slice(offset, offset + batchSize);
+    filteredItems.sort((left, right) => (oldestFirst ? left.id - right.id : right.id - left.id));
+
+    filteredItems = filteredItems.slice(0, batchSize);
 
     await route.fulfill({
       status: 200,

@@ -4,7 +4,7 @@
 
 import { apiDelete, apiGet, apiPost, apiPut } from './client';
 import type { FoldersApi } from './types';
-import { type Folder, type FoldersResponse, normalizeFolder } from '@/types';
+import { type FoldersResponse, normalizeFolder } from '@/types';
 
 /**
  * Folder endpoint group implementation.
@@ -36,38 +36,3 @@ export const foldersApi: FoldersApi = {
     await apiPost(`/folders/${String(folderId)}/read`, { newestItemId });
   },
 };
-
-/**
- * Fetches all folders.
- */
-export async function getFolders(): Promise<Folder[]> {
-  return foldersApi.getAll();
-}
-
-/**
- * Creates a new folder.
- */
-export async function createFolder(name: string): Promise<Folder> {
-  return foldersApi.create(name);
-}
-
-/**
- * Renames an existing folder.
- */
-export async function renameFolder(folderId: number, name: string): Promise<void> {
-  return foldersApi.rename(folderId, name);
-}
-
-/**
- * Deletes a folder.
- */
-export async function deleteFolder(folderId: number): Promise<void> {
-  return foldersApi.delete(folderId);
-}
-
-/**
- * Marks all items in a folder as read.
- */
-export async function markFolderRead(folderId: number, newestItemId: number): Promise<void> {
-  return foldersApi.markRead(folderId, newestItemId);
-}

@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from 'react';
 import useSWRImmutable from 'swr/immutable';
-import { getItems } from '@/lib/api/items';
+import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import type { Article } from '@/types';
 import { UNCATEGORIZED_FOLDER_ID } from '@/types';
@@ -31,7 +31,7 @@ export function useItems(options: UseItemsOptions = {}): UseItemsResult {
   const swrKey = isAuthenticated && !isInitializing && session ? ['items', session.username] : null;
   const { data, error, isLoading, isValidating, mutate } = useSWRImmutable<Article[], Error>(
     swrKey,
-    getItems,
+    () => api.items.get(),
   );
 
   const allItems = useMemo(() => data ?? [], [data]);

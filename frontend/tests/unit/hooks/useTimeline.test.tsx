@@ -4,13 +4,20 @@ import type { Article, Folder, Feed, ArticlePreview, FolderQueueEntry } from '@/
 import { useTimeline } from '@/hooks/useTimeline';
 import { CONFIG } from '@/lib/config/env';
 import { createEmptyTimelineCache } from '@/lib/storage';
-import { markItemsRead } from '@/lib/api/items';
 
 // Mock SWR immutable hook to return deterministic folder/feed payloads
 const mocks = vi.hoisted(() => ({
   foldersData: { value: [] as Folder[] | undefined },
   feedsData: { value: [] as Feed[] },
   unreadItems: [] as Article[],
+}));
+const apiMocks = vi.hoisted(() => ({
+  getFolders: vi.fn(() => Promise.resolve(mocks.foldersData.value ?? [])),
+  getFeeds: vi.fn(() =>
+    Promise.resolve({ feeds: mocks.feedsData.value, starredCount: 0, newestItemId: null }),
+  ),
+  markMultipleRead: vi.fn().mockResolvedValue(undefined),
+  markRead: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/api/itemsSync', () => {
@@ -32,17 +39,19 @@ vi.mock('@/lib/storage/timelineCache', async () => {
   };
 });
 
-vi.mock('@/lib/api/folders', () => ({
-  getFolders: vi.fn(),
-}));
-
-vi.mock('@/lib/api/feeds', () => ({
-  getFeeds: vi.fn(),
-}));
-
-vi.mock('@/lib/api/items', () => ({
-  markItemsRead: vi.fn().mockResolvedValue(undefined),
-  markItemRead: vi.fn().mockResolvedValue(undefined),
+vi.mock('@/lib/api', () => ({
+  api: {
+    folders: {
+      getAll: apiMocks.getFolders,
+    },
+    feeds: {
+      getAll: apiMocks.getFeeds,
+    },
+    items: {
+      markMultipleRead: apiMocks.markMultipleRead,
+      markRead: apiMocks.markRead,
+    },
+  },
 }));
 
 function buildArticle(partial: Partial<Article>): Article {
@@ -283,7 +292,7 @@ describe('useTimeline', () => {
       expect(result.current.activeArticles).toHaveLength(1);
     });
 
-    expect(vi.mocked(markItemsRead)).toHaveBeenCalledWith([1, 2]);
+    expect(apiMocks.markMultipleRead).toHaveBeenCalledWith([1, 2]);
     expect(result.current.totalUnread).toBe(1);
     expect(result.current.queue).toHaveLength(1);
   });
@@ -331,6 +340,47 @@ describe('useTimeline', () => {
       pendingReadIds?: number[];
     };
     expect(cache.pendingReadIds).toEqual([]);
+  });
+
+  it('restores folder articles and clears pendingReadIds when mark-folder-read fails', async () => {
+    apiMocks.markMultipleRead.mockRejectedValueOnce(new Error('offline'));
+    mocks.foldersData.value = [{ id: 10, name: 'Dev Updates', unreadCount: 0, feedIds: [] }];
+    mocks.feedsData.value = [buildFeed({ id: 1, folderId: 10 })];
+
+    setCache(
+      [
+        buildEntry({
+          id: 10,
+          name: 'Dev Updates',
+          articles: [
+            buildPreview({ id: 1, feedId: 1, folderId: 10 }),
+            buildPreview({ id: 2, feedId: 1, folderId: 10 }),
+          ],
+        }),
+      ],
+      10,
+    );
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { result } = renderHook(() => useTimeline());
+
+    await waitFor(() => {
+      expect(result.current.activeFolder?.id).toBe(10);
+    });
+
+    await expect(result.current.markFolderRead(10)).rejects.toThrow('offline');
+
+    await waitFor(() => {
+      expect(result.current.activeFolder?.id).toBe(10);
+      expect(result.current.activeArticles.map((article) => article.id)).toEqual([1, 2]);
+      expect(result.current.activeArticles.every((article) => article.unread)).toBe(true);
+    });
+
+    const cache = JSON.parse(localStorage.getItem(CONFIG.TIMELINE_CACHE_KEY) ?? '{}') as {
+      pendingReadIds?: number[];
+    };
+    expect(cache.pendingReadIds).toEqual([]);
+    errorSpy.mockRestore();
   });
 
   it('skips a folder, moving it to the end of the queue', async () => {
@@ -482,7 +532,7 @@ describe('useTimeline', () => {
       await result.current.markFolderRead(20);
     });
 
-    expect(vi.mocked(markItemsRead)).toHaveBeenCalledWith([3]);
+    expect(apiMocks.markMultipleRead).toHaveBeenCalledWith([3]);
   });
 
   it('keeps read items in cache until the next sync reconciliation', async () => {
@@ -527,6 +577,45 @@ describe('useTimeline', () => {
       expect(result.current.activeFolder?.id).toBe(10);
       expect(result.current.activeArticles.every((article) => !article.unread)).toBe(true);
     });
+  });
+
+  it('restores item unread state and clears pendingReadIds when mark-item-read fails', async () => {
+    apiMocks.markRead.mockRejectedValueOnce(new Error('offline'));
+    mocks.foldersData.value = [{ id: 10, name: 'Dev Updates', unreadCount: 0, feedIds: [] }];
+    mocks.feedsData.value = [buildFeed({ id: 1, folderId: 10 })];
+
+    setCache(
+      [
+        buildEntry({
+          id: 10,
+          name: 'Dev Updates',
+          articles: [buildPreview({ id: 1, feedId: 1, folderId: 10, title: 'Dev A' })],
+        }),
+      ],
+      10,
+    );
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { result } = renderHook(() => useTimeline());
+
+    await waitFor(() => {
+      expect(result.current.activeArticles).toHaveLength(1);
+    });
+
+    await act(async () => {
+      await result.current.markItemRead(1);
+    });
+
+    await waitFor(() => {
+      expect(result.current.activeArticles).toHaveLength(1);
+      expect(result.current.activeArticles[0].unread).toBe(true);
+    });
+
+    const cache = JSON.parse(localStorage.getItem(CONFIG.TIMELINE_CACHE_KEY) ?? '{}') as {
+      pendingReadIds?: number[];
+    };
+    expect(cache.pendingReadIds).toEqual([]);
+    errorSpy.mockRestore();
   });
 
   it('restarts the queue when all folders are skipped', async () => {
