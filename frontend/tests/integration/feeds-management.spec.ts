@@ -38,6 +38,19 @@ test.describe('Feed management integration coverage', () => {
     await expect(page.getByLabel(/^username$/i)).toBeVisible();
   });
 
+  test('[TC-APP-012] shared burger menu routes to the about page with page metadata', async ({
+    page,
+  }) => {
+    await page.goto('/timeline');
+
+    await page.getByRole('button', { name: /burger menu/i }).click();
+    await page.getByRole('menuitem', { name: /about newsboxone/i }).click();
+
+    await page.waitForURL(/\/about/);
+    await expect(page).toHaveTitle('About | NewsBoxOne');
+    await expect(page.getByRole('heading', { name: /^newsboxone$/i })).toBeVisible();
+  });
+
   test('[TC-FEEDS-003] feed creation entry points open the subscription modal', async ({
     page,
   }) => {
