@@ -872,6 +872,7 @@ components:
         starredCount:
           type: integer
         newestItemId:
+          description: Newest article id currently known for the returned feeds, used as a read-boundary value.
           type:
             - integer
             - "null"
@@ -921,6 +922,7 @@ components:
           items:
             $ref: "#/components/schemas/Feed"
         newestItemId:
+          description: Newest article id ingested for the created feed, or null when no articles were ingested.
           type:
             - integer
             - "null"

@@ -247,8 +247,9 @@ async fn read_missing_feed_returns_404_with_detail() {
 #[tokio::test]
 async fn add_feed_success_returns_expected_payload_fields() {
     let feed_url = start_fixture_feed_server().await;
+    let pool = setup_pool().await;
 
-    let response = app(state(setup_pool().await))
+    let response = app(state(pool.clone()))
         .oneshot(
             Request::builder()
                 .method("POST")
@@ -268,12 +269,13 @@ async fn add_feed_success_returns_expected_payload_fields() {
         .unwrap();
     let parsed: Value = serde_json::from_slice(&body).unwrap();
 
-    let created_id = parsed["newestItemId"].as_i64().unwrap();
+    let newest_item_id = parsed["newestItemId"].as_i64().unwrap();
     let feeds = parsed["feeds"].as_array().unwrap();
     let created_feed = feeds
         .iter()
-        .find(|feed| feed["id"].as_i64() == Some(created_id))
+        .find(|feed| feed["url"].as_str() == Some(feed_url.as_str()))
         .unwrap();
+    let created_id = created_feed["id"].as_i64().unwrap();
 
     assert_eq!(created_feed["url"], feed_url);
     assert_eq!(created_feed["title"], "Fixture Feed");
@@ -282,6 +284,14 @@ async fn add_feed_success_returns_expected_payload_fields() {
     assert_eq!(created_feed["lastArticleDate"], 1_772_755_200);
     assert!(created_feed["nextUpdateTime"].as_i64().is_some());
     assert_eq!(created_feed["folderId"], Value::Null);
+
+    let newest_article_feed_id: i64 =
+        sqlx::query_scalar("SELECT feed_id FROM article WHERE id = ?")
+            .bind(newest_item_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(newest_article_feed_id, created_id);
 }
 
 #[tokio::test]

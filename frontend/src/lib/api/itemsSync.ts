@@ -1,5 +1,5 @@
 import { CONFIG } from '@/lib/config/env';
-import { getItems } from './items';
+import { api } from './apiClient';
 import { ItemFilterType, type Article, type ItemsQueryParams } from '@/types';
 
 interface UnreadSyncResult {
@@ -13,7 +13,6 @@ export async function fetchUnreadItemsForSync(
   const resolvedBatchSize = Math.max(1, params.batchSize ?? CONFIG.DEFAULT_BATCH_SIZE);
   const type = params.type ?? ItemFilterType.ALL;
   const id = params.id ?? 0;
-  const oldestFirst = params.oldestFirst ?? false;
   const lastModified = params.lastModified;
 
   const items: Article[] = [];
@@ -22,13 +21,13 @@ export async function fetchUnreadItemsForSync(
   let hasMore = true;
 
   while (hasMore) {
-    const page = await getItems(
+    const page = await api.items.get(
       {
         batchSize: resolvedBatchSize,
         offset,
         type,
         id,
-        oldestFirst,
+        oldestFirst: false,
         lastModified,
         getRead: false,
       },
@@ -40,9 +39,16 @@ export async function fetchUnreadItemsForSync(
       serverUnreadIds.add(article.id);
     }
 
-    hasMore = page.length === resolvedBatchSize;
-    if (hasMore) {
-      offset += resolvedBatchSize;
+    const pageMinId = page.reduce<number | null>(
+      (minId, article) => (minId === null ? article.id : Math.min(minId, article.id)),
+      null,
+    );
+
+    if (page.length === resolvedBatchSize && pageMinId !== null && pageMinId > 1) {
+      hasMore = true;
+      offset = pageMinId - 1;
+    } else {
+      hasMore = false;
     }
   }
 

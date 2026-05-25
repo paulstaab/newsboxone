@@ -1,8 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { createFeed, deleteFeed, moveFeed, renameFeed, updateFeedQuality } from '@/lib/api/feeds';
-import { createFolder, deleteFolder, renameFolder } from '@/lib/api/folders';
+import { api } from '@/lib/api';
 import { type Feed, type Folder } from '@/types';
 import {
   buildFeedManagementGroups,
@@ -132,7 +131,7 @@ export function useFeedManagementPage() {
 
     await runMutation('Subscribe feed', async () => {
       const folderId = newFeedFolderId ? Number(newFeedFolderId) : null;
-      const result = await createFeed(trimmedUrl, folderId);
+      const result = await api.feeds.create(trimmedUrl, folderId);
 
       setData((current) => ({
         ...current,
@@ -161,7 +160,7 @@ export function useFeedManagementPage() {
     }
 
     await runMutation('Create folder', async () => {
-      const createdFolder = await createFolder(trimmedName);
+      const createdFolder = await api.folders.create(trimmedName);
       setData((current) => ({
         ...current,
         folders: [...current.folders, createdFolder],
@@ -188,7 +187,7 @@ export function useFeedManagementPage() {
       }
 
       await runMutation('Rename folder', async () => {
-        await renameFolder(folderId, trimmedName);
+        await api.folders.rename(folderId, trimmedName);
         setData((current) => ({
           ...current,
           folders: current.folders.map((folder) =>
@@ -220,7 +219,7 @@ export function useFeedManagementPage() {
       await runMutation('Delete folder', async () => {
         if (assignedFeeds.length > 0) {
           const results = await Promise.allSettled(
-            assignedFeeds.map((feed) => deleteFeed(feed.id)),
+            assignedFeeds.map((feed) => api.feeds.delete(feed.id)),
           );
 
           const deletedFeedIds = assignedFeeds
@@ -239,7 +238,7 @@ export function useFeedManagementPage() {
           }
         }
 
-        await deleteFolder(folder.id);
+        await api.folders.delete(folder.id);
         setData((current) => ({
           folders: current.folders.filter((entry) => entry.id !== folder.id),
           feeds: current.feeds.filter((feed) => feed.folderId !== folder.id),
@@ -258,7 +257,7 @@ export function useFeedManagementPage() {
       }
 
       await runMutation('Delete feed', async () => {
-        await deleteFeed(feed.id);
+        await api.feeds.delete(feed.id);
         setData((current) => ({
           ...current,
           feeds: current.feeds.filter((entry) => entry.id !== feed.id),
@@ -292,10 +291,10 @@ export function useFeedManagementPage() {
       let updatedFeed: Feed;
       try {
         await Promise.all([
-          renameFeed(qualityFeedId, trimmedTitle),
-          moveFeed(qualityFeedId, nextFolderId),
+          api.feeds.rename(qualityFeedId, trimmedTitle),
+          api.feeds.move(qualityFeedId, nextFolderId),
         ]);
-        updatedFeed = await updateFeedQuality(qualityFeedId, {
+        updatedFeed = await api.feeds.updateQuality(qualityFeedId, {
           useExtractedFulltext: qualityPreferenceToBool(qualityUseExtractedFulltext),
           useLlmSummary: qualityPreferenceToBool(qualityUseLlmSummary),
         });

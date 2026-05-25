@@ -93,6 +93,8 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 - `TIMELINE-035`: Items marked read in the current session shall remain visible until a later sync reconciliation removes them.
 - `TIMELINE-036`: Folder names and feed names already cached in article previews shall be updated when fresher folder/feed metadata arrives.
 - `TIMELINE-037`: Timeline cache shall be stored in `localStorage` under a versioned key.
+- `TIMELINE-038`: Unread timeline sync shall page through backend item-id boundaries without skipping unread items between pages.
+- `TIMELINE-039`: Failed optimistic read mutations shall restore affected unread items locally and clear their pending read tombstones.
 
 ### Feed Management Page
 

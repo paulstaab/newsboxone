@@ -4,7 +4,7 @@ import { useMemo, useRef, type RefObject } from 'react';
 import useSWR from 'swr';
 import { formatDistanceToNow } from 'date-fns';
 import type { ArticlePreview } from '@/types';
-import { getArticleContent } from '@/lib/api/items';
+import { api } from '@/lib/api';
 
 interface ArticlePopoutProps {
   isOpen: boolean;
@@ -34,7 +34,7 @@ export function ArticlePopout({
     isLoading: isContentLoading,
   } = useSWR<string | null, Error>(
     shouldFetch && article ? ['article-content', article.id] : null,
-    async () => (article ? getArticleContent(article.id) : null),
+    async () => (article ? api.items.getContent(article.id) : null),
     {
       keepPreviousData: false,
     },
