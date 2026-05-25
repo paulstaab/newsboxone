@@ -185,6 +185,32 @@ export function SettingsMenu({ position = 'top-right', className = '' }: Setting
               <span>Feed Management</span>
             </Link>
 
+            <Link
+              href="/about"
+              className="app-menu__item"
+              role="menuitem"
+              aria-current={pathname === '/about' ? 'page' : undefined}
+              onClick={() => {
+                setIsOpen(false);
+              }}
+            >
+              <svg
+                className="app-menu__icon"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <span>About NewsBoxOne</span>
+            </Link>
+
             {/* Install App Option */}
             <button
               type="button"
@@ -216,32 +242,6 @@ export function SettingsMenu({ position = 'top-right', className = '' }: Setting
                 />
               </svg>
               <span>{isInstalling ? 'Installing...' : 'Install App'}</span>
-            </button>
-
-            {/* About Option (placeholder for future) */}
-            <button
-              type="button"
-              className="app-menu__item"
-              role="menuitem"
-              onClick={() => {
-                setIsOpen(false);
-              }}
-            >
-              <svg
-                className="app-menu__icon"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <span>About NewsBoxOne</span>
             </button>
 
             {isAuthenticated ? (

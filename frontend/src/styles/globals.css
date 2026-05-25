@@ -156,7 +156,7 @@ textarea:focus-visible {
   .pinned-action-cluster {
     position: fixed;
     right: var(--space-6);
-    bottom: var(--space-6);
+    bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
     z-index: 60;
     display: flex;
     flex-direction: column;
@@ -179,7 +179,7 @@ textarea:focus-visible {
   .feed-management-actions {
     position: fixed;
     right: var(--space-6);
-    bottom: var(--space-6);
+    bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
     z-index: 60;
     display: flex;
     flex-direction: column;
@@ -1060,16 +1060,21 @@ textarea:focus-visible {
   }
 
   .pinned-action-cluster {
-    position: sticky;
-    top: 3.25rem;
+    position: fixed;
+    left: 50%;
     right: auto;
-    bottom: auto;
-    justify-content: flex-end;
+    bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
     flex-direction: row;
     gap: var(--space-2);
-    margin: var(--space-2) 0 calc(var(--space-4) * -1);
-    padding: 0;
-    transform: none;
+    justify-content: center;
+    margin: 0;
+    padding: var(--space-2);
+    border: 1px solid hsl(var(--color-border));
+    border-radius: var(--radius-md);
+    background: hsl(var(--color-surface) / 0.9);
+    box-shadow: var(--shadow-md);
+    transform: translateX(-50%);
+    backdrop-filter: blur(16px);
   }
 
   .pinned-action-cluster button {
@@ -1149,8 +1154,9 @@ textarea:focus-visible {
   }
 
   .feed-management-actions {
-    right: 50%;
-    bottom: var(--space-3);
+    left: 50%;
+    right: auto;
+    bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
     flex-direction: row;
     gap: var(--space-2);
     padding: var(--space-2);
@@ -1158,7 +1164,7 @@ textarea:focus-visible {
     border-radius: var(--radius-md);
     background: hsl(var(--color-surface) / 0.9);
     box-shadow: var(--shadow-md);
-    transform: translateX(50%);
+    transform: translateX(-50%);
     backdrop-filter: blur(16px);
   }
 
