@@ -612,7 +612,6 @@ textarea:focus-visible {
     border-radius: var(--radius-md);
     background: hsl(var(--color-surface-muted));
     box-shadow: var(--shadow-sm);
-    overflow: hidden;
     cursor: pointer;
     transition:
       transform 160ms ease,

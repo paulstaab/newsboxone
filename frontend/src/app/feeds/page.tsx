@@ -526,7 +526,7 @@ function FeedManagementContent() {
 
           <dialog
             ref={qualityDialogRef}
-            className="feed-management-dialog feed-management-dialog--quality"
+            className="feed-management-dialog"
             onClose={resetQualityDialog}
           >
             <form
@@ -542,7 +542,7 @@ function FeedManagementContent() {
                 </p>
                 <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
                   {selectedQualityFeed
-                    ? `#${String(selectedQualityFeed.id)}: ${qualityFeedTitle || selectedQualityFeed.title}`
+                    ? qualityFeedTitle || selectedQualityFeed.title
                     : qualityFeedTitle || 'Feed settings'}
                 </h2>
               </div>
