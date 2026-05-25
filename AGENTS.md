@@ -86,6 +86,19 @@ When repository-level behavior changes, update the relevant top-level docs in th
 
 If the task changes combined packaging, CI, routes, or developer workflow and the docs are not updated, treat the work as incomplete.
 
+## Improvement Ideas Log
+
+Keep `docs/improvement-ideas.md` as the maintained repository-level backlog for significant improvement and refactoring ideas encountered during coding sessions.
+
+Rules:
+
+- Sort ideas by category, such as technical debt, code structure, maintainability, security, performance, testing, documentation, developer experience, or packaging.
+- At the end of each coding session, do a short retrospective on the code, tests, docs, and tooling touched or inspected.
+- Add only significant ideas that would plausibly deserve future planning, review, or implementation work.
+- It is fine to add nothing when the session did not reveal a meaningful improvement opportunity.
+- Keep entries concise and actionable, with file or subsystem references when useful.
+- Do not use the ideas log as a substitute for required documentation updates in the Documentation Sync Policy.
+
 ## Test Taxonomy
 
 NewsBoxOne should maintain these automated test categories:
@@ -144,6 +157,7 @@ If you do not run a relevant validation step, say so clearly.
 
 - Root README: `README.md`
 - Combined requirements: `docs/requirements.md`
+- Improvement ideas log: `docs/improvement-ideas.md`
 - Backend instructions: `backend/AGENTS.md`
 - Frontend instructions: `frontend/AGENTS.md`
 - Combined container build: `Dockerfile`
