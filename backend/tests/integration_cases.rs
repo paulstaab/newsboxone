@@ -7,14 +7,18 @@
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use std::{fs, io};
 
+use axum::Json;
 use axum::Router;
+use axum::extract::State;
 use axum::http::header;
 use axum::routing::{get, post};
 use reqwest::{Client, StatusCode};
-use serde_json::json;
+use serde_json::{Value, json};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use tempfile::TempDir;
 use tokio::net::TcpListener as TokioTcpListener;
@@ -34,6 +38,12 @@ struct ScenarioContext {
     _mock_feed_base_url: String,
     feed_urls: Vec<String>,
     auth: Option<(String, String)>,
+}
+
+#[derive(Clone)]
+struct NewsletterParseFixtureState {
+    request_count: Arc<AtomicUsize>,
+    system_prompt: Arc<Mutex<Option<String>>>,
 }
 
 impl Drop for RunningServer {
@@ -576,6 +586,105 @@ async fn tc_pipe_028_mocked_newsletter_journey() {
 }
 
 #[tokio::test]
+async fn tc_pipe_024a_newsletter_llm_excludes_sponsor_commercial_segments() {
+    let context = setup_context(None).await;
+    let (llm_base_url, llm_state) = start_mock_newsletter_parse_fixture_server().await;
+    let mock_messages_path = write_sponsored_digest_mock_imap_messages(context._temp_dir.path())
+        .expect("failed to write sponsored digest mock IMAP messages");
+
+    let status = Command::new(binary_path())
+        .arg("add-email-credentials")
+        .arg("--server")
+        .arg("mock-imap.local")
+        .arg("--port")
+        .arg("993")
+        .arg("--username")
+        .arg("journey@example.com")
+        .arg("--password")
+        .arg("journey-secret")
+        .env("DATABASE_PATH", &context.db_path)
+        .env("TESTING_MODE", "true")
+        .env("HEADLESS_RSS_TEST_IMAP_ALLOW", "true")
+        .env("HEADLESS_RSS_TEST_IMAP_MESSAGES_FILE", &mock_messages_path)
+        .status()
+        .expect("failed to run add-email-credentials command");
+    assert!(status.success());
+
+    run_update_command_with_env(
+        &context.db_path,
+        None,
+        None,
+        &[
+            ("HEADLESS_RSS_TEST_IMAP_ALLOW", "true"),
+            (
+                "HEADLESS_RSS_TEST_IMAP_MESSAGES_FILE",
+                mock_messages_path.to_string_lossy().as_ref(),
+            ),
+            ("OPENAI_API_KEY", "newsletter-parse-test-key"),
+            ("OPENAI_BASE_URL", &format!("{llm_base_url}/v1")),
+            ("OPENAI_MODEL", "newsletter-parse-test-model"),
+        ],
+    )
+    .await;
+
+    assert_eq!(llm_state.request_count.load(Ordering::SeqCst), 1);
+    let system_prompt = llm_state
+        .system_prompt
+        .lock()
+        .unwrap()
+        .clone()
+        .expect("missing captured newsletter parse prompt");
+    assert!(system_prompt.contains("advertisement"));
+    assert!(system_prompt.contains("sponsorship segments"));
+
+    let feeds = get_json(&context, &format!("{API_V13}/feeds"), None).await;
+    let newsletter_feed_id = feeds["feeds"]
+        .as_array()
+        .and_then(|items| {
+            items.iter().find_map(|feed| {
+                (feed["url"].as_str() == Some("digest@example.com"))
+                    .then(|| feed["id"].as_i64())
+                    .flatten()
+            })
+        })
+        .expect("missing sponsored digest newsletter feed");
+    let newsletter_items = get_json(
+        &context,
+        &format!("{API_V13}/items?type=0&id={newsletter_feed_id}&getRead=true"),
+        None,
+    )
+    .await;
+    let items = newsletter_items["items"]
+        .as_array()
+        .expect("missing newsletter items array");
+    assert_eq!(items.len(), 2);
+
+    let titles: Vec<&str> = items
+        .iter()
+        .filter_map(|item| item["title"].as_str())
+        .collect();
+    assert!(titles.contains(&"First Editorial Item"));
+    assert!(titles.contains(&"Second Editorial Item"));
+    assert!(!titles.iter().any(|title| {
+        title.contains("Sponsor") || title.contains("Advertisement") || title.contains("Promo")
+    }));
+
+    let bodies: Vec<&str> = items
+        .iter()
+        .filter_map(|item| item["body"].as_str())
+        .collect();
+    assert!(
+        bodies.iter().all(|body| {
+            !body.contains("Sponsor")
+                && !body.contains("Advertisement")
+                && !body.contains("Promo")
+                && !body.contains("Discount")
+        }),
+        "expected persisted newsletter bodies to exclude commercial segments: {bodies:?}"
+    );
+}
+
+#[tokio::test]
 async fn tc_pipe_002_updater_persists_update_errors() {
     let context = setup_context(None).await;
     add_shared_feeds(&context).await;
@@ -1068,6 +1177,28 @@ fn write_mock_imap_messages(base_dir: &Path) -> io::Result<PathBuf> {
     Ok(file_path)
 }
 
+/// Writes a digest newsletter fixture containing both editorial and sponsored sections.
+fn write_sponsored_digest_mock_imap_messages(base_dir: &Path) -> io::Result<PathBuf> {
+    let file_path = base_dir.join("sponsored-digest-imap-messages.json");
+    let message = concat!(
+        "Subject: Editorial Digest with Sponsors\r\n",
+        "From: Sponsored Digest <digest@example.com>\r\n",
+        "List-Unsubscribe: <mailto:unsubscribe@example.com>\r\n",
+        "Content-Type: text/html; charset=utf-8\r\n",
+        "\r\n",
+        "<html><head><style>.template { color: #111; }</style></head><body>",
+        "<h1>Editorial Digest</h1>",
+        "<p><a href=\"https://example.com/editorial-one\">First editorial story</a> Useful context.</p>",
+        "<section><h2>Sponsored</h2><p><a href=\"https://ads.example.com/sponsor\">Sponsor offer</a> Discount promo copy.</p></section>",
+        "<p><a href=\"https://example.com/editorial-two\">Second editorial story</a> More useful context.</p>",
+        "<aside>Advertisement: Buy the promoted product today.</aside>",
+        "</body></html>"
+    );
+    let encoded = serde_json::to_string(&vec![message]).expect("failed to encode mock message");
+    fs::write(&file_path, encoded)?;
+    Ok(file_path)
+}
+
 /// Marks feeds as due so the update command processes them in the test run.
 async fn mark_all_feeds_due(db_path: &Path) {
     let options = SqliteConnectOptions::new()
@@ -1245,6 +1376,79 @@ async fn start_mock_llm_fixture_server() -> String {
     });
 
     base_url
+}
+
+async fn start_mock_newsletter_parse_fixture_server() -> (String, NewsletterParseFixtureState) {
+    let state = NewsletterParseFixtureState {
+        request_count: Arc::new(AtomicUsize::new(0)),
+        system_prompt: Arc::new(Mutex::new(None)),
+    };
+    let listener = TokioTcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("failed to bind mock newsletter parse fixture listener");
+    let addr = listener
+        .local_addr()
+        .expect("failed to get mock newsletter parse fixture local address");
+    let base_url = format!("http://{addr}");
+
+    let app = Router::new()
+        .route(
+            "/v1/chat/completions",
+            post(mock_newsletter_parse_fixture_handler),
+        )
+        .with_state(state.clone());
+
+    tokio::spawn(async move {
+        axum::serve(listener, app)
+            .await
+            .expect("mock newsletter parse fixture server crashed");
+    });
+
+    (base_url, state)
+}
+
+async fn mock_newsletter_parse_fixture_handler(
+    State(state): State<NewsletterParseFixtureState>,
+    Json(payload): Json<Value>,
+) -> ([(header::HeaderName, &'static str); 1], String) {
+    state.request_count.fetch_add(1, Ordering::SeqCst);
+    let system_prompt = payload["messages"][0]["content"]
+        .as_str()
+        .map(str::to_string);
+    *state.system_prompt.lock().unwrap() = system_prompt;
+
+    (
+        [(header::CONTENT_TYPE, "application/json")],
+        json!({
+            "choices": [
+                {
+                    "message": {
+                        "content": json!({
+                            "mode": "multi",
+                            "summary": null,
+                            "content": null,
+                            "items": [
+                                {
+                                    "title": "First Editorial Item",
+                                    "url": "https://example.com/editorial-one",
+                                    "summary": "Useful context from the first editorial story.",
+                                    "content": null
+                                },
+                                {
+                                    "title": "Second Editorial Item",
+                                    "url": "https://example.com/editorial-two",
+                                    "summary": "More useful context from the second editorial story.",
+                                    "content": null
+                                }
+                            ]
+                        })
+                        .to_string()
+                    }
+                }
+            ]
+        })
+        .to_string(),
+    )
 }
 
 /// Builds a tiny Atom feed fixture with a single entry.

@@ -54,10 +54,3 @@ export const versionApi: VersionApi = {
     }
   },
 };
-
-/**
- * Fetches API version information from the same-origin NewsBoxOne API.
- */
-export async function getVersion(): Promise<VersionResponse> {
-  return versionApi.get();
-}

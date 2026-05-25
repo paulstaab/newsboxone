@@ -2,9 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWRImmutable from 'swr/immutable';
-import { getFolders } from '@/lib/api/folders';
-import { getFeeds } from '@/lib/api/feeds';
-import { markItemsRead, markItemRead as apiMarkItemRead } from '@/lib/api/items';
+import { api } from '@/lib/api';
 import { fetchUnreadItemsForSync } from '@/lib/api/itemsSync';
 import { reconcileTimelineCache } from '@/lib/storage/timelineCache';
 import {
@@ -44,7 +42,7 @@ import {
 import { useTimelineSelection } from '@/hooks/useTimelineSelection';
 import { useAutoMarkRead } from '@/hooks/useAutoMarkRead';
 
-type FeedsSummary = Awaited<ReturnType<typeof getFeeds>>;
+type FeedsSummary = Awaited<ReturnType<typeof api.feeds.getAll>>;
 
 export interface UseTimelineOptions {
   root?: Element | null;
@@ -83,6 +81,68 @@ interface RefreshOptions {
 
 const SYNC_TIMEOUT_MS = 8000;
 const MIN_SYNC_INDICATOR_MS = 350;
+
+function restoreUnreadPreviews(
+  current: TimelineCacheEnvelope,
+  previews: ArticlePreview[],
+  fallbackFolders: FolderQueueEntry[] = [],
+): TimelineCacheEnvelope {
+  if (previews.length === 0) {
+    return current;
+  }
+
+  const restoredIds = new Set(previews.map((article) => article.id));
+  const fallbackById = new Map(fallbackFolders.map((folder) => [folder.id, folder]));
+  const updatedFolders: Partial<Record<number, FolderQueueEntry>> = { ...current.folders };
+  const now = Date.now();
+
+  for (const preview of previews) {
+    const folderId = preview.folderId;
+    const fallbackFolder = fallbackById.get(folderId);
+    const existingFolder = updatedFolders[folderId] ?? fallbackFolder;
+    const article = { ...preview };
+
+    if (!existingFolder) {
+      updatedFolders[folderId] = {
+        id: folderId,
+        name: folderId === UNCATEGORIZED_FOLDER_ID ? 'Uncategorized' : `Folder ${String(folderId)}`,
+        sortOrder: 0,
+        status: 'queued',
+        unreadCount: article.unread ? 1 : 0,
+        articles: [article],
+        lastUpdated: now,
+      };
+      continue;
+    }
+
+    const articles = [
+      ...existingFolder.articles.filter((entry) => entry.id !== article.id),
+      article,
+    ];
+    updatedFolders[folderId] = {
+      ...existingFolder,
+      articles,
+      unreadCount: articles.filter((entry) => entry.unread).length,
+      lastUpdated: now,
+    };
+  }
+
+  const sortedFolders = sortFolderQueueEntries(
+    Object.values(updatedFolders).filter((folder): folder is FolderQueueEntry => Boolean(folder)),
+  );
+  const folders = Object.fromEntries(sortedFolders.map((folder) => [folder.id, folder]));
+  const activeFolderId =
+    typeof current.activeFolderId === 'number' && current.activeFolderId in folders
+      ? current.activeFolderId
+      : (sortedFolders.find((folder) => folder.status !== 'skipped')?.id ?? null);
+
+  return {
+    ...current,
+    folders,
+    activeFolderId,
+    pendingReadIds: current.pendingReadIds.filter((id) => !restoredIds.has(id)),
+  };
+}
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -141,11 +201,11 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
     data: foldersData,
     error: foldersError,
     isLoading: isFoldersLoading,
-  } = useSWRImmutable<Folder[], Error>('folders', getFolders);
+  } = useSWRImmutable<Folder[], Error>('folders', () => api.folders.getAll());
 
   const { data: feedsResponse, error: feedsError } = useSWRImmutable<FeedsSummary, Error>(
     'feeds',
-    getFeeds,
+    () => api.feeds.getAll(),
   );
   const feeds = useMemo(() => feedsResponse?.feeds ?? [], [feedsResponse]);
 
@@ -163,7 +223,7 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
         let fetchedFeedsResponse: FeedsSummary | null = null;
         if (feeds.length === 0) {
           try {
-            fetchedFeedsResponse = await getFeeds();
+            fetchedFeedsResponse = await api.feeds.getAll();
           } catch {
             fetchedFeedsResponse = null;
           }
@@ -178,7 +238,7 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
         let effectiveFolders = foldersData ?? [];
         if (effectiveFolders.length === 0) {
           try {
-            effectiveFolders = await getFolders();
+            effectiveFolders = await api.folders.getAll();
           } catch {
             effectiveFolders = [];
           }
@@ -358,6 +418,8 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
       if (itemIds.length === 0) {
         return;
       }
+      const restoredArticles = folder.articles;
+      const restoredFolder = folder;
 
       setEnvelope((current) => {
         const result = markTimelineFolderRead(current, folderId);
@@ -368,7 +430,7 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
       });
 
       try {
-        await markItemsRead(itemIds);
+        await api.items.markMultipleRead(itemIds);
 
         setEnvelope((current) => {
           const nextEnvelope = clearPendingReadIds(current, itemIds);
@@ -377,6 +439,11 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
         });
         await refresh();
       } catch (error: unknown) {
+        setEnvelope((current) => {
+          const nextEnvelope = restoreUnreadPreviews(current, restoredArticles, [restoredFolder]);
+          storeTimelineCache(nextEnvelope);
+          return nextEnvelope;
+        });
         console.error('Failed to mark items as read:', error);
         throw error;
       }
@@ -407,6 +474,13 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
   }, []);
 
   const markItemRead = useCallback(async (itemId: number) => {
+    const currentEnvelope = envelopeRef.current;
+    const restoredArticle = Object.values(currentEnvelope.folders)
+      .flatMap((folder) => folder.articles)
+      .find((article) => article.id === itemId);
+    const restoredFolder =
+      restoredArticle === undefined ? undefined : currentEnvelope.folders[restoredArticle.folderId];
+
     setEnvelope((current) => {
       const nextEnvelope = markTimelineItemRead(current, itemId);
       storeTimelineCache(nextEnvelope);
@@ -414,7 +488,7 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
     });
 
     try {
-      await apiMarkItemRead(itemId);
+      await api.items.markRead(itemId);
 
       setEnvelope((current) => {
         const nextEnvelope = clearPendingReadIds(current, [itemId]);
@@ -422,6 +496,23 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
         return nextEnvelope;
       });
     } catch (error) {
+      if (restoredArticle) {
+        setEnvelope((current) => {
+          const nextEnvelope = restoreUnreadPreviews(
+            current,
+            [restoredArticle],
+            restoredFolder ? [restoredFolder] : [],
+          );
+          storeTimelineCache(nextEnvelope);
+          return nextEnvelope;
+        });
+      } else {
+        setEnvelope((current) => {
+          const nextEnvelope = clearPendingReadIds(current, [itemId]);
+          storeTimelineCache(nextEnvelope);
+          return nextEnvelope;
+        });
+      }
       console.error('Failed to mark item as read:', error);
     }
   }, []);

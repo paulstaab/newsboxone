@@ -50,6 +50,17 @@ pub async fn folder_exists(pool: &SqlitePool, folder_id: i64) -> Result<bool, sq
     Ok(existing.is_some())
 }
 
+/// Returns whether a non-root user-visible folder with the given identifier exists.
+pub async fn public_folder_exists(pool: &SqlitePool, folder_id: i64) -> Result<bool, sqlx::Error> {
+    let existing: Option<i64> =
+        sqlx::query_scalar("SELECT id FROM folder WHERE id = ? AND is_root = 0 LIMIT 1")
+            .bind(folder_id)
+            .fetch_optional(pool)
+            .await?;
+
+    Ok(existing.is_some())
+}
+
 /// Returns whether a folder name already exists, optionally excluding one folder id.
 pub async fn folder_name_exists(
     pool: &SqlitePool,
@@ -198,6 +209,17 @@ pub async fn feed_exists_by_url(pool: &SqlitePool, url: &str) -> Result<bool, sq
             .await?;
 
     Ok(existing.is_some())
+}
+
+/// Returns the newest article id stored for a feed, if any.
+pub async fn newest_article_id_for_feed(
+    pool: &SqlitePool,
+    feed_id: i64,
+) -> Result<Option<i64>, sqlx::Error> {
+    sqlx::query_scalar("SELECT MAX(id) FROM article WHERE feed_id = ?")
+        .bind(feed_id)
+        .fetch_one(pool)
+        .await
 }
 
 /// Updates the folder assignment for a feed.

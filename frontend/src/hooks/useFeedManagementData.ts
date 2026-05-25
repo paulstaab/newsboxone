@@ -3,9 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
-import { getFeeds } from '@/lib/api/feeds';
-import { getFolders } from '@/lib/api/folders';
-import { AuthenticationError } from '@/lib/api/client';
+import { api, AuthenticationError } from '@/lib/api';
 import { formatError } from '@/lib/utils/errorFormatter';
 import type { Feed, Folder } from '@/types';
 
@@ -48,7 +46,10 @@ export function useFeedManagementData() {
       }
 
       try {
-        const [folders, feedsResponse] = await Promise.all([getFolders(), getFeeds()]);
+        const [folders, feedsResponse] = await Promise.all([
+          api.folders.getAll(),
+          api.feeds.getAll(),
+        ]);
         setData({ folders, feeds: feedsResponse.feeds });
         setPageError(null);
       } catch (error) {

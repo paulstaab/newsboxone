@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../mocks/server';
-import { getVersion } from '@/lib/api/version';
+import { api } from '@/lib/api';
 import { NetworkError, ApiError } from '@/lib/api/client';
 
 const API_PATH = '/api/version';
@@ -20,10 +20,10 @@ beforeEach(() => {
   server.resetHandlers();
 });
 
-describe('getVersion', () => {
+describe('api.version.get', () => {
   describe('successful responses', () => {
     it('should return version info for valid server', async () => {
-      const result = await getVersion();
+      const result = await api.version.get();
 
       expect(result).toEqual(mockVersionResponse);
       expect(result.version).toBe('18.0.0');
@@ -40,7 +40,7 @@ describe('getVersion', () => {
         }),
       );
 
-      await getVersion();
+      await api.version.get();
 
       expect(receivedAuth).toBe(false);
     });
@@ -57,7 +57,7 @@ describe('getVersion', () => {
         }),
       );
 
-      const result = await getVersion();
+      const result = await api.version.get();
 
       expect(result.version).toBe('19.1.2');
       expect(result.apiLevels).toHaveLength(2);
@@ -68,7 +68,7 @@ describe('getVersion', () => {
     it('should throw NetworkError for unreachable server', async () => {
       server.use(http.get(API_PATH, () => HttpResponse.error()));
 
-      await expect(getVersion()).rejects.toThrow(NetworkError);
+      await expect(api.version.get()).rejects.toThrow(NetworkError);
     }, 10000); // Increase timeout to account for retries
   });
 
@@ -76,9 +76,9 @@ describe('getVersion', () => {
     it('should handle 404 for wrong endpoint path', async () => {
       server.use(http.get(API_PATH, () => new HttpResponse(null, { status: 404 })));
 
-      await expect(getVersion()).rejects.toThrow(ApiError);
+      await expect(api.version.get()).rejects.toThrow(ApiError);
       try {
-        await getVersion();
+        await api.version.get();
       } catch (error) {
         expect(error).toBeInstanceOf(ApiError);
         expect((error as ApiError).status).toBe(404);
@@ -93,7 +93,7 @@ describe('getVersion', () => {
       );
 
       try {
-        await getVersion();
+        await api.version.get();
         expect.fail('Should have thrown ApiError');
       } catch (error) {
         expect(error).toBeInstanceOf(ApiError);
@@ -111,7 +111,7 @@ describe('getVersion', () => {
       );
 
       try {
-        await getVersion();
+        await api.version.get();
         expect.fail('Should have thrown ApiError');
       } catch (error) {
         expect(error).toBeInstanceOf(ApiError);
@@ -123,7 +123,7 @@ describe('getVersion', () => {
       server.use(http.get(API_PATH, () => new HttpResponse(null, { status: 404 })));
 
       try {
-        await getVersion();
+        await api.version.get();
         expect.fail('Should have thrown ApiError');
       } catch (error) {
         expect(error).toBeInstanceOf(ApiError);
@@ -134,7 +134,7 @@ describe('getVersion', () => {
 
   describe('edge cases', () => {
     it('should validate response structure', async () => {
-      const result = await getVersion();
+      const result = await api.version.get();
 
       expect(result).toHaveProperty('version');
       expect(result).toHaveProperty('apiLevels');

@@ -41,7 +41,7 @@ It describes the shared runtime, major technologies, development workflow, and p
 
 - Public API namespace: `/api`
 - Health endpoint: `/api/status`
-- Frontend API access: same-origin requests to `/api/*`
+- Frontend API access: composed TypeScript API client using same-origin requests to `/api/*`
 - Authentication: backend-issued opaque bearer tokens, with token issuance validated against configured backend `USERNAME` and `PASSWORD`
 - Local frontend dev proxy: Next.js rewrites `/api/*` to `NEWSBOXONE_BACKEND_ORIGIN`, defaulting to `http://127.0.0.1:8000`
 
