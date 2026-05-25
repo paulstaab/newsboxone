@@ -27,8 +27,10 @@ export function TimelineActionButton({
       aria-disabled={(disabled ?? isLoading) ? true : undefined}
       disabled={disabled ?? isLoading}
       className={[
-        'relative inline-flex items-center justify-center rounded-md border border-gray-200',
-        'bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50',
+        'relative inline-flex items-center justify-center rounded-md border',
+        'border-[hsl(var(--color-border))] bg-[hsl(var(--color-surface-muted))]',
+        'text-[hsl(var(--color-text))] shadow-sm transition-colors',
+        'hover:border-[hsl(var(--color-accent)/0.5)] hover:bg-[hsl(var(--color-surface))]',
         'disabled:cursor-not-allowed disabled:opacity-50',
         className,
       ]

@@ -82,14 +82,7 @@ export function PinnedActionCluster({
   ]);
 
   return (
-    <div
-      className="z-[60] flex flex-col gap-3"
-      style={{
-        position: 'fixed',
-        right: '1.5rem',
-        bottom: '1.5rem',
-      }}
-    >
+    <div className="pinned-action-cluster">
       <TimelineActionButton
         icon={<syncConfig.Icon className="h-5 w-5" />}
         label={syncConfig.label}

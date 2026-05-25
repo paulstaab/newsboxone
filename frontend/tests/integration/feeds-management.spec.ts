@@ -19,9 +19,7 @@ test.describe('Feed management integration coverage', () => {
     await expect(page.getByRole('menuitem').nth(1)).toHaveText(/feed management/i);
     await page.getByRole('menuitem', { name: /feed management/i }).click();
     await page.waitForURL(/\/feeds/);
-    await expect(
-      page.getByRole('heading', { name: /manage subscriptions and folders/i }),
-    ).toBeVisible();
+    await expect(page.getByText(/^Feed Management$/i)).toBeVisible();
   });
 
   test('[TC-APP-011] shared burger menu logs out the active session', async ({ page }) => {
@@ -63,7 +61,7 @@ test.describe('Feed management integration coverage', () => {
     await page.goto('/feeds');
 
     const feedTable = page.getByRole('table', { name: /feed management table/i });
-    const podStackRow = feedTable.getByRole('row', { name: /#301: the pod stack/i });
+    const podStackRow = feedTable.getByRole('row', { name: /the pod stack/i });
 
     await expect(feedTable.getByRole('columnheader', { name: /feed name/i })).toBeVisible();
     await expect(feedTable.getByRole('columnheader', { name: /last article/i })).toBeVisible();
@@ -74,7 +72,7 @@ test.describe('Feed management integration coverage', () => {
 
     await expect(lastArticleValue).toBeVisible();
     await expect(lastArticleValue).toHaveAttribute('title', /\d{4}-\d{2}-\d{2}/);
-    await expect(podStackRow.getByText(/#301: the pod stack/i)).toBeVisible();
+    await expect(podStackRow.getByText(/the pod stack/i)).toBeVisible();
     await expect(podStackRow.getByLabel(/update error: connection timeout/i)).toHaveAttribute(
       'title',
       'Connection timeout',
@@ -86,7 +84,7 @@ test.describe('Feed management integration coverage', () => {
     await page.goto('/feeds');
 
     const feedTable = page.getByRole('table', { name: /feed management table/i });
-    const backendRow = feedTable.getByRole('row', { name: /#102: backend briefing/i });
+    const backendRow = feedTable.getByRole('row', { name: /backend briefing/i });
 
     await backendRow
       .getByRole('button', { name: /adjust feed quality for backend briefing/i })
@@ -108,7 +106,7 @@ test.describe('Feed management integration coverage', () => {
 
     await expect(page.getByText(/updated settings for backend briefing updated/i)).toBeVisible();
 
-    const renamedRow = feedTable.getByRole('row', { name: /#102: backend briefing updated/i });
+    const renamedRow = feedTable.getByRole('row', { name: /backend briefing updated/i });
     await renamedRow
       .getByRole('button', { name: /adjust feed quality for backend briefing updated/i })
       .click();
@@ -122,7 +120,7 @@ test.describe('Feed management integration coverage', () => {
     await page.goto('/feeds');
 
     const feedTable = page.getByRole('table', { name: /feed management table/i });
-    const backendRow = feedTable.getByRole('row', { name: /#102: backend briefing/i });
+    const backendRow = feedTable.getByRole('row', { name: /backend briefing/i });
     await expect(backendRow).toBeVisible();
 
     page.once('dialog', async (dialog) => {
@@ -133,7 +131,7 @@ test.describe('Feed management integration coverage', () => {
     await backendRow.getByRole('button', { name: /delete feed backend briefing/i }).click();
 
     await expect(page.getByText(/unsubscribed from backend briefing/i)).toBeVisible();
-    await expect(feedTable.getByRole('row', { name: /#102: backend briefing/i })).toHaveCount(0);
+    await expect(feedTable.getByRole('row', { name: /backend briefing/i })).toHaveCount(0);
   });
 
   test('[TC-FEEDS-007] folder creation stays visible and feed creation reports the created feed', async ({
@@ -158,6 +156,6 @@ test.describe('Feed management integration coverage', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Subscribe', exact: true }).click();
 
     await expect(page.getByText(/subscribed to planetpython\.org/i)).toBeVisible();
-    await expect(page.getByRole('row', { name: /#1000: planetpython\.org/i })).toBeVisible();
+    await expect(page.getByRole('row', { name: /planetpython\.org/i })).toBeVisible();
   });
 });

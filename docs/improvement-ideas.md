@@ -21,6 +21,10 @@ Use it as a lightweight planning backlog, not as a replacement for issue trackin
 
 ## Maintainability
 
+## Usability
+
+- Consider supporting `Escape` to close the timeline article popout in `frontend/src/hooks/useArticlePopout.ts`; the close button works, but `Escape` is a common dialog expectation.
+
 ## Performance
 
 ## Testing

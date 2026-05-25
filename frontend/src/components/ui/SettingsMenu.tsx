@@ -92,9 +92,9 @@ export function SettingsMenu({ position = 'top-right', className = '' }: Setting
 
   const positionStyles: Record<NonNullable<SettingsMenuProps['position']>, CSSProperties> = {
     'top-left': { top: 'var(--space-4)', left: 'var(--space-4)' },
-    'top-right': { top: 'var(--space-4)', right: 'var(--space-4)' },
+    'top-right': { top: 'var(--space-4)', right: 'var(--space-6)' },
     'bottom-left': { bottom: 'var(--space-4)', left: 'var(--space-4)' },
-    'bottom-right': { bottom: 'var(--space-4)', right: 'var(--space-4)' },
+    'bottom-right': { bottom: 'var(--space-4)', right: 'var(--space-6)' },
   };
 
   return (
