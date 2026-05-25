@@ -33,13 +33,8 @@ export function SettingsMenu({ position = 'top-right', className = '' }: Setting
   const [isOpen, setIsOpen] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [showInstallOption, setShowInstallOption] = useState(false);
+  const [showInstallOption, setShowInstallOption] = useState(canPromptInstall);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  // Check if install is available
-  useEffect(() => {
-    setShowInstallOption(canPromptInstall());
-  }, []);
 
   // Close menu when clicking outside
 

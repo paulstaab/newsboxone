@@ -172,17 +172,29 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
   const { root, topOffset = 0, debounceMs = 100 } = options;
   const [envelope, setEnvelope] = useState<TimelineCacheEnvelope>(createEmptyTimelineCache);
   const envelopeRef = useRef(envelope);
-  envelopeRef.current = envelope;
   const [isHydrated, setIsHydrated] = useState(false);
   const [lastUpdateError, setLastUpdateError] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
-    const cached = loadTimelineCache();
-    // Hydrate client cache from localStorage after mount to avoid SSR mismatches.
+    envelopeRef.current = envelope;
+  }, [envelope]);
 
-    setEnvelope(cached);
-    setIsHydrated(true);
+  useEffect(() => {
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+
+      const cached = loadTimelineCache();
+      // Hydrate client cache from localStorage after mount to avoid SSR mismatches.
+      setEnvelope(cached);
+      setIsHydrated(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const {
@@ -284,14 +296,24 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
   useEffect(() => {
     if (!isHydrated || feedNameMap.size === 0) return;
 
-    setEnvelope((current) => {
-      const nextEnvelope = applyFeedNames(current, feedNameMap);
-      if (nextEnvelope === current) {
-        return current;
-      }
-      storeTimelineCache(nextEnvelope);
-      return nextEnvelope;
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+
+      setEnvelope((current) => {
+        const nextEnvelope = applyFeedNames(current, feedNameMap);
+        if (nextEnvelope === current) {
+          return current;
+        }
+        storeTimelineCache(nextEnvelope);
+        return nextEnvelope;
+      });
     });
+
+    return () => {
+      cancelled = true;
+    };
   }, [feedNameMap, isHydrated]);
 
   useEffect(() => {
@@ -301,37 +323,48 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
       foldersData.map((folder) => [folder.id, folder.name]),
     );
 
-    setEnvelope((current) => {
-      let hasUpdates = false;
-      const updatedFolders: Record<number, FolderQueueEntry> = {};
+    let cancelled = false;
 
-      for (const [folderIdStr, folder] of Object.entries(current.folders)) {
-        const id = Number(folderIdStr);
-        const resolvedName =
-          folderNameMap.get(id) ?? (id === UNCATEGORIZED_FOLDER_ID ? 'Uncategorized' : folder.name);
-        if (folder.name !== resolvedName) {
-          hasUpdates = true;
+    queueMicrotask(() => {
+      if (cancelled) return;
+
+      setEnvelope((current) => {
+        let hasUpdates = false;
+        const updatedFolders: Record<number, FolderQueueEntry> = {};
+
+        for (const [folderIdStr, folder] of Object.entries(current.folders)) {
+          const id = Number(folderIdStr);
+          const resolvedName =
+            folderNameMap.get(id) ??
+            (id === UNCATEGORIZED_FOLDER_ID ? 'Uncategorized' : folder.name);
+          if (folder.name !== resolvedName) {
+            hasUpdates = true;
+          }
+          updatedFolders[id] =
+            folder.name === resolvedName
+              ? folder
+              : {
+                  ...folder,
+                  name: resolvedName,
+                };
         }
-        updatedFolders[id] =
-          folder.name === resolvedName
-            ? folder
-            : {
-                ...folder,
-                name: resolvedName,
-              };
-      }
 
-      if (!hasUpdates) {
-        return current;
-      }
+        if (!hasUpdates) {
+          return current;
+        }
 
-      const nextEnvelope: TimelineCacheEnvelope = {
-        ...current,
-        folders: updatedFolders,
-      };
-      storeTimelineCache(nextEnvelope);
-      return nextEnvelope;
+        const nextEnvelope: TimelineCacheEnvelope = {
+          ...current,
+          folders: updatedFolders,
+        };
+        storeTimelineCache(nextEnvelope);
+        return nextEnvelope;
+      });
     });
+
+    return () => {
+      cancelled = true;
+    };
   }, [foldersData, isHydrated, envelope.folders]);
 
   const sortedQueue = useMemo(() => {
