@@ -92,6 +92,7 @@ function restoreUnreadPreviews(
   }
 
   const restoredIds = new Set(previews.map((article) => article.id));
+  const previewOrder = new Map(previews.map((article, index) => [article.id, index]));
   const fallbackById = new Map(fallbackFolders.map((folder) => [folder.id, folder]));
   const updatedFolders: Partial<Record<number, FolderQueueEntry>> = { ...current.folders };
   const now = Date.now();
@@ -118,7 +119,11 @@ function restoreUnreadPreviews(
     const articles = [
       ...existingFolder.articles.filter((entry) => entry.id !== article.id),
       article,
-    ];
+    ].sort((left, right) => {
+      const leftOrder = previewOrder.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+      const rightOrder = previewOrder.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+      return leftOrder - rightOrder;
+    });
     updatedFolders[folderId] = {
       ...existingFolder,
       articles,

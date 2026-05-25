@@ -34,6 +34,7 @@ Use it as a lightweight planning backlog, not as a replacement for issue trackin
 
 ## Testing
 
+- Fix the lingering React `act(...)` warnings in `frontend/tests/unit/hooks/useTimeline.test.tsx`; they currently pass but mask asynchronous state-update timing issues in the timeline hook tests.
 - Reduce Playwright integration noise by making the service-worker registration mock return a registration-like object, avoiding repeated `registration.addEventListener` errors in `frontend/src/lib/sw/register.ts` during tests.
 - Add a lightweight frontend token audit test or lint script that fails when `var(--...)` references are not defined in `frontend/src/styles/tokens.css`.
 - Refresh or remove stale visual Playwright coverage in `frontend/tests/visual/us1-login-timeline.spec.ts`; it still targets an older login flow with a server-URL step, includes a placeholder `expect(true)`, and overlaps newer timeline visual coverage.
