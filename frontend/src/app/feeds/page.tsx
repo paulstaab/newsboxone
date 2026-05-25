@@ -260,7 +260,10 @@ function FeedManagementContent() {
                                       <FontAwesomeIcon icon={faFolder} className="h-4 w-4" />
                                     </span>
                                     <span>{group.name}</span>
-                                    <span className="feed-management-folder-count inline-flex flex-none items-center rounded-md border border-[hsl(var(--color-border))] px-2 py-1 text-xs font-bold uppercase leading-none text-[hsl(var(--color-text-muted))]">
+                                    <span
+                                      className="feed-management-folder-count inline-flex flex-none items-center rounded-md border border-[hsl(var(--color-border))] px-2 py-1 text-xs font-bold uppercase leading-none text-[hsl(var(--color-text-muted))]"
+                                      aria-hidden
+                                    >
                                       {group.feeds.length} feed
                                       {group.feeds.length === 1 ? '' : 's'}
                                     </span>

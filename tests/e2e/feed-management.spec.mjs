@@ -16,9 +16,7 @@ test.describe('Feed onboarding and management e2e scenarios', () => {
     await clearBrowserSession(page);
     await loginViaUi(page);
     await page.goto('/feeds');
-    await expect(
-      page.getByRole('heading', { name: /manage subscriptions and folders/i }),
-    ).toBeVisible();
+    await expect(page.getByText(/^Feed Management$/i)).toBeVisible();
   });
 
   test('[TS-FEED-MGMT-001] reader adds feeds and receives initial items', async ({ page }) => {
@@ -62,11 +60,16 @@ test.describe('Feed onboarding and management e2e scenarios', () => {
 
     await page.getByRole('button', { name: /rename folder engineering/i }).click();
     await page.getByLabel(/^folder name$/i).fill('Platform');
-    await page.getByRole('button', { name: /^save$/i }).first().click();
+    await page
+      .getByRole('button', { name: /^save$/i })
+      .first()
+      .click();
     await expect(page.getByRole('heading', { name: 'Platform' })).toBeVisible();
 
     await page
-      .getByRole('button', { name: /adjust feed quality for engineering daily/i })
+      .getByRole('button', {
+        name: /adjust feed quality for engineering daily/i,
+      })
       .click();
     await page.getByLabel(/feed title setting/i).fill('Platform Digest');
     await page.getByLabel(/folder setting/i).selectOption({ label: 'Archive' });
@@ -75,9 +78,7 @@ test.describe('Feed onboarding and management e2e scenarios', () => {
     await expect(page.getByRole('heading', { name: 'Archive' })).toBeVisible();
     await expect(page.getByRole('row', { name: /platform digest/i })).toBeVisible();
 
-    await page
-      .getByRole('button', { name: /adjust feed quality for platform digest/i })
-      .click();
+    await page.getByRole('button', { name: /adjust feed quality for platform digest/i }).click();
     await page.getByLabel(/folder setting/i).selectOption({ label: 'Uncategorized' });
     await page.getByRole('button', { name: /^save$/i }).click();
     await expect(page.getByText(/updated settings for platform digest/i)).toBeVisible();
