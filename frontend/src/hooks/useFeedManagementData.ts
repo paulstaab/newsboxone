@@ -66,17 +66,33 @@ export function useFeedManagementData() {
   );
 
   useEffect(() => {
+    let cancelled = false;
+
     if (isInitializing) {
-      return;
+      return undefined;
     }
 
     if (isAuthenticated) {
-      void refreshPageData(true);
-      return;
+      queueMicrotask(() => {
+        if (!cancelled) {
+          void refreshPageData(true);
+        }
+      });
+      return () => {
+        cancelled = true;
+      };
     }
 
-    setIsLoading(false);
-    setIsRefreshing(false);
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [isAuthenticated, isInitializing, refreshPageData]);
 
   return {
