@@ -9,6 +9,14 @@
 import { SWRConfig, type SWRConfiguration } from 'swr';
 import type { ReactNode } from 'react';
 import { CONFIG } from '@/lib/config/env';
+import { AuthenticationError } from '@/lib/api';
+
+/**
+ * Returns true for auth failures that are expected during logout and redirect flows.
+ */
+function isExpectedAuthenticationError(error: unknown): boolean {
+  return error instanceof AuthenticationError;
+}
 
 /**
  * Default SWR configuration for the application.
@@ -24,7 +32,7 @@ export const swrConfig: SWRConfiguration = {
   revalidateOnReconnect: false,
 
   // Retry failed requests
-  shouldRetryOnError: true,
+  shouldRetryOnError: (error: unknown) => !isExpectedAuthenticationError(error),
   errorRetryCount: 3,
   errorRetryInterval: 1000,
 
@@ -48,6 +56,10 @@ export const swrConfig: SWRConfiguration = {
 
   // Error handling
   onError: (error: unknown, key: string) => {
+    if (isExpectedAuthenticationError(error)) {
+      return;
+    }
+
     // Log errors for debugging, could integrate with metrics
     if (process.env.NODE_ENV === 'development') {
       console.error(`SWR Error [${key}]:`, error);

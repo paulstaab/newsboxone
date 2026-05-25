@@ -22,11 +22,22 @@ export function isServiceWorkerSupported(): boolean {
 }
 
 /**
+ * Detects webdriver-driven browser sessions where Playwright blocks service workers.
+ */
+function isAutomatedBrowserSession(): boolean {
+  return typeof navigator !== 'undefined' && navigator.webdriver;
+}
+
+/**
  * Register the service worker.
  */
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!isServiceWorkerSupported()) {
     console.warn('Service workers are not supported in this browser');
+    return null;
+  }
+
+  if (isAutomatedBrowserSession()) {
     return null;
   }
 
@@ -36,6 +47,11 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
     const registration = await navigator.serviceWorker.register(`${basePath}/sw.js`, {
       scope,
     });
+
+    if (!(registration instanceof ServiceWorkerRegistration)) {
+      console.warn('Service worker registration did not return a registration object');
+      return null;
+    }
 
     // Handle updates
     registration.addEventListener('updatefound', () => {

@@ -35,7 +35,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="scroll-smooth">
+    <html lang="en" className="scroll-smooth" data-scroll-behavior="smooth">
       <body className="min-h-screen bg-[hsl(var(--color-surface))] text-[hsl(var(--color-text))] antialiased">
         <SkipLink href="#main-content">Skip to main content</SkipLink>
         <AuthProvider>

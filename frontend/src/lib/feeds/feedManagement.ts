@@ -47,15 +47,44 @@ export function buildFeedManagementGroups(folders: Folder[], feeds: Feed[]): Fee
 
   const groups: FeedManagementGroup[] = [];
 
+  for (const folder of folders) {
+    groups.push({
+      id: folder.id,
+      name: folder.name,
+      isUncategorized: false,
+      feeds: [],
+    });
+  }
+
   for (const [folderId, rows] of groupedFeeds.entries()) {
     const name =
       folderId === null ? UNCATEGORIZED_GROUP_NAME : (folderNameById.get(folderId) ?? 'Unknown');
 
+    const nextRows = [...rows].sort((left, right) =>
+      compareLabels(left.feed.title, right.feed.title),
+    );
+
+    if (folderId === null) {
+      groups.push({
+        id: null,
+        name,
+        isUncategorized: true,
+        feeds: nextRows,
+      });
+      continue;
+    }
+
+    const existingGroup = groups.find((group) => group.id === folderId);
+    if (existingGroup) {
+      existingGroup.feeds = nextRows;
+      continue;
+    }
+
     groups.push({
       id: folderId,
       name,
-      isUncategorized: folderId === null,
-      feeds: [...rows].sort((left, right) => compareLabels(left.feed.title, right.feed.title)),
+      isUncategorized: false,
+      feeds: nextRows,
     });
   }
 

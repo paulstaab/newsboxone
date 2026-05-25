@@ -135,4 +135,29 @@ test.describe('Feed management integration coverage', () => {
     await expect(page.getByText(/unsubscribed from backend briefing/i)).toBeVisible();
     await expect(feedTable.getByRole('row', { name: /#102: backend briefing/i })).toHaveCount(0);
   });
+
+  test('[TC-FEEDS-007] folder creation stays visible and feed creation reports the created feed', async ({
+    page,
+  }) => {
+    await page.goto('/feeds');
+
+    await page.getByRole('button', { name: /add folder/i }).click();
+    await page.getByRole('textbox', { name: /new folder name/i }).fill('Science Desk');
+    await page.getByRole('button', { name: /create folder/i }).click();
+
+    await expect(page.getByText(/created folder science desk/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Science Desk' })).toBeVisible();
+
+    await page.getByRole('button', { name: /subscribe to feed/i }).click();
+    await page
+      .getByRole('textbox', { name: /feed url/i })
+      .fill('https://planetpython.org/rss20.xml');
+    await page.getByRole('combobox', { name: /destination folder/i }).selectOption({
+      label: 'Science Desk',
+    });
+    await page.getByRole('dialog').getByRole('button', { name: 'Subscribe', exact: true }).click();
+
+    await expect(page.getByText(/subscribed to planetpython\.org/i)).toBeVisible();
+    await expect(page.getByRole('row', { name: /#1000: planetpython\.org/i })).toBeVisible();
+  });
 });

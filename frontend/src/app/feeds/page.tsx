@@ -199,7 +199,13 @@ function FeedManagementContent() {
                     const isEditingFolder = editingFolderId === group.id && group.id !== null;
 
                     return (
-                      <Fragment key={group.isUncategorized ? 'uncategorized' : String(group.id)}>
+                      <Fragment
+                        key={
+                          group.isUncategorized
+                            ? 'group-uncategorized'
+                            : `group-${String(group.id)}`
+                        }
+                      >
                         <tr className="border-b border-white/10 bg-[linear-gradient(90deg,rgba(255,255,255,0.05),rgba(255,255,255,0.015))]">
                           {isEditingFolder ? (
                             <td colSpan={4} className="px-5 py-4">
@@ -290,7 +296,7 @@ function FeedManagementContent() {
                         {group.feeds.map(({ feed, lastArticleDate }) => {
                           return (
                             <tr
-                              key={feed.id}
+                              key={`feed-${String(feed.id)}`}
                               className="border-b border-white/8 align-middle transition last:border-b-0 hover:bg-white/[0.025]"
                             >
                               <td className="px-5 py-4">

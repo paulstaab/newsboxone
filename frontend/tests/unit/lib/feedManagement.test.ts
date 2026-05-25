@@ -37,10 +37,11 @@ describe('feedManagement utilities', () => {
     vi.useRealTimers();
   });
 
-  it('groups folders and feeds alphabetically, including uncategorized feeds', () => {
+  it('groups folders and feeds alphabetically, including empty folders and uncategorized feeds', () => {
     const folders: Folder[] = [
       { id: 20, name: 'Podcasts', unreadCount: 0, feedIds: [] },
       { id: 10, name: 'Design', unreadCount: 0, feedIds: [] },
+      { id: 30, name: 'Science', unreadCount: 0, feedIds: [] },
     ];
     const feeds = [
       buildFeed({ id: 1, title: 'Zulu Feed', folderId: 20, lastArticleDate: 1_700_000_000 }),
@@ -50,10 +51,17 @@ describe('feedManagement utilities', () => {
 
     const groups = buildFeedManagementGroups(folders, feeds);
 
-    expect(groups.map((group) => group.name)).toEqual(['Podcasts', 'Uncategorized']);
-    expect(groups[0].feeds.map((row) => row.feed.title)).toEqual(['Alpha Feed', 'Zulu Feed']);
-    expect(groups[0].feeds[1].lastArticleDate).toBe(1_700_000_000);
-    expect(groups[1].feeds[0].lastArticleDate).toBeNull();
+    expect(groups.map((group) => group.name)).toEqual([
+      'Design',
+      'Podcasts',
+      'Science',
+      'Uncategorized',
+    ]);
+    expect(groups[0].feeds).toEqual([]);
+    expect(groups[1].feeds.map((row) => row.feed.title)).toEqual(['Alpha Feed', 'Zulu Feed']);
+    expect(groups[1].feeds[1].lastArticleDate).toBe(1_700_000_000);
+    expect(groups[2].feeds).toEqual([]);
+    expect(groups[3].feeds[0].lastArticleDate).toBeNull();
   });
 
   it('formats timestamps relative to now', () => {

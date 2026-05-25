@@ -28,7 +28,7 @@ export default async function globalSetup(config) {
         JSON.stringify({
           username,
           token: 'test-token',
-          expiresAt: '2026-04-30T00:00:00.000Z',
+          expiresAt: '2027-04-30T00:00:00.000Z',
           rememberDevice: true,
         }),
       );
