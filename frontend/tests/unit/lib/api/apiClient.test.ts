@@ -284,6 +284,67 @@ describe('ApiClient', () => {
       expect(result.feed).toHaveProperty('title');
     });
 
+    it('should select the created feed from a full feed list response', async () => {
+      server.use(
+        http.post(`${BASE_URL}${API_PATH}/feeds`, () => {
+          return HttpResponse.json({
+            feeds: [
+              {
+                id: 1,
+                url: 'https://existing.example.com/rss',
+                title: 'Existing Feed',
+                folderId: null,
+                faviconLink: null,
+                added: 1234567890,
+                lastArticleDate: null,
+                nextUpdateTime: null,
+                ordering: 0,
+                link: 'https://existing.example.com',
+                pinned: false,
+                updateErrorCount: 0,
+                lastUpdateError: null,
+                lastQualityCheck: null,
+                useExtractedFulltext: false,
+                useLlmSummary: false,
+                manualUseExtractedFulltext: null,
+                manualUseLlmSummary: null,
+                lastManualQualityOverride: null,
+              },
+              {
+                id: 2,
+                url: 'https://example.com/rss',
+                title: 'Created Feed',
+                folderId: 42,
+                faviconLink: null,
+                added: 1234567891,
+                lastArticleDate: null,
+                nextUpdateTime: null,
+                ordering: 0,
+                link: 'https://example.com',
+                pinned: false,
+                updateErrorCount: 0,
+                lastUpdateError: null,
+                lastQualityCheck: null,
+                useExtractedFulltext: false,
+                useLlmSummary: false,
+                manualUseExtractedFulltext: null,
+                manualUseLlmSummary: null,
+                lastManualQualityOverride: null,
+              },
+            ],
+            newestItemId: null,
+          });
+        }),
+      );
+
+      const client = getApiClient();
+      const result = await client.feeds.create('https://example.com/rss', 42);
+
+      expect(result.feed.id).toBe(2);
+      expect(result.feed.title).toBe('Created Feed');
+      expect(result.feed.folderId).toBe(42);
+    });
+
     it('should delete a feed', async () => {
       const client = getApiClient();
       await expect(client.feeds.delete(123)).resolves.not.toThrow();

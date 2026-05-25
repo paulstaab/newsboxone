@@ -28,8 +28,12 @@ export const feedsApi: FeedsApi = {
     if (feeds.length === 0) {
       throw new Error('No feed returned from create');
     }
+
+    const createdFeed =
+      feeds.find((feed) => feed.url === url && (feed.folderId ?? null) === folderId) ?? feeds[0];
+
     return {
-      feed: normalizeFeed(feeds[0]),
+      feed: normalizeFeed(createdFeed),
       newestItemId: response.newestItemId,
     };
   },

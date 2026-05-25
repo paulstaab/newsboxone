@@ -371,7 +371,7 @@ export async function setupApiMocks(page: Page) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ feeds: [newFeed], newestItemId: null }),
+        body: JSON.stringify({ feeds, newestItemId: null }),
       });
       return;
     }
