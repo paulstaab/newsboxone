@@ -28,7 +28,7 @@ It describes the shared runtime, major technologies, development workflow, and p
 ## Frontend Stack
 
 - Language: TypeScript 5.9
-- Runtime: Node.js 24+
+- Runtime: Node.js 26+
 - Framework: Next.js 16 App Router
 - UI library: React 19
 - Data fetching: SWR 2.x

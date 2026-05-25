@@ -62,7 +62,7 @@ scripts/            # Helper scripts, including screenshot capture
 ## Current Stack
 
 - TypeScript 5.9
-- Node.js 24+
+- Node.js 26+
 - Next.js 16 App Router
 - React 19
 - SWR 2.x

@@ -25,6 +25,8 @@ Use it as a lightweight planning backlog, not as a replacement for issue trackin
 
 ## Testing
 
+- Reduce Playwright integration noise by making the service-worker registration mock return a registration-like object, avoiding repeated `registration.addEventListener` errors in `frontend/src/lib/sw/register.ts` during tests.
+
 ## Documentation
 
 ## Developer & Agent Experience
