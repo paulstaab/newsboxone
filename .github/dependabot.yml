@@ -12,6 +12,12 @@ updates:
       interval: weekly
     assignees:
       - paulstaab
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: weekly
+    assignees:
+      - paulstaab
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

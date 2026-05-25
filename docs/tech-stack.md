@@ -33,7 +33,7 @@ It describes the shared runtime, major technologies, development workflow, and p
 - UI library: React 19
 - Data fetching: SWR 2.x
 - Styling: Tailwind CSS 4.1
-- Date utilities: `date-fns` 4.1
+- Date utilities: `date-fns` 4.x
 - Test and mock tooling: Playwright, Vitest, Testing Library, MSW
 - Frontend dependency resolution: npm lockfile with an override that keeps transitive `postcss` consumers on the patched 8.5.x line
 
@@ -56,6 +56,7 @@ It describes the shared runtime, major technologies, development workflow, and p
 - Workspace tasks: root `.vscode/tasks.json`
 - Dev container: root `.devcontainer/devcontainer.json`
 - CI: GitHub Actions under `.github/workflows/`
+- Dependency update automation: Dependabot for devcontainers, Docker images, GitHub Actions, Cargo, and npm
 - Container packaging: root `Dockerfile` plus `docker/nginx.conf`
 - Container backend build: Rust 1.95.0 Debian Bookworm image
 
