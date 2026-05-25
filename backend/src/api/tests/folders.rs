@@ -90,6 +90,88 @@ async fn delete_nonexistent_folder_returns_404() {
 }
 
 #[tokio::test]
+async fn delete_root_folder_returns_404_and_preserves_rows() {
+    let pool = setup_pool().await;
+
+    let response = app(state(pool.clone()))
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri("/api/folders/1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 404);
+    let root_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM folder WHERE id = 1")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let feed_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM feed WHERE id = 10")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let article_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM article WHERE id = 100")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+    assert_eq!(root_count, 1);
+    assert_eq!(feed_count, 1);
+    assert_eq!(article_count, 1);
+}
+
+#[tokio::test]
+async fn rename_root_folder_returns_404() {
+    let pool = setup_pool().await;
+
+    let response = app(state(pool.clone()))
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri("/api/folders/1")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"name":"Visible Root"}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 404);
+    let root_name: String = sqlx::query_scalar("SELECT name FROM folder WHERE id = 1")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(root_name, "");
+}
+
+#[tokio::test]
+async fn root_folder_read_returns_404_and_preserves_unread_state() {
+    let pool = setup_pool().await;
+
+    let response = app(state(pool.clone()))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/folders/1/read")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"newestItemId":100}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 404);
+    let unread: i64 = sqlx::query_scalar("SELECT unread FROM article WHERE id = 100")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(unread, 1);
+}
+
+#[tokio::test]
 async fn rename_folder_duplicate_returns_409() {
     let pool = setup_pool().await;
     sqlx::query("INSERT INTO folder (id, name, is_root) VALUES (3, 'News', 0)")

@@ -88,7 +88,7 @@ pub(super) async fn delete_folder(
     State(state): State<AppState>,
     Path(folder_id): Path<i64>,
 ) -> ApiResult<StatusCode> {
-    if !repo::folder_exists(&state.pool, folder_id)
+    if !repo::public_folder_exists(&state.pool, folder_id)
         .await
         .map_err(internal_error)?
     {
@@ -120,7 +120,7 @@ pub(super) async fn rename_folder(
         return Err(folder_name_invalid());
     }
 
-    if !repo::folder_exists(&state.pool, folder_id)
+    if !repo::public_folder_exists(&state.pool, folder_id)
         .await
         .map_err(internal_error)?
     {
@@ -147,7 +147,7 @@ pub(super) async fn mark_folder_items_read(
     Path(folder_id): Path<i64>,
     Json(input): Json<MarkAllItemsReadIn>,
 ) -> ApiResult<StatusCode> {
-    if !repo::folder_exists(&state.pool, folder_id)
+    if !repo::public_folder_exists(&state.pool, folder_id)
         .await
         .map_err(internal_error)?
     {

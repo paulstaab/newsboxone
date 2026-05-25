@@ -83,7 +83,7 @@ pub(super) struct FeedCreateIn {
 #[serde(rename_all = "camelCase")]
 pub(super) struct FeedCreateOut {
     feeds: Vec<FeedOut>,
-    newest_item_id: i64,
+    newest_item_id: Option<i64>,
 }
 
 #[derive(Deserialize)]
@@ -303,10 +303,13 @@ async fn add_feed_impl(
         .await
         .map_err(anyhow_internal_error)?;
 
+    let newest_item_id = repo::newest_article_id_for_feed(pool, feed_id)
+        .await
+        .map_err(internal_error)?;
     let feeds = load_feeds(pool).await?;
     Ok(Json(FeedCreateOut {
         feeds,
-        newest_item_id: feed_id,
+        newest_item_id,
     }))
 }
 

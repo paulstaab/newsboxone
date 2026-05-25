@@ -79,6 +79,7 @@ The same requirements apply to all implementations.
 - `FOL-005`: Empty folder names shall be rejected.
 - `FOL-006`: Duplicate folder names shall be rejected.
 - `FOL-007`: Deleting a folder shall delete feeds in that folder.
+- `FOL-008`: Public folder path operations shall reject the internal root folder as not found and shall not mutate root-assigned feeds or articles.
 
 ### Item And Article Behavior
 
