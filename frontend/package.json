@@ -71,8 +71,8 @@
     "@types/node": "^25.9.1",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
-    "@typescript-eslint/eslint-plugin": "^8.59.4",
-    "@typescript-eslint/parser": "^8.59.4",
+    "@typescript-eslint/eslint-plugin": "^8.60.0",
+    "@typescript-eslint/parser": "^8.60.0",
     "@vitest/coverage-v8": "^4.1.7",
     "autoprefixer": "^10.5.0",
     "eslint": "^9.39.4",
@@ -89,7 +89,7 @@
     "prettier": "^3.8.3",
     "tailwindcss": "^4.1.18",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.59.4",
+    "typescript-eslint": "^8.60.0",
     "vitest": "^4.0.15"
   },
   "overrides": {
