@@ -15,6 +15,11 @@ Use it as a lightweight planning backlog, not as a replacement for issue trackin
 
 ## Security
 
+- Sanitize stored article HTML before rendering or before persistence: `frontend/src/components/timeline/ArticlePopout.tsx` renders feed/extracted content with `dangerouslySetInnerHTML`, while `backend/src/article_store.rs` and `backend/src/content.rs` can persist publisher-controlled HTML.
+- Protect `POST /api/auth/token` against online guessing by adding rate limiting, retry backoff, or lockout behavior around `backend/src/api/auth.rs`; token issuance currently compares credentials on every request without throttling.
+- Add explicit security headers in `docker/nginx.conf`, especially a Content Security Policy, `X-Content-Type-Options`, `Referrer-Policy`, and frame restrictions, so the combined container has defense in depth for static frontend and proxied API responses.
+- Replace `CorsLayer::permissive()` in `backend/src/api.rs` with configured allowed origins/methods/headers for production deployments, keeping broad CORS only for local development or tests.
+
 ## Technical Debt
 
 ## Code Structure
@@ -30,8 +35,11 @@ Use it as a lightweight planning backlog, not as a replacement for issue trackin
 
 ## Performance
 
+- Bound item query and bulk mutation sizes in `backend/src/api/items.rs`; `batchSize <= 0` currently fetches all matching articles and multi-item mutation payloads have no explicit cap, which could cause memory or database pressure on large installations.
+
 ## Testing
 
+- Add security regression coverage for article-content sanitization, CSP/header behavior, token brute-force throttling, and bounded item-list/mutation sizes.
 - Fix the lingering React `act(...)` warnings in `frontend/tests/unit/hooks/useTimeline.test.tsx`; they currently pass but mask asynchronous state-update timing issues in the timeline hook tests.
 - Reduce Playwright integration noise by making the service-worker registration mock return a registration-like object, avoiding repeated `registration.addEventListener` errors in `frontend/src/lib/sw/register.ts` during tests.
 - Add a lightweight frontend token audit test or lint script that fails when `var(--...)` references are not defined in `frontend/src/styles/tokens.css`.
