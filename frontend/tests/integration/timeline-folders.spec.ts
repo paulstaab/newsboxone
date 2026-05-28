@@ -251,4 +251,17 @@ test.describe('Timeline integration coverage', () => {
       dialog.getByText('Engineering just shipped the folder queue feature.'),
     ).toHaveCount(0);
   });
+
+  test('[TC-TIMELINE-022] article pop-out closes from the keyboard', async ({ page }) => {
+    await page.goto('/timeline');
+
+    const opener = page.getByRole('option', { name: /ship it saturday: folder queue/i });
+    await opener.click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(opener).toBeFocused();
+  });
 });
