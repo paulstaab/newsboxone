@@ -26,9 +26,9 @@ use crate::llm::LlmRequestContext;
 use crate::repo;
 
 const NINETY_DAYS: i64 = 90 * 24 * 60 * 60;
-const NEWSLETTER_MAX_CHARS: usize = 5_000;
-const NEWSLETTER_MAX_ITEMS: usize = 25;
-const NEWSLETTER_SINGLE_SUMMARY_MAX_CHARS: usize = 160;
+const NEWSLETTER_MAX_CHARS: usize = 100_000;
+const NEWSLETTER_MAX_ITEMS: usize = 10;
+const NEWSLETTER_SINGLE_SUMMARY_MAX_CHARS: usize = 320;
 
 #[derive(Clone, Debug, FromRow)]
 struct EmailCredentialRow {
