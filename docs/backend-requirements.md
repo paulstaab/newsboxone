@@ -154,13 +154,13 @@ The same requirements apply to all implementations.
 - `EML-006`: Newsletter HTML shall be cleaned before article persistence and LLM parsing, including removal of hidden blocks, metadata, tracking pixels, document head blocks, template CSS, scripts, and layout table wrappers while preserving readable content and article links.
 - `EML-007`: Optional LLM-based newsletter parsing:
   - Optional LLM-based newsletter parsing shall be enabled only when LLM support is configured.
-  - Before LLM-based newsletter parsing, newsletter content shall be truncated to the first 5000 characters.
+  - Before LLM-based newsletter parsing, newsletter content shall be truncated to the first 100,000 characters.
   - LLM-based newsletter parsing shall support `single` mode and `multi` mode.
   - If a newsletter is a collection of links to different articles, it shall be parsed in `multi` mode. Otherwise, it shall be parsed in `single` mode.
   - The newsletter parser shall ignore and remove advertisements, commercial copy, promotions, and sponsorship segments from returned content, summaries, and multi-item entries unless a sponsored item is clearly one of the newsletter's editorial article links.
   - In `single` mode, the parser should return the cleaned newsletter content as article and a concise, generated summary.
   - In `multi` mode, the parser should return an list of articles linked in the newsletter, so that they can be shown as separate entries in the generated feed.
-  - LLM-based multi-item parsing shall create at most 25 articles from a single newsletter email.
+  - LLM-based multi-item parsing shall create at most 10 articles from a single newsletter email.
 - `EML-008`: If LLM-based parsing is disabled, fails, returns invalid JSON, or produces no usable multi-item entries, newsletter ingestion shall fall back to creating a single article from the cleaned email content.
 - `EML-009`: Stale newsletter entries shall be eligible for cleanup only when older than 90 days, read, and unstarred.
 - `EML-010`: Successful newsletter ingestion shall clear persisted refresh error state on the corresponding mailing-list feed.

@@ -119,7 +119,10 @@ describe('ArticlePopout', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('closes when Space is pressed', async () => {
+  it.each([
+    ['Space', ' '],
+    ['Escape', 'Escape'],
+  ])('closes when %s is pressed', async (_label, key) => {
     mockContentResponse.data = '<p>This is the full body content.</p>';
     mockContentResponse.error = null;
     mockContentResponse.isLoading = false;
@@ -154,10 +157,51 @@ describe('ArticlePopout', () => {
       expect(screen.getByText('Popout Article Title')).toBeDefined();
     });
 
-    fireEvent.keyDown(document, { key: ' ' });
+    fireEvent.keyDown(document, { key });
 
     await waitFor(() => {
       expect(screen.queryByText('Popout Article Title')).toBeNull();
     });
+  });
+
+  it('ignores Escape when focus is inside editable content', async () => {
+    mockContentResponse.data = '<label>Editable field <input /></label>';
+    mockContentResponse.error = null;
+    mockContentResponse.isLoading = false;
+
+    function Harness() {
+      const openerRef = useRef<HTMLButtonElement>(null);
+      const { isOpen, openPopout, closePopout, dialogRef, closeButtonRef } = useArticlePopout();
+
+      useEffect(() => {
+        openPopout({ id: mockArticle.id, feedId: mockArticle.feedId }, openerRef.current);
+      }, [openPopout]);
+
+      return (
+        <div>
+          <button type="button" ref={openerRef}>
+            Open
+          </button>
+          <ArticlePopout
+            isOpen={isOpen}
+            article={mockArticle}
+            onClose={closePopout}
+            dialogRef={dialogRef}
+            closeButtonRef={closeButtonRef}
+          />
+        </div>
+      );
+    }
+
+    render(<Harness />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Popout Article Title')).toBeDefined();
+    });
+
+    screen.getByLabelText('Editable field').focus();
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.getByText('Popout Article Title')).toBeDefined();
   });
 });

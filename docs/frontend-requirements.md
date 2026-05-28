@@ -72,7 +72,7 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 - `TIMELINE-011`: The article pop-out shall fetch full article metadata and full HTML content on demand.
 - `TIMELINE-012`: The article pop-out shall show a heading, subheading, and one of the following: fetched content, fallback body HTML, fallback summary text, loading UI, or an error or empty state.
 - `TIMELINE-013`: The article pop-out shall trap focus while open, disable background page scrolling, and restore focus to the opener when closed.
-- `TIMELINE-014`: The article pop-out shall close via the dedicated close button and via the global Space key handler implemented in the current code.
+- `TIMELINE-014`: The article pop-out shall close via the dedicated close button, the global Space key handler implemented in the current code, and the Escape key.
 - `TIMELINE-015`: While the pop-out is open, the underlying timeline shall be marked `aria-hidden` and removed from keyboard interaction.
 - `TIMELINE-016`: The folder queue shall become sticky after its sentinel scrolls out of view and shall release when scrolled back to the top.
 - `TIMELINE-017`: When the queue is docked, the timeline layout shall offset content by the measured dock height so cards are not covered.

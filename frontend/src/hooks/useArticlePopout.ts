@@ -77,7 +77,12 @@ export function useArticlePopout(): UseArticlePopoutResult {
       const activeElement = document.activeElement as HTMLElement | null;
       if (isExcludedTarget(activeElement)) return;
 
-      if (event.key === ' ' || event.key === 'Spacebar' || event.key === 'Space') {
+      if (
+        event.key === 'Escape' ||
+        event.key === ' ' ||
+        event.key === 'Spacebar' ||
+        event.key === 'Space'
+      ) {
         event.preventDefault();
         closePopout();
         return;
