@@ -35,6 +35,7 @@ struct FeedRow {
     pinned: bool,
     update_error_count: i64,
     last_update_error: Option<String>,
+    is_mailing_list: bool,
     last_quality_check: Option<i64>,
     use_extracted_fulltext: bool,
     use_llm_summary: bool,
@@ -59,6 +60,7 @@ pub(super) struct FeedOut {
     pinned: bool,
     update_error_count: i64,
     last_update_error: Option<String>,
+    r#type: String,
     last_quality_check: Option<i64>,
     use_extracted_fulltext: bool,
     use_llm_summary: bool,
@@ -407,14 +409,14 @@ async fn load_root_folder_id(pool: &SqlitePool) -> ApiResult<Option<i64>> {
 async fn load_feed_rows(pool: &SqlitePool, feed_id: Option<i64>) -> ApiResult<Vec<FeedRow>> {
     let rows = if let Some(feed_id) = feed_id {
         sqlx::query_as::<_, FeedRow>(
-            "SELECT id, url, title, favicon_link, added, last_article_date, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE id = ? AND deleted_at IS NULL ORDER BY id",
+            "SELECT id, url, title, favicon_link, added, last_article_date, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error, is_mailing_list, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE id = ? AND deleted_at IS NULL ORDER BY id",
         )
         .bind(feed_id)
         .fetch_all(pool)
         .await
     } else {
         sqlx::query_as::<_, FeedRow>(
-            "SELECT id, url, title, favicon_link, added, last_article_date, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE deleted_at IS NULL ORDER BY id",
+            "SELECT id, url, title, favicon_link, added, last_article_date, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error, is_mailing_list, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE deleted_at IS NULL ORDER BY id",
         )
         .fetch_all(pool)
         .await
@@ -443,6 +445,11 @@ fn map_feed_row(feed: FeedRow, root_folder_id: Option<i64>) -> FeedOut {
         pinned: feed.pinned,
         update_error_count: feed.update_error_count,
         last_update_error: feed.last_update_error,
+        r#type: if feed.is_mailing_list {
+            "mailingList".to_string()
+        } else {
+            "rss".to_string()
+        },
         last_quality_check: feed.last_quality_check,
         use_extracted_fulltext: feed.use_extracted_fulltext,
         use_llm_summary: feed.use_llm_summary,

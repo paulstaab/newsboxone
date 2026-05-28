@@ -723,6 +723,19 @@ textarea:focus-visible {
     color: hsl(var(--color-text-muted));
   }
 
+  .article-card__source {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  .article-card__source-icon {
+    flex: none;
+    height: 0.8rem;
+    width: 0.8rem;
+  }
+
   .article-card__excerpt {
     font-size: 0.95rem;
     color: hsl(var(--color-text-muted));

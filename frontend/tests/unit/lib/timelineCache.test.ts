@@ -17,6 +17,7 @@ function createPreview(overrides: Partial<ArticlePreview> = {}): ArticlePreview 
     feedId: overrides.feedId ?? 99,
     title: overrides.title ?? 'Sample article',
     feedName: overrides.feedName ?? 'Sample Feed',
+    feedType: overrides.feedType ?? 'rss',
     author: overrides.author ?? 'Sample Author',
     summary: overrides.summary ?? 'Summary',
     body: overrides.body ?? '<p>Body</p>',

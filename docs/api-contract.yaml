@@ -701,6 +701,7 @@ components:
         [
           id,
           url,
+          type,
           title,
           added,
           link,
@@ -724,7 +725,9 @@ components:
           type: integer
         url:
           type: string
-          format: uri
+        type:
+          type: string
+          enum: [rss, mailingList]
         title:
           type: string
         link:

@@ -47,6 +47,7 @@ export function toArticlePreview(
   folderId: number | null,
   cachedAt: number,
   feedName: string,
+  feedType: ArticlePreview['feedType'] = 'rss',
 ): ArticlePreview | null {
   if (folderId === null) {
     return null;
@@ -64,6 +65,7 @@ export function toArticlePreview(
     feedId: article.feedId,
     title: trimmedTitle.length > 0 ? trimmedTitle : 'Untitled article',
     feedName: normalizedFeedName.length > 0 ? normalizedFeedName : 'Unknown source',
+    feedType,
     author: trimmedAuthor,
     summary: summarize(article.body, ''),
     body: trimmedBody,
@@ -112,11 +114,12 @@ export function applyFolderNames(
 /**
  * Reconciles cached feed names with the latest feed metadata.
  */
-export function applyFeedNames(
+export function applyFeedMetadata(
   envelope: TimelineCacheEnvelope,
   feedNameMap: Map<number, string>,
+  feedTypeMap: Map<number, ArticlePreview['feedType']>,
 ): TimelineCacheEnvelope {
-  if (feedNameMap.size === 0) {
+  if (feedNameMap.size === 0 && feedTypeMap.size === 0) {
     return envelope;
   }
 
@@ -127,7 +130,11 @@ export function applyFeedNames(
       ...folder,
       articles: folder.articles.map((article) => {
         const resolvedName = feedNameMap.get(article.feedId) ?? article.feedName;
-        return resolvedName !== article.feedName ? { ...article, feedName: resolvedName } : article;
+        const resolvedFeedType = feedTypeMap.get(article.feedId) ?? article.feedType;
+
+        return resolvedName !== article.feedName || resolvedFeedType !== article.feedType
+          ? { ...article, feedName: resolvedName, feedType: resolvedFeedType }
+          : article;
       }),
     };
   }
@@ -136,4 +143,14 @@ export function applyFeedNames(
     ...envelope,
     folders: updatedFolders,
   };
+}
+
+/**
+ * Reconciles cached feed names with the latest feed metadata.
+ */
+export function applyFeedNames(
+  envelope: TimelineCacheEnvelope,
+  feedNameMap: Map<number, string>,
+): TimelineCacheEnvelope {
+  return applyFeedMetadata(envelope, feedNameMap, new Map());
 }

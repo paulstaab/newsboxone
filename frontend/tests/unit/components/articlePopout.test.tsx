@@ -44,6 +44,7 @@ const mockArticle: ArticlePreview = {
   folderId: 100,
   title: 'Popout Article Title',
   feedName: 'Example Feed',
+  feedType: 'rss',
   author: 'Pop Author',
   summary: 'This is a summary of the article.',
   body: '',

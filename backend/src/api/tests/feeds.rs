@@ -30,6 +30,7 @@ async fn feeds_endpoint_maps_root_folder_to_null() {
         .unwrap();
     let parsed: Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(parsed["feeds"][0]["folderId"], Value::Null);
+    assert_eq!(parsed["feeds"][0]["type"], "rss");
     assert_eq!(parsed["feeds"][0]["lastArticleDate"], 100);
     assert_eq!(parsed["feeds"][0]["useExtractedFulltext"], false);
     assert_eq!(parsed["feeds"][0]["useLlmSummary"], false);
@@ -40,6 +41,41 @@ async fn feeds_endpoint_maps_root_folder_to_null() {
     assert_eq!(parsed["feeds"][0]["manualUseLlmSummary"], Value::Null);
     assert_eq!(parsed["feeds"][0]["lastQualityCheck"], Value::Null);
     assert_eq!(parsed["feeds"][0]["lastManualQualityOverride"], Value::Null);
+}
+
+#[tokio::test]
+async fn feeds_endpoint_marks_mailing_list_type() {
+    let pool = setup_pool().await;
+    sqlx::query(
+        "INSERT INTO feed (id, url, title, favicon_link, added, last_article_date, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error, is_mailing_list, last_quality_check, use_extracted_fulltext, use_llm_summary) VALUES (11, 'newsletter@example.com', 'Newsletter', NULL, 123, 200, NULL, 1, 0, NULL, 0, 0, NULL, 1, NULL, 0, 0)",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let response = app(state(pool))
+        .oneshot(
+            Request::builder()
+                .uri("/api/feeds")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let parsed: Value = serde_json::from_slice(&body).unwrap();
+    let newsletter = parsed["feeds"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|feed| feed["url"].as_str() == Some("newsletter@example.com"))
+        .unwrap();
+
+    assert_eq!(newsletter["type"], "mailingList");
 }
 
 #[tokio::test]
