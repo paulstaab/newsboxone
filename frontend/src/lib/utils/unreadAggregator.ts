@@ -213,7 +213,7 @@ export function pruneArticlePreviews(
   return filteredByAge.slice(0, maxItems).map((article) => ({
     ...article,
     feedName: article.feedName || '',
-    feedType: article.feedType,
+    feedType: article.feedType === 'mailingList' ? 'mailingList' : 'rss',
     author: article.author || '',
     storedAt: article.storedAt ?? now,
   }));

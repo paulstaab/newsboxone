@@ -59,17 +59,17 @@ The same requirements apply to all implementations.
 - `FEED-003`: Feed creation shall reject non-existent target folders.
 - `FEED-004`: Deleting a feed shall delete associated articles. Mailing-list/newsletter feeds shall be soft-deleted so the sender remains suppressed while the feed is hidden from normal API listings.
 - `FEED-005`: Feed API responses shall identify each feed with a `type` value of `rss` or `mailingList`.
-- `FEED-005`: The system shall support moving feeds between folders.
-- `FEED-006`: The system shall support renaming feeds.
-- `FEED-007`: Refresh scheduling shall persist `next_update_time` dynamically from recent publishing frequency.
-- `FEED-008`: Dynamic scheduling algorithm shall:
+- `FEED-006`: The system shall support moving feeds between folders.
+- `FEED-007`: The system shall support renaming feeds.
+- `FEED-008`: Refresh scheduling shall persist `next_update_time` dynamically from recent publishing frequency.
+- `FEED-009`: Dynamic scheduling algorithm shall:
   - use a 7-day average articles/day,
   - schedule sparse feeds (`<= 0.1/day`) at daily cadence with jitter of +/-30 minutes,
   - schedule active feeds at 4x observed daily frequency,
   - cap active-feed interval to at most 12 hours.
-- `FEED-009`: Refresh failures shall increment `update_error_count` and persist `last_update_error`.
-- `FEED-010`: Successful refresh shall clear persisted refresh error state.
-- `FEED-011`: Stale feed articles not present in the latest payload shall be eligible for cleanup only when older than 90 days, read, and unstarred.
+- `FEED-010`: Refresh failures shall increment `update_error_count` and persist `last_update_error`.
+- `FEED-011`: Successful refresh shall clear persisted refresh error state.
+- `FEED-012`: Stale feed articles not present in the latest payload shall be eligible for cleanup only when older than 90 days, read, and unstarred.
 
 ### Folder Behavior
 

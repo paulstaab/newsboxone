@@ -112,7 +112,7 @@ export function applyFolderNames(
 }
 
 /**
- * Reconciles cached feed names with the latest feed metadata.
+ * Reconciles cached feed metadata (name + type) with the latest feed data.
  */
 export function applyFeedMetadata(
   envelope: TimelineCacheEnvelope,

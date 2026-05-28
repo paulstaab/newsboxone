@@ -103,7 +103,7 @@ export function ArticleCard({
                 <FontAwesomeIcon
                   icon={faEnvelope}
                   className="article-card__source-icon"
-                  aria-hidden="true"
+                  aria-label="Mailing list"
                 />
               )}
               {feedName}
