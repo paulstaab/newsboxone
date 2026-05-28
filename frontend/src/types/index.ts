@@ -9,7 +9,7 @@ export type {
 export { DEFAULT_PREFERENCES } from './session';
 
 // Feed entity
-export type { Feed, ApiFeed, FeedsResponse } from './feed';
+export type { Feed, FeedType, ApiFeed, FeedsResponse } from './feed';
 export { normalizeFeed } from './feed';
 
 // Folder entity

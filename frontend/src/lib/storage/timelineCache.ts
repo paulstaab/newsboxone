@@ -20,6 +20,7 @@ function ensureArticlesArray(value: ArticlePreview[] | undefined): ArticlePrevie
     return {
       ...article,
       feedName: article.feedName || '',
+      feedType: preview.feedType ?? 'rss',
       author: article.author || '',
       body: article.body || '',
       hasFullText,

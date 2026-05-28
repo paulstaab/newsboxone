@@ -26,7 +26,7 @@ import {
   storeTimelineCache,
 } from '@/lib/storage';
 import {
-  applyFeedNames,
+  applyFeedMetadata,
   applyFolderNames,
   resolveFolderId,
   toArticlePreview,
@@ -218,6 +218,10 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
     return new Map<number, string>(feeds.map((feed) => [feed.id, feed.title]));
   }, [feeds]);
 
+  const feedTypeMap = useMemo(() => {
+    return new Map<number, ArticlePreview['feedType']>(feeds.map((feed) => [feed.id, feed.type]));
+  }, [feeds]);
+
   // Refresh with error handling (retry logic handled at page level)
   const refresh = useCallback(
     async (_options?: RefreshOptions): Promise<void> => {
@@ -239,6 +243,9 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
         );
         const effectiveFeedNameMap = new Map<number, string>(
           effectiveFeeds.map((feed) => [feed.id, feed.title]),
+        );
+        const effectiveFeedTypeMap = new Map<number, ArticlePreview['feedType']>(
+          effectiveFeeds.map((feed) => [feed.id, feed.type]),
         );
         let effectiveFolders = foldersData ?? [];
         if (effectiveFolders.length === 0) {
@@ -263,14 +270,16 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
                 resolveFolderId(article, effectiveFeedFolderMap),
                 now,
                 effectiveFeedNameMap.get(article.feedId) ?? 'Unknown source',
+                effectiveFeedTypeMap.get(article.feedId) ?? 'rss',
               ),
             )
             .filter((preview): preview is ArticlePreview => preview !== null);
 
           const merged = mergeItemsIntoCache(reconciled, previews, now);
-          const nextEnvelope = applyFeedNames(
+          const nextEnvelope = applyFeedMetadata(
             applyFolderNames(merged, effectiveFolders),
             effectiveFeedNameMap,
+            effectiveFeedTypeMap,
           );
 
           storeTimelineCache(nextEnvelope);
@@ -299,7 +308,7 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
   );
 
   useEffect(() => {
-    if (!isHydrated || feedNameMap.size === 0) return;
+    if (!isHydrated || (feedNameMap.size === 0 && feedTypeMap.size === 0)) return;
 
     let cancelled = false;
 
@@ -307,7 +316,7 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
       if (cancelled) return;
 
       setEnvelope((current) => {
-        const nextEnvelope = applyFeedNames(current, feedNameMap);
+        const nextEnvelope = applyFeedMetadata(current, feedNameMap, feedTypeMap);
         if (nextEnvelope === current) {
           return current;
         }
@@ -319,7 +328,7 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
     return () => {
       cancelled = true;
     };
-  }, [feedNameMap, isHydrated]);
+  }, [feedNameMap, feedTypeMap, isHydrated]);
 
   useEffect(() => {
     if (!isHydrated || !foldersData || foldersData.length === 0) return;

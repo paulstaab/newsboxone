@@ -27,6 +27,7 @@ const mockArticle: ArticlePreview = {
   folderId: 100,
   title: 'Test Article Title',
   feedName: 'Example Feed',
+  feedType: 'rss',
   author: 'Test Author',
   summary: 'This is a summary of the article.',
   body: '<p>This is the full body content.</p>',
@@ -46,6 +47,13 @@ describe('ArticleCard', () => {
     expect(screen.getByText('Test Article Title')).toBeDefined();
     expect(screen.getByText('This is a summary of the article.')).toBeDefined();
     expect(screen.getByAltText('')).toHaveAttribute('src', 'https://example.com/image.jpg');
+  });
+
+  it('renders an email feed icon for email-backed articles', () => {
+    const article = { ...mockArticle, feedType: 'mailingList' as const };
+    const { container } = render(<ArticleCard article={article} onOpen={vi.fn()} />);
+
+    expect(container.querySelector('.article-card__source-icon')).not.toBeNull();
   });
 
   it('renders fallback title when title is missing', () => {

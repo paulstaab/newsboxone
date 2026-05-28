@@ -17,6 +17,7 @@ function buildFeed(partial: Partial<Feed>): Feed {
     ordering: partial.ordering ?? 0,
     pinned: partial.pinned ?? false,
     lastUpdateError: partial.lastUpdateError ?? null,
+    type: partial.type ?? 'rss',
     updateMode: partial.updateMode ?? 1,
     lastQualityCheck: partial.lastQualityCheck ?? null,
     useExtractedFulltext: partial.useExtractedFulltext ?? false,

@@ -34,6 +34,7 @@ export const mockFeeds = [
   {
     id: 101,
     url: 'https://frontend.example.com/rss',
+    type: 'rss',
     title: 'Frontend Focus',
     faviconLink: 'https://frontend.example.com/favicon.ico',
     added: 1702200000,
@@ -49,6 +50,7 @@ export const mockFeeds = [
   {
     id: 102,
     url: 'https://backend.example.com/rss',
+    type: 'rss',
     title: 'Backend Briefing',
     faviconLink: 'https://backend.example.com/favicon.ico',
     added: 1702105000,
@@ -64,6 +66,7 @@ export const mockFeeds = [
   {
     id: 201,
     url: 'https://design.example.com/rss',
+    type: 'rss',
     title: 'Design Notes',
     faviconLink: null,
     added: 1702000000,
@@ -79,6 +82,7 @@ export const mockFeeds = [
   {
     id: 301,
     url: 'https://podcasts.example.com/rss',
+    type: 'rss',
     title: 'The Pod Stack',
     faviconLink: 'https://podcasts.example.com/icon.png',
     added: 1701900000,
@@ -321,6 +325,7 @@ export const handlers: HttpHandler[] = [
     const newFeed = {
       id: Math.floor(Math.random() * 1000) + 100,
       url: body.url,
+      type: 'rss',
       title: 'New Feed',
       faviconLink: null,
       added: Math.floor(Date.now() / 1000),

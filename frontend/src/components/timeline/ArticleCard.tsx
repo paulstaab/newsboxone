@@ -2,6 +2,8 @@
 
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
+import { faEnvelope } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import type { ArticlePreview } from '@/types';
 
 interface ArticleCardProps {
@@ -96,7 +98,14 @@ export function ArticleCard({
             </a>
           </h3>
           <div className="article-card__meta">
-            <span>
+            <span className="article-card__source">
+              {article.feedType === 'mailingList' && (
+                <FontAwesomeIcon
+                  icon={faEnvelope}
+                  className="article-card__source-icon"
+                  aria-label="Mailing list"
+                />
+              )}
               {feedName}
               {author ? ` · ${author}` : ''}
             </span>

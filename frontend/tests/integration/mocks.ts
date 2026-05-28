@@ -19,6 +19,7 @@ export const mockFeeds: ApiFeed[] = [
   {
     id: 101,
     url: 'https://frontend.example.com/rss',
+    type: 'rss',
     title: 'Frontend Focus',
     faviconLink: 'https://frontend.example.com/favicon.ico',
     added: 1702200000,
@@ -40,6 +41,7 @@ export const mockFeeds: ApiFeed[] = [
   {
     id: 102,
     url: 'https://backend.example.com/rss',
+    type: 'rss',
     title: 'Backend Briefing',
     faviconLink: 'https://backend.example.com/favicon.ico',
     added: 1702105000,
@@ -61,6 +63,7 @@ export const mockFeeds: ApiFeed[] = [
   {
     id: 201,
     url: 'https://design.example.com/rss',
+    type: 'rss',
     title: 'Design Notes',
     faviconLink: null,
     added: 1702000000,
@@ -82,6 +85,7 @@ export const mockFeeds: ApiFeed[] = [
   {
     id: 301,
     url: 'https://podcasts.example.com/rss',
+    type: 'rss',
     title: 'The Pod Stack',
     faviconLink: 'https://podcasts.example.com/icon.png',
     added: 1701900000,
@@ -346,6 +350,7 @@ export async function setupApiMocks(page: Page) {
       const newFeed = {
         id: nextFeedId++,
         url: body.url,
+        type: 'rss' as const,
         title: hostname,
         faviconLink: null,
         added: Math.floor(Date.now() / 1000),

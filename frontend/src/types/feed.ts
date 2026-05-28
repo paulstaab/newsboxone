@@ -1,3 +1,5 @@
+export type FeedType = 'rss' | 'mailingList';
+
 /**
  * RSS/Atom feed subscription; contains articles and belongs to a folder.
  */
@@ -41,6 +43,9 @@ export interface Feed {
   /** Feed fetch error message, null if healthy */
   lastUpdateError: string | null;
 
+  /** Feed source type */
+  type: FeedType;
+
   /** Update mode: 0 = ignore, 1 = normal */
   updateMode: 0 | 1;
 
@@ -78,6 +83,7 @@ export interface ApiFeed {
   pinned: boolean;
   updateErrorCount: number;
   lastUpdateError: string | null;
+  type: FeedType;
   lastQualityCheck: number | null;
   useExtractedFulltext: boolean;
   useLlmSummary: boolean;
@@ -109,6 +115,7 @@ export function normalizeFeed(api: ApiFeed): Feed {
     ordering: api.ordering,
     pinned: api.pinned,
     lastUpdateError: api.lastUpdateError,
+    type: api.type,
     updateMode: api.updateErrorCount > 0 ? 0 : 1,
     lastQualityCheck: api.lastQualityCheck,
     useExtractedFulltext: api.useExtractedFulltext,

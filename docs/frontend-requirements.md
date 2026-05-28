@@ -64,7 +64,8 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 - `TIMELINE-004`: The folder queue shall be ordered by unread priority, with the active folder pinned to the front when selected.
 - `TIMELINE-005`: When a feed has no folder assignment, its articles shall be grouped into an uncategorized folder bucket.
 - `TIMELINE-006`: The timeline shall show only the active folder’s articles at a time.
-- `TIMELINE-007`: The timeline shall derive article previews from stored article data, including title, feed name, author, summary, thumbnail, link target, and publication age when available.
+- `TIMELINE-007`: The timeline shall derive article previews from stored article data, including title, feed name, feed type, author, summary, thumbnail, link target, and publication age when available.
+- `TIMELINE-007a`: Timeline article metadata shall show an email icon for articles whose feed type is `mailingList`.
 - `TIMELINE-008`: The article title shall open the source article in a new tab.
 - `TIMELINE-009`: Clicking or keyboard-activating the rest of an article card shall open an in-page article pop-out.
 - `TIMELINE-010`: Opening an unread article shall optimistically mark it read.

@@ -170,6 +170,7 @@ describe('ApiClient', () => {
       const mockFeed = {
         id: 101,
         url: 'https://example.com/feed',
+        type: 'rss',
         title: 'Test Feed',
         faviconLink: null,
         added: 1234567890,
@@ -218,6 +219,7 @@ describe('ApiClient', () => {
       const apiFeed = {
         id: 101,
         url: 'https://example.com/feed',
+        type: 'rss',
         title: 'Test Feed',
         folderId: 10,
         faviconLink: null,
@@ -292,6 +294,7 @@ describe('ApiClient', () => {
               {
                 id: 1,
                 url: 'https://existing.example.com/rss',
+                type: 'rss',
                 title: 'Existing Feed',
                 folderId: null,
                 faviconLink: null,
@@ -379,6 +382,7 @@ describe('ApiClient', () => {
             feed: {
               id: 123,
               url: 'https://example.com/feed',
+              type: 'rss',
               title: 'Quality Feed',
               folderId: null,
               faviconLink: null,

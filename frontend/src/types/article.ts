@@ -1,3 +1,5 @@
+import type { FeedType } from './feed';
+
 /**
  * Individual news item from a feed; primary content displayed in timeline.
  */
@@ -77,6 +79,9 @@ export interface ArticlePreview {
 
   /** Feed display name */
   feedName: string;
+
+  /** Parent feed source type */
+  feedType: FeedType;
 
   /** Article author name, may be empty */
   author: string;
