@@ -303,6 +303,7 @@ describe('useTimeline', () => {
   it('tracks pendingReadIds when marking folder as read', async () => {
     mocks.foldersData.value = [{ id: 10, name: 'Dev Updates', unreadCount: 0, feedIds: [] }];
     mocks.feedsData.value = [buildFeed({ id: 1, folderId: 10 })];
+    const cachedAt = Date.now();
 
     setCache(
       [
@@ -310,8 +311,8 @@ describe('useTimeline', () => {
           id: 10,
           name: 'Dev Updates',
           articles: [
-            buildPreview({ id: 1, feedId: 1, folderId: 10 }),
-            buildPreview({ id: 2, feedId: 1, folderId: 10 }),
+            buildPreview({ id: 1, feedId: 1, folderId: 10, storedAt: cachedAt + 1 }),
+            buildPreview({ id: 2, feedId: 1, folderId: 10, storedAt: cachedAt }),
           ],
         }),
       ],
@@ -349,6 +350,7 @@ describe('useTimeline', () => {
     apiMocks.markMultipleRead.mockRejectedValueOnce(new Error('offline'));
     mocks.foldersData.value = [{ id: 10, name: 'Dev Updates', unreadCount: 0, feedIds: [] }];
     mocks.feedsData.value = [buildFeed({ id: 1, folderId: 10 })];
+    const cachedAt = Date.now();
 
     setCache(
       [
@@ -356,8 +358,8 @@ describe('useTimeline', () => {
           id: 10,
           name: 'Dev Updates',
           articles: [
-            buildPreview({ id: 1, feedId: 1, folderId: 10 }),
-            buildPreview({ id: 2, feedId: 1, folderId: 10 }),
+            buildPreview({ id: 1, feedId: 1, folderId: 10, storedAt: cachedAt + 1 }),
+            buildPreview({ id: 2, feedId: 1, folderId: 10, storedAt: cachedAt }),
           ],
         }),
       ],
