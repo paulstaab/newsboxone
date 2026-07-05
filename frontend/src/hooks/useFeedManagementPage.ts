@@ -113,6 +113,11 @@ export function useFeedManagementPage() {
     [resetFeedDiscovery],
   );
 
+  const openNewFeedDialog = useCallback(() => {
+    resetFeedDiscovery();
+    openCreateFeedDialog();
+  }, [openCreateFeedDialog, resetFeedDiscovery]);
+
   const closeNewFeedDialog = useCallback(() => {
     closeCreateFeedDialog();
     resetFeedDiscovery();
@@ -137,14 +142,14 @@ export function useFeedManagementPage() {
       }
 
       event.preventDefault();
-      openCreateFeedDialog();
+      openNewFeedDialog();
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [openCreateFeedDialog]);
+  }, [openNewFeedDialog]);
 
   const handleSubscribe = useCallback(async () => {
     const trimmedUrl = newFeedUrl.trim();
@@ -430,7 +435,7 @@ export function useFeedManagementPage() {
     qualityUseLlmSummary,
     setQualityUseLlmSummary,
     selectedQualityFeed,
-    openCreateFeedDialog,
+    openCreateFeedDialog: openNewFeedDialog,
     closeCreateFeedDialog: closeNewFeedDialog,
     openQualityDialog,
     resetQualityDialog,
