@@ -3,7 +3,7 @@
  */
 
 import { apiDelete, apiGet, apiPost } from './client';
-import type { FeedsApi } from './types';
+import type { DiscoveredFeed, FeedsApi } from './types';
 import { type ApiFeed, type FeedsResponse, normalizeFeed } from '@/types';
 
 /**
@@ -36,6 +36,11 @@ export const feedsApi: FeedsApi = {
       feed: normalizeFeed(createdFeed),
       newestItemId: response.newestItemId,
     };
+  },
+
+  discover: async (url: string) => {
+    const response = await apiPost<{ feeds: DiscoveredFeed[] }>('/feeds/discover', { url });
+    return response.feeds;
   },
 
   delete: async (feedId: number) => {

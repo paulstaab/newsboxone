@@ -115,6 +115,32 @@ paths:
           $ref: "#/components/responses/Conflict"
         "422":
           $ref: "#/components/responses/ValidationError"
+  /api/feeds/discover:
+    post:
+      tags: [Feeds]
+      summary: Discover embedded RSS and Atom feeds for a website URL
+      operationId: discoverFeeds
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiscoverFeedsRequest"
+      responses:
+        "200":
+          description: Discovered feed links
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoverFeedsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
   /api/feeds/{feedId}:
     delete:
       tags: [Feeds]
@@ -915,6 +941,33 @@ components:
           type:
             - integer
             - "null"
+    DiscoverFeedsRequest:
+      type: object
+      additionalProperties: false
+      required: [url]
+      properties:
+        url:
+          type: string
+    DiscoveredFeed:
+      type: object
+      additionalProperties: false
+      required: [title, url]
+      properties:
+        title:
+          type:
+            - string
+            - "null"
+        url:
+          type: string
+    DiscoverFeedsResponse:
+      type: object
+      additionalProperties: false
+      required: [feeds]
+      properties:
+        feeds:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiscoveredFeed"
     CreateFeedResponse:
       type: object
       additionalProperties: false

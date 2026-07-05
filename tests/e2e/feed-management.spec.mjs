@@ -46,7 +46,7 @@ test.describe('Feed onboarding and management e2e scenarios', () => {
     const dialog = page.getByRole('dialog');
     await page.getByRole('button', { name: /subscribe to feed/i }).click();
     await expect(dialog).toBeVisible();
-    await page.getByLabel(/^feed url$/i).fill(FEED_URLS.engineering);
+    await page.getByLabel(/^(website or )?feed url$/i).fill(FEED_URLS.engineering);
     await page.getByRole('button', { name: /^subscribe$/i }).click();
 
     await expect(page.getByText(/api error 409: conflict/i)).toBeVisible();

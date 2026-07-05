@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
+import { isLikelyDirectFeedUrl } from '@/lib/feeds/feedDiscovery';
+import type { DiscoveredFeed } from '@/lib/api/types';
 import { type Feed, type Folder } from '@/types';
 import {
   buildFeedManagementGroups,
@@ -74,7 +76,10 @@ export function useFeedManagementPage() {
     setStatusMessage,
     runMutation,
   } = useFeedManagementMutationRunner(refreshPageData, handleRequestError);
-  const [newFeedUrl, setNewFeedUrl] = useState('');
+  const [newFeedUrl, setNewFeedUrlState] = useState('');
+  const [newFeedDialogError, setNewFeedDialogError] = useState<string | null>(null);
+  const [discoveredFeeds, setDiscoveredFeeds] = useState<DiscoveredFeed[]>([]);
+  const [selectedDiscoveredFeedUrl, setSelectedDiscoveredFeedUrl] = useState('');
   const [newFeedFolderId, setNewFeedFolderId] = useState('');
   const [newFolderName, setNewFolderName] = useState('');
   const [editingFolderId, setEditingFolderId] = useState<number | null>(null);
@@ -93,6 +98,30 @@ export function useFeedManagementPage() {
     () => data.feeds.find((feed) => feed.id === qualityFeedId) ?? null,
     [data.feeds, qualityFeedId],
   );
+
+  const resetFeedDiscovery = useCallback(() => {
+    setNewFeedDialogError(null);
+    setDiscoveredFeeds([]);
+    setSelectedDiscoveredFeedUrl('');
+  }, []);
+
+  const setNewFeedUrl = useCallback(
+    (value: string) => {
+      setNewFeedUrlState(value);
+      resetFeedDiscovery();
+    },
+    [resetFeedDiscovery],
+  );
+
+  const openNewFeedDialog = useCallback(() => {
+    resetFeedDiscovery();
+    openCreateFeedDialog();
+  }, [openCreateFeedDialog, resetFeedDiscovery]);
+
+  const closeNewFeedDialog = useCallback(() => {
+    closeCreateFeedDialog();
+    resetFeedDiscovery();
+  }, [closeCreateFeedDialog, resetFeedDiscovery]);
 
   const openQualityDialog = useCallback(
     (feed: Feed) => {
@@ -113,42 +142,82 @@ export function useFeedManagementPage() {
       }
 
       event.preventDefault();
-      openCreateFeedDialog();
+      openNewFeedDialog();
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [openCreateFeedDialog]);
+  }, [openNewFeedDialog]);
 
   const handleSubscribe = useCallback(async () => {
     const trimmedUrl = newFeedUrl.trim();
     if (!trimmedUrl) {
-      setMutationError('Feed URL is required. Enter a valid RSS or Atom URL and try again.');
+      setNewFeedDialogError('Enter a website, RSS, or Atom URL and try again.');
       return;
     }
 
-    await runMutation('Subscribe feed', async () => {
+    const subscribeToFeedUrl = async (feedUrl: string) => {
       const folderId = newFeedFolderId ? Number(newFeedFolderId) : null;
-      const result = await api.feeds.create(trimmedUrl, folderId);
+      const result = await api.feeds.create(feedUrl, folderId);
 
       setData((current) => ({
         ...current,
         feeds: [...current.feeds, result.feed],
       }));
-      setNewFeedUrl('');
+      setNewFeedUrlState('');
       setNewFeedFolderId('');
+      resetFeedDiscovery();
       closeCreateFeedDialog();
       setStatusMessage(`Subscribed to ${result.feed.title}.`);
-    });
+    };
+
+    await runMutation(
+      'Subscribe feed',
+      async () => {
+        setNewFeedDialogError(null);
+
+        if (discoveredFeeds.length > 1) {
+          if (!selectedDiscoveredFeedUrl) {
+            throw new Error('Choose one discovered feed to subscribe.');
+          }
+          await subscribeToFeedUrl(selectedDiscoveredFeedUrl);
+          return;
+        }
+
+        if (isLikelyDirectFeedUrl(trimmedUrl)) {
+          await subscribeToFeedUrl(trimmedUrl);
+          return;
+        }
+
+        const feeds = await api.feeds.discover(trimmedUrl);
+        if (feeds.length === 0) {
+          throw new Error('No RSS or Atom feeds were found for this website.');
+        }
+
+        if (feeds.length === 1) {
+          await subscribeToFeedUrl(feeds[0].url);
+          return;
+        }
+
+        setDiscoveredFeeds(feeds);
+        setSelectedDiscoveredFeedUrl('');
+      },
+      {
+        onError: setNewFeedDialogError,
+        suppressGlobalError: true,
+      },
+    );
   }, [
     closeCreateFeedDialog,
+    discoveredFeeds,
     newFeedFolderId,
     newFeedUrl,
+    resetFeedDiscovery,
     runMutation,
+    selectedDiscoveredFeedUrl,
     setData,
-    setMutationError,
     setStatusMessage,
   ]);
 
@@ -345,6 +414,10 @@ export function useFeedManagementPage() {
     qualityDialogRef,
     newFeedUrl,
     setNewFeedUrl,
+    newFeedDialogError,
+    discoveredFeeds,
+    selectedDiscoveredFeedUrl,
+    setSelectedDiscoveredFeedUrl,
     newFeedFolderId,
     setNewFeedFolderId,
     newFolderName,
@@ -362,8 +435,8 @@ export function useFeedManagementPage() {
     qualityUseLlmSummary,
     setQualityUseLlmSummary,
     selectedQualityFeed,
-    openCreateFeedDialog,
-    closeCreateFeedDialog,
+    openCreateFeedDialog: openNewFeedDialog,
+    closeCreateFeedDialog: closeNewFeedDialog,
     openQualityDialog,
     resetQualityDialog,
     refreshPageData,

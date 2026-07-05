@@ -70,6 +70,7 @@ The same requirements apply to all implementations.
 - `FEED-010`: Refresh failures shall increment `update_error_count` and persist `last_update_error`.
 - `FEED-011`: Successful refresh shall clear persisted refresh error state.
 - `FEED-012`: Stale feed articles not present in the latest payload shall be eligible for cleanup only when older than 90 days, read, and unstarred.
+- `FEED-013`: The feeds API shall expose a discovery endpoint that fetches a website URL through SSRF-safe remote fetching, extracts embedded RSS and Atom `<link rel="alternate">` metadata, resolves relative feed URLs, deduplicates discovered feed URLs, and ignores unsupported feed formats.
 
 ### Folder Behavior
 
@@ -170,6 +171,7 @@ The same requirements apply to all implementations.
 - `OBS-001`: All incoming API requests shall be logged at `INFO` level with the raw request URI, including query parameters when present.
 - `OBS-002`: All outbound LLM requests shall be logged at `INFO` level with the task name and, when available, the associated `feed_id` and `article_id`.
 - `OBS-003`: Extraction of article content as described in `CNT-002` shall be logged with `feed_id`, `article_id` loaded URL at `INFO` level.
+- `OBS-004`: Successful feed creation shall be logged at `INFO` level with `feed_id`, resolved `folder_id`, and initial article ingestion counts.
 
 ### Security
 

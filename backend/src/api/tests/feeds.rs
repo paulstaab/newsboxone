@@ -103,6 +103,136 @@ async fn add_feed_blocks_localhost_when_not_testing_mode() {
 }
 
 #[tokio::test]
+async fn discover_feeds_blocks_localhost_when_not_testing_mode() {
+    let response = app(state_with_testing_mode(setup_pool().await, false))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/feeds/discover")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"url":"http://127.0.0.1:9999/"}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 400);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let parsed: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(parsed["detail"], "Access to localhost is not allowed.");
+}
+
+#[tokio::test]
+async fn discover_feeds_returns_single_embedded_rss_feed() {
+    let page_url = start_discovery_fixture_server(
+        r#"<!doctype html><html><head>
+<link rel="alternate" type="application/rss+xml" title="Site RSS" href="/feeds/rss.xml">
+</head><body>hello</body></html>"#,
+    )
+    .await;
+
+    let response = app(state(setup_pool().await))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/feeds/discover")
+                .header("content-type", "application/json")
+                .body(Body::from(format!(r#"{{"url":"{page_url}"}}"#)))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let parsed: Value = serde_json::from_slice(&body).unwrap();
+    let feeds = parsed["feeds"].as_array().unwrap();
+    assert_eq!(feeds.len(), 1);
+    assert_eq!(feeds[0]["title"], "Site RSS");
+    assert_eq!(
+        feeds[0]["url"].as_str().unwrap(),
+        format!("{}feeds/rss.xml", page_url)
+    );
+}
+
+#[tokio::test]
+async fn discover_feeds_returns_multiple_rss_and_atom_feeds_only() {
+    let page_url = start_discovery_fixture_server(
+        r#"<!doctype html><html><head>
+<link rel="alternate search" type="application/opensearchdescription+xml" title="Search" href="/search.xml">
+<link rel="alternate" type="application/rss+xml; charset=utf-8" title="RSS" href="/rss.xml">
+<link rel="alternate" type="application/atom+xml" title="Atom" href="atom.xml">
+<link rel="alternate" type="application/feed+json" title="JSON" href="/feed.json">
+<link rel="alternate" type="application/rss+xml" title="Duplicate RSS" href="/rss.xml">
+</head></html>"#,
+    )
+    .await;
+
+    let response = app(state(setup_pool().await))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/feeds/discover")
+                .header("content-type", "application/json")
+                .body(Body::from(format!(r#"{{"url":"{page_url}"}}"#)))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let parsed: Value = serde_json::from_slice(&body).unwrap();
+    let feeds = parsed["feeds"].as_array().unwrap();
+    assert_eq!(feeds.len(), 2);
+    assert_eq!(feeds[0]["title"], "RSS");
+    assert_eq!(
+        feeds[0]["url"].as_str().unwrap(),
+        format!("{}rss.xml", page_url)
+    );
+    assert_eq!(feeds[1]["title"], "Atom");
+    assert_eq!(
+        feeds[1]["url"].as_str().unwrap(),
+        format!("{}atom.xml", page_url)
+    );
+}
+
+#[tokio::test]
+async fn discover_feeds_returns_empty_list_when_no_supported_feeds_exist() {
+    let page_url = start_discovery_fixture_server(
+        r#"<!doctype html><html><head>
+<link rel="alternate" type="application/feed+json" title="JSON" href="/feed.json">
+</head></html>"#,
+    )
+    .await;
+
+    let response = app(state(setup_pool().await))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/feeds/discover")
+                .header("content-type", "application/json")
+                .body(Body::from(format!(r#"{{"url":"{page_url}"}}"#)))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let parsed: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(parsed["feeds"].as_array().unwrap().len(), 0);
+}
+
+#[tokio::test]
 async fn add_feed_duplicate_returns_409() {
     let response = app(state(setup_pool().await))
         .oneshot(
@@ -722,6 +852,26 @@ async fn delete_mailing_list_feed_soft_deletes_feed_and_removes_articles() {
             .iter()
             .all(|feed| feed["url"].as_str() != Some("newsletter@example.com"))
     );
+}
+
+async fn start_discovery_fixture_server(page_body: &'static str) -> String {
+    let app = Router::new().route(
+        "/",
+        get(move || async move {
+            (
+                [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+                page_body,
+            )
+        }),
+    );
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+
+    format!("http://{addr}/")
 }
 
 async fn start_quality_deferral_fixture_server() -> String {

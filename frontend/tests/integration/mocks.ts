@@ -344,14 +344,42 @@ export async function setupApiMocks(page: Page) {
       return;
     }
 
+    if (pathname.endsWith('/feeds/discover') && method === 'POST') {
+      const body = (await request.postDataJSON()) as { url: string };
+      const discoveredFeeds =
+        body.url === 'https://multi.example.com'
+          ? [
+              { title: 'Multi RSS', url: 'https://multi.example.com/rss.xml' },
+              { title: 'Multi Atom', url: 'https://multi.example.com/atom.xml' },
+            ]
+          : body.url === 'https://single.example.com'
+            ? [{ title: 'Single RSS', url: 'https://single.example.com/rss.xml' }]
+            : [];
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ feeds: discoveredFeeds }),
+      });
+      return;
+    }
+
     if (pathname.endsWith('/feeds') && method === 'POST') {
       const body = (await request.postDataJSON()) as { url: string; folderId: number | null };
       const hostname = new URL(body.url).hostname.replace(/^www\./, '');
+      const discoveredTitle =
+        body.url === 'https://single.example.com/rss.xml'
+          ? 'Single RSS'
+          : body.url === 'https://multi.example.com/atom.xml'
+            ? 'Multi Atom'
+            : body.url === 'https://multi.example.com/rss.xml'
+              ? 'Multi RSS'
+              : hostname;
       const newFeed = {
         id: nextFeedId++,
         url: body.url,
         type: 'rss' as const,
-        title: hostname,
+        title: discoveredTitle,
         faviconLink: null,
         added: Math.floor(Date.now() / 1000),
         lastArticleDate: null,
