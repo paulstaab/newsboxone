@@ -177,7 +177,7 @@ export async function addFeedViaUi(page, url, folderName) {
   const dialog = page.getByRole('dialog');
   await page.getByRole('button', { name: /subscribe to feed/i }).click();
   await expect(dialog).toBeVisible();
-  await page.getByLabel(/^feed url$/i).fill(url);
+  await page.getByLabel(/^(website or )?feed url$/i).fill(url);
   if (folderName) {
     await page.getByLabel(/^destination folder$/i).selectOption({ label: folderName });
   }
