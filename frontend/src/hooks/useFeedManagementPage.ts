@@ -175,8 +175,7 @@ export function useFeedManagementPage() {
 
         if (discoveredFeeds.length > 1) {
           if (!selectedDiscoveredFeedUrl) {
-            setNewFeedDialogError('Choose one discovered feed to subscribe.');
-            return;
+            throw new Error('Choose one discovered feed to subscribe.');
           }
           await subscribeToFeedUrl(selectedDiscoveredFeedUrl);
           return;
