@@ -483,7 +483,7 @@ function FeedManagementContent() {
                     }}
                     placeholder="https://example.com"
                     className="rounded-2xl border border-white/10 bg-black/10 px-4 py-3 text-sm outline-none transition placeholder:text-[hsl(var(--color-text-muted))] focus:border-[hsl(var(--color-accent-strong))] focus:ring-2 focus:ring-[hsl(var(--color-accent-strong))]"
-                    aria-label="Feed URL"
+                    aria-label="Website or Feed URL"
                   />
                 </label>
 
