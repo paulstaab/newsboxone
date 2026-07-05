@@ -1,12 +1,16 @@
 import { expect, test } from '@playwright/test';
+import { AUTH_STORAGE_STATE } from './constants';
 import { setupApiMocks } from './mocks';
 
-const storageStatePath = 'tests/integration/.auth/user.json';
-
 test.describe('Feed management integration coverage', () => {
-  test.use({ storageState: storageStatePath });
+  test.use({ storageState: AUTH_STORAGE_STATE });
 
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      const fixedNow = 1_700_220_000_000;
+      Date.now = () => fixedNow;
+    });
+
     await setupApiMocks(page);
   });
 

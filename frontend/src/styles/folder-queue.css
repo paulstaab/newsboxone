@@ -1,0 +1,120 @@
+.folder-pills {
+  margin-top: var(--space-5);
+}
+
+.folder-queue-sentinel {
+  height: 1px;
+  width: 100%;
+}
+
+.folder-queue-dock {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin-inline: calc((100vw - 100%) / -2);
+  padding-inline: calc((100vw - min(100% - 2rem, 1120px)) / 2);
+  background: hsl(var(--color-surface) / 0.86);
+  backdrop-filter: blur(14px);
+}
+
+.folder-queue-dock--sticky {
+  border-bottom: 1px solid hsl(var(--color-border));
+  box-shadow: var(--shadow-sm);
+}
+
+.folder-pills__status {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-1);
+}
+
+.folder-pills__status-text {
+  font-size: 0.75rem;
+  color: hsl(var(--color-text-muted));
+}
+
+.folder-pills__list {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding: 0.35rem 0 0.75rem;
+  overflow-y: visible;
+  scroll-padding-left: var(--space-2);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  cursor: grab;
+}
+
+.folder-pills__list:active {
+  cursor: grabbing;
+}
+
+.folder-pills__list::-webkit-scrollbar {
+  display: none;
+}
+
+.folder-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+  min-height: 2.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid hsl(var(--color-border));
+  padding: 0.5rem 0.85rem;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  line-height: 1;
+  color: hsl(var(--color-text));
+  background: hsl(var(--color-surface-muted));
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.folder-pill:hover {
+  background: hsl(var(--color-surface-muted));
+  transform: translateY(-1px);
+}
+
+.folder-pill:focus-visible {
+  outline: 2px solid hsl(var(--color-accent-strong));
+  outline-offset: 2px;
+}
+
+.folder-pill__name {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.folder-pill__count {
+  color: hsl(var(--color-text-muted));
+}
+
+.folder-pill--active {
+  background: hsl(var(--color-text));
+  color: hsl(var(--color-surface));
+  border-color: hsl(var(--color-accent));
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  font-size: var(--font-size-sm);
+  line-height: 1;
+  padding: 0.5rem 0.95rem;
+}
+
+.folder-pill--active .folder-pill__count {
+  color: hsl(var(--color-surface) / 0.7);
+}
+
+.folder-pill--skipped {
+  opacity: 0.65;
+}
+
+@media (prefers-color-scheme: light) {
+  .folder-pill--active {
+    box-shadow: none;
+  }
+}

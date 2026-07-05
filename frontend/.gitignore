@@ -10,6 +10,7 @@ build/
 # Testing and coverage
 coverage/
 playwright-report/
+playwright-report-visual/
 test-results/
 lhci-report/
 

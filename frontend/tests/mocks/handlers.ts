@@ -4,6 +4,7 @@
  */
 
 import { http, HttpResponse, type HttpHandler } from 'msw';
+import { buildApiArticle } from '../fixtures/apiBuilders';
 
 // Base URL for mock API in jsdom tests.
 const BASE_URL = '/api';
@@ -262,7 +263,7 @@ export const mockItems = [
     updatedDate: null,
     url: 'https://podcasts.example.com/episodes/41',
   },
-];
+].map((item) => buildApiArticle(item));
 
 /**
  * API version info.

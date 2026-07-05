@@ -611,3 +611,82 @@ async fn mark_all_items_as_read_updates_last_modified() {
     assert_eq!(unread, 0);
     assert!(last_modified > 200);
 }
+
+#[tokio::test]
+async fn items_endpoint_rejects_oversized_batch_size() {
+    let response = app(state(setup_pool().await))
+        .oneshot(
+            Request::builder()
+                .uri("/api/items?batchSize=101&type=3&id=0")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 400);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let parsed: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(
+        parsed["detail"],
+        "batchSize must be less than or equal to 100"
+    );
+}
+
+#[tokio::test]
+async fn items_endpoint_non_positive_batch_size_uses_default_cap() {
+    let pool = setup_pool().await;
+    for id in 101..=205 {
+        sqlx::query("INSERT INTO article (id, title, content, author, content_hash, enclosure_link, enclosure_mime, feed_id, fingerprint, guid, guid_hash, last_modified, media_description, media_thumbnail, pub_date, rtl, starred, unread, updated_date, url, summary) VALUES (?, 'Extra Item', 'content', 'Author', NULL, NULL, NULL, 10, NULL, ?, ?, 201, NULL, NULL, 101, 0, 0, 1, 101, 'https://example.com/extra', NULL)")
+            .bind(id)
+            .bind(format!("guid-{id}"))
+            .bind(format!("guid-hash-{id}"))
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
+
+    let response = app(state(pool))
+        .oneshot(
+            Request::builder()
+                .uri("/api/items?type=3&id=0&batchSize=0")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let parsed: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(parsed["items"].as_array().unwrap().len(), 100);
+}
+
+#[tokio::test]
+async fn bulk_item_mutation_rejects_oversized_payload() {
+    let item_ids = (1..=1001).collect::<Vec<_>>();
+    let response = app(state(setup_pool().await))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/items/read/multiple")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::json!({ "itemIds": item_ids }).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 400);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let parsed: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(parsed["detail"], "itemIds must contain 1000 or fewer items");
+}

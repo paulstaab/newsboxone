@@ -166,6 +166,10 @@ The same requirements apply to all implementations.
 - `EML-009`: Stale newsletter entries shall be eligible for cleanup only when older than 90 days, read, and unstarred.
 - `EML-010`: Successful newsletter ingestion shall clear persisted refresh error state on the corresponding mailing-list feed.
 
+
+- `API-007`: Item listing endpoints shall bound response size: `GET /api/items` shall reject `batchSize` values above 100, normalize omitted or non-positive `batchSize` to 100, and `GET /api/items/updated` shall return at most 100 items.
+- `API-008`: Bulk item mutation endpoints shall accept empty `itemIds` arrays as no-ops, accept at most 1000 IDs per request, and reject larger payloads with `400`.
+
 ### Observability
 
 - `OBS-001`: All incoming API requests shall be logged at `INFO` level with the raw request URI, including query parameters when present.
@@ -181,12 +185,14 @@ The same requirements apply to all implementations.
 - `SEC-004`: The same URL validation policy shall be applied consistently in all remote-fetch paths, including each HTTP redirect target before it is fetched, and hostname resolution failures shall be rejected rather than bypassing IP-based checks.
 - `SEC-005`: Protected public API routes shall require backend-issued bearer tokens, and token issuance shall validate the configured `USERNAME` and `PASSWORD` credentials when auth is enabled.
 - `SEC-005a`: Issued browser tokens shall expire after 1 day by default or after 30 days when the remember-device flow is requested.
+- `SEC-005b`: Token issuance shall rate-limit repeated invalid username/password submissions per username and client key, returning `429` with `Retry-After` after the configured burst is exceeded.
+- `SEC-005c`: Production CORS shall allow only origins configured through `CORS_ALLOWED_ORIGINS`; permissive wildcard CORS is limited to testing/local mode.
 - `SEC-006`: The system shall not log user-provided content, including titles, feed content, mailbox identities, or externally generated content derived from user input unless explicitly required by an `OBS` requirement.
 
 ### Configuration
 
 - `CFG-001`: Runtime configuration shall be sourced from environment variables.
-- `CFG-002`: Supported variables shall include authentication settings, feed update frequency, service version, and provider-specific LLM configuration including request timeout.
+- `CFG-002`: Supported variables shall include authentication settings, feed update frequency, service version, CORS allowed origins, and provider-specific LLM configuration including request timeout.
 - `CFG-003`: Defaults shall include `VERSION=dev`, `FEED_UPDATE_FREQUENCY_MIN=15`, `OPENAI_TIMEOUT_SECONDS=30`, and a default LLM model identifier.
 
 ### CLI

@@ -1,18 +1,19 @@
 //! HTTP API composition for the Rust RSS aggregation service.
 
-use std::sync::Arc;
-use std::time::Instant;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use axum::body::Body;
 use axum::extract::State;
-use axum::http::Request;
+use axum::http::{HeaderValue, Method, Request, header};
 use axum::middleware::Next;
 use axum::response::Response;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::Serialize;
 use sqlx::SqlitePool;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{Any, CorsLayer};
 
 use crate::config::Config;
 
@@ -32,6 +33,34 @@ pub struct AppState {
     pub config: Arc<Config>,
     pub feed_http_client: reqwest::Client,
     pub article_http_client: reqwest::Client,
+    pub auth_rate_limiter: AuthRateLimiter,
+}
+
+/// In-memory failed-login tracker used to slow online credential guessing.
+#[derive(Clone, Default)]
+pub struct AuthRateLimiter {
+    attempts: Arc<Mutex<HashMap<String, AuthAttemptRecord>>>,
+}
+
+#[derive(Clone, Debug)]
+struct AuthAttemptRecord {
+    failed_count: u32,
+    first_failed_at: Instant,
+    blocked_until: Option<Instant>,
+}
+
+impl AuthRateLimiter {
+    fn prune_expired(&self, window: Duration, now: Instant) {
+        let Ok(mut attempts) = self.attempts.lock() else {
+            return;
+        };
+        attempts.retain(|_, record| {
+            record
+                .blocked_until
+                .is_some_and(|blocked_until| blocked_until > now)
+                || now.duration_since(record.first_failed_at) < window
+        });
+    }
 }
 
 #[derive(Serialize)]
@@ -54,8 +83,36 @@ pub fn app(state: AppState) -> Router {
         .route("/api/status", get(status))
         .nest("/api", public_api)
         .layer(axum::middleware::from_fn(log_user_interaction))
-        .with_state(state)
-        .layer(CorsLayer::permissive())
+        .with_state(state.clone())
+        .layer(cors_layer(&state.config))
+}
+
+fn cors_layer(config: &Config) -> CorsLayer {
+    let base = CorsLayer::new()
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::DELETE,
+            Method::OPTIONS,
+        ])
+        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE]);
+
+    if config.testing_mode {
+        return base.allow_origin(Any);
+    }
+
+    let origins = config
+        .cors_allowed_origins
+        .iter()
+        .filter_map(|origin| origin.parse::<HeaderValue>().ok())
+        .collect::<Vec<_>>();
+
+    if origins.is_empty() {
+        base
+    } else {
+        base.allow_origin(origins)
+    }
 }
 
 /// Builds the protected public API router.

@@ -8,6 +8,7 @@ package-lock.json
 playwright-report/
 playwright-report-e2e/
 playwright-report-integration/
+playwright-report-visual/
 test-results/
 tests/integration/.auth/
 .devcontainer/

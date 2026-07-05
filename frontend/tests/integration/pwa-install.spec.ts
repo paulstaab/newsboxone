@@ -1,40 +1,10 @@
-import { expect, test, type Page } from '@playwright/test';
-
-const PROMPT_DELAY_MS = 5_500;
-
-async function dispatchInstallPrompt(page: Page, outcome: 'accepted' | 'dismissed' = 'accepted') {
-  await page.evaluate((choice) => {
-    const dispatch = () => {
-      const event = new Event('beforeinstallprompt', { cancelable: true });
-      Object.defineProperties(event, {
-        prompt: {
-          value: () => Promise.resolve(),
-        },
-        userChoice: {
-          value: Promise.resolve({ outcome: choice }),
-        },
-      });
-      window.dispatchEvent(event);
-    };
-
-    window.setTimeout(dispatch, 100);
-    window.setTimeout(dispatch, 300);
-  }, outcome);
-}
-
-async function seedRememberedSession(page: Page) {
-  await page.addInitScript(() => {
-    localStorage.setItem(
-      'newsboxone:session',
-      JSON.stringify({
-        username: 'test',
-        token: 'test-token',
-        expiresAt: '2026-04-30T00:00:00.000Z',
-        rememberDevice: true,
-      }),
-    );
-  });
-}
+import { expect, test } from '@playwright/test';
+import {
+  dispatchInstallPrompt,
+  expectInstallPromptHidden,
+  expectInstallPromptVisible,
+  seedRememberedSession,
+} from './pwaHelpers';
 
 test.describe('PWA install integration coverage', () => {
   test.beforeEach(async ({ page, context }) => {
@@ -48,17 +18,14 @@ test.describe('PWA install integration coverage', () => {
 
   test('[TC-APP-005] install prompt can appear when install criteria are met', async ({ page }) => {
     await dispatchInstallPrompt(page);
-    await page.waitForTimeout(PROMPT_DELAY_MS);
-    await expect(page.getByRole('heading', { name: /install newsboxone/i })).toBeVisible();
+    await expectInstallPromptVisible(page);
   });
 
   test('[TC-APP-006] install prompt dismissal is persisted', async ({ page }) => {
     await dispatchInstallPrompt(page);
-    await page.waitForTimeout(PROMPT_DELAY_MS);
-    await page.getByRole('button', { name: /not now/i }).evaluate((element) => {
-      (element as HTMLButtonElement).click();
-    });
-    await expect(page.getByRole('heading', { name: /install newsboxone/i })).toHaveCount(0);
+    await expectInstallPromptVisible(page);
+    await page.getByRole('button', { name: /not now/i }).click();
+    await expectInstallPromptHidden(page);
     const dismissal = await page.evaluate(() => localStorage.getItem('pwa-install-dismissed'));
     expect(dismissal).toBeTruthy();
   });
@@ -68,8 +35,7 @@ test.describe('PWA install integration coverage', () => {
       localStorage.setItem('pwa-install-dismissed', Date.now().toString());
     });
     await dispatchInstallPrompt(page);
-    await page.waitForTimeout(PROMPT_DELAY_MS);
-    await expect(page.getByRole('heading', { name: /install newsboxone/i })).toHaveCount(0);
+    await expectInstallPromptHidden(page);
 
     const eightDaysAgo = Date.now() - 8 * 24 * 60 * 60 * 1000;
     await page.evaluate((timestamp) => {
@@ -77,8 +43,7 @@ test.describe('PWA install integration coverage', () => {
     }, eightDaysAgo);
     await page.reload();
     await dispatchInstallPrompt(page);
-    await page.waitForTimeout(PROMPT_DELAY_MS);
-    await expect(page.getByRole('heading', { name: /install newsboxone/i })).toBeVisible();
+    await expectInstallPromptVisible(page);
   });
 
   test('[TC-APP-008] burger menu exposes manual install entry', async ({ page }) => {
@@ -91,11 +56,10 @@ test.describe('PWA install integration coverage', () => {
 
   test('[TC-APP-009] install state reacts to appinstalled', async ({ page }) => {
     await dispatchInstallPrompt(page);
-    await page.waitForTimeout(PROMPT_DELAY_MS);
-    await expect(page.getByRole('heading', { name: /install newsboxone/i })).toBeVisible();
+    await expectInstallPromptVisible(page);
     await page.evaluate(() => {
       window.dispatchEvent(new Event('appinstalled'));
     });
-    await expect(page.getByRole('heading', { name: /install newsboxone/i })).toHaveCount(0);
+    await expectInstallPromptHidden(page);
   });
 });

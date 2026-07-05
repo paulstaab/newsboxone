@@ -1,10 +1,9 @@
 import { expect, test } from './fixtures';
+import { AUTH_STORAGE_STATE } from './constants';
 import { getMockItems, mockFolders, setupApiMocks } from './mocks';
 
-const storageStatePath = 'tests/integration/.auth/user.json';
-
 test.describe('Timeline integration coverage', () => {
-  test.use({ storageState: storageStatePath });
+  test.use({ storageState: AUTH_STORAGE_STATE });
 
   test.beforeEach(async ({ page }) => {
     await setupApiMocks(page);
@@ -217,8 +216,8 @@ test.describe('Timeline integration coverage', () => {
     const items = getMockItems();
     const selectedArticle = items.find((item) => item.id === 1002);
 
-    if (!selectedArticle) {
-      throw new Error('Required mock articles were not found');
+    if (!selectedArticle?.title) {
+      throw new Error('Required mock article was not found');
     }
 
     await page.route('**/api/items/*/content', async (route) => {

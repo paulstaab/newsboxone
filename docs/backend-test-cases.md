@@ -46,9 +46,9 @@ Rust backend integration tests should seed fixture data on top of the production
 | ---------- | --------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------- |
 | TC-SVC-001 | Public version endpoint reachable | Relevant fixtures, mocks, or seeded state required by this case are prepared. | Request `/api/version` through the public application surface.         | Endpoint responds successfully (`200`).             |
 | TC-SVC-002 | Health endpoint response          | Relevant fixtures, mocks, or seeded state required by this case are prepared. | Call `/api/status` and verify health payload format.                   | Returns `200` with body `{"status":"ok"}`.          |
-| TC-SVC-003 | CORS on service endpoint          | Relevant fixtures, mocks, or seeded state required by this case are prepared. | Send request to `/api/status` with an `Origin` header.                 | Response includes `access-control-allow-origin: *`. |
-| TC-SVC-004 | CORS on API endpoint              | Relevant fixtures, mocks, or seeded state required by this case are prepared. | Send request to `/api/version` with an `Origin` header.                | Response includes `access-control-allow-origin: *`. |
-| TC-SVC-005 | CORS preflight support            | Relevant fixtures, mocks, or seeded state required by this case are prepared. | Send `OPTIONS` preflight request with `Access-Control-Request-Method`. | Returns success and includes CORS method headers.   |
+| TC-SVC-003 | Testing-mode wildcard CORS | Testing-mode service state is prepared. | Send request to `/api/status` with an `Origin` header. | Response includes `access-control-allow-origin: *`. |
+| TC-SVC-004 | Production CORS default | Production-style service state has no configured CORS origins. | Send request to `/api/status` with an `Origin` header. | Response does not emit wildcard CORS. |
+| TC-SVC-005 | Configured production CORS | Production-style service state has `CORS_ALLOWED_ORIGINS` configured. | Send request to `/api/status` with an allowed `Origin` header. | Response echoes the configured allowed origin. |
 
 ### Feed Parsing and URL Safety
 
@@ -102,7 +102,9 @@ Rust backend integration tests should seed fixture data on top of the production
 | TC-API-033 | Single item star state update         | Relevant fixtures, mocks, or seeded state required by this case are prepared. | Call `POST /api/items/{item_id}/star` for an unstarred item.                                                         | Returns `200`; item is marked `starred=true` and `lastModified` increases.                         |
 | TC-API-034 | Single item unstar state update       | Relevant fixtures, mocks, or seeded state required by this case are prepared. | Call `POST /api/items/{item_id}/unstar` for a starred item.                                                          | Returns `200`; item is marked `starred=false` and `lastModified` increases.                        |
 | TC-API-035 | Token issuance success path           | Relevant fixtures, mocks, or seeded state required by this case are prepared. | Call `POST /api/auth/token` with valid configured credentials and each remember-device mode.                         | Returns `200` with a token payload and an expiry matching the configured 1-day or 30-day lifetime. |
+| TC-API-035a | Token issuance rate limit | Auth is enabled and repeated invalid credential attempts come from the same username/client key. | Call `POST /api/auth/token` with invalid credentials until the burst is exceeded. | Returns `429` with `Retry-After` after repeated failures. |
 | TC-API-036 | Logout revokes current token          | Relevant fixtures, mocks, or seeded state required by this case are prepared. | Issue a valid token, call `POST /api/auth/logout`, then retry a protected endpoint with the revoked token.           | Logout returns `200` and the revoked token is rejected with `401` on later use.                    |
+| TC-API-037 | Item query and mutation bounds | More items or IDs than the configured request caps are prepared. | Call item listing with `batchSize` above 100, with non-positive `batchSize`, and call bulk mutation with more than 1000 IDs. | Oversized requests return `400`; non-positive list batch sizes are capped to 100; valid empty mutation arrays remain no-ops. |
 
 ### Ingestion and Update Pipeline Test Cases
 

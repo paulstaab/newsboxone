@@ -4,58 +4,18 @@ import {
   faCircleCheck,
   faCircleExclamation,
   faFolder,
-  faFolderPlus,
   faPen,
-  faPlus,
-  faRotate,
   faRss,
   faSliders,
   faTrash,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Fragment, Suspense, type ButtonHTMLAttributes } from 'react';
+import { Fragment, Suspense } from 'react';
 import { formatExactLocalDateTime, formatRelativeDateTime } from '@/lib/feeds/feedManagement';
-import { TimelineActionButton } from '@/components/timeline/TimelineActionButton';
+import { FeedManagementActions } from '@/components/feeds/FeedManagementActions';
+import { FeedActionButton } from '@/components/feeds/FeedActionButton';
 import { FullscreenStatus } from '@/components/ui/FullscreenStatus';
 import { useFeedManagementPage } from '@/hooks/useFeedManagementPage';
-
-interface FeedActionButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  label: string;
-  variant?: 'default' | 'accent' | 'danger';
-  size?: 'sm' | 'lg';
-}
-
-/**
- * Shared icon-only action button used throughout the page.
- */
-function FeedActionButton({
-  children,
-  className = '',
-  label,
-  size = 'sm',
-  variant = 'default',
-  ...buttonProps
-}: FeedActionButtonProps) {
-  const palette =
-    variant === 'accent'
-      ? 'border-transparent bg-[hsl(var(--color-accent-strong))] text-slate-950 hover:brightness-110 focus:ring-[hsl(var(--color-accent-strong))]'
-      : variant === 'danger'
-        ? 'border-red-400/30 bg-red-500/10 text-red-300 hover:bg-red-500/15 focus:ring-red-300/60'
-        : 'border-[hsl(var(--color-border))] bg-[hsl(var(--color-surface-muted))] text-[hsl(var(--color-text))] hover:bg-[hsl(var(--color-surface))] focus:ring-[hsl(var(--color-accent-strong))]';
-  const sizing = size === 'lg' ? 'h-11 w-11' : 'h-9 w-9';
-
-  return (
-    <button
-      {...buttonProps}
-      aria-label={label}
-      title={label}
-      className={`inline-flex ${sizing} items-center justify-center rounded-md border transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[hsl(var(--color-surface-muted))] disabled:cursor-not-allowed disabled:opacity-60 ${palette} ${className}`.trim()}
-      type={buttonProps.type ?? 'button'}
-    >
-      {children}
-    </button>
-  );
-}
 
 function formatAutomaticQualityLabel(value: boolean | undefined) {
   if (value === undefined) {
@@ -416,34 +376,17 @@ function FeedManagementContent() {
             </section>
           )}
 
-          <div className="feed-management-actions">
-            <TimelineActionButton
-              icon={<FontAwesomeIcon icon={faRotate} className="h-5 w-5" aria-hidden="true" />}
-              label={isRefreshing ? 'Updating feeds' : 'Update feeds'}
-              tooltip="Update feeds"
-              disabled={busyLabel !== null}
-              isLoading={isRefreshing}
-              onClick={() => {
-                void refreshPageData(false);
-              }}
-            />
-            <TimelineActionButton
-              icon={<FontAwesomeIcon icon={faFolderPlus} className="h-5 w-5" aria-hidden="true" />}
-              label="Add folder"
-              tooltip="Add folder"
-              disabled={busyLabel !== null}
-              onClick={() => {
-                createFolderDialogRef.current?.showModal();
-              }}
-            />
-            <TimelineActionButton
-              icon={<FontAwesomeIcon icon={faPlus} className="h-5 w-5" aria-hidden="true" />}
-              label="Subscribe to feed"
-              tooltip="Subscribe to feed"
-              disabled={busyLabel !== null}
-              onClick={openCreateFeedDialog}
-            />
-          </div>
+          <FeedManagementActions
+            busyLabel={busyLabel}
+            isRefreshing={isRefreshing}
+            onRefresh={() => {
+              void refreshPageData(false);
+            }}
+            onCreateFolder={() => {
+              createFolderDialogRef.current?.showModal();
+            }}
+            onSubscribe={openCreateFeedDialog}
+          />
 
           <dialog
             ref={createFeedDialogRef}

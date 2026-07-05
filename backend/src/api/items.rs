@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, QueryBuilder, Sqlite, SqlitePool};
 
 use super::AppState;
-use super::errors::{ApiResult, bad_request_error, internal_error, item_not_found};
+use super::errors::{ApiError, ApiResult, bad_request_error, internal_error, item_not_found};
 use super::folders::MarkAllItemsReadIn;
 use crate::repo::{self, ArticleFlag};
 
@@ -104,8 +104,11 @@ pub(super) struct ItemIdsV13In {
     item_ids: Vec<i64>,
 }
 
+const MAX_ITEM_QUERY_BATCH_SIZE: i64 = 100;
+const MAX_BULK_ITEM_IDS: usize = 1000;
+
 fn default_batch_size() -> i64 {
-    -1
+    MAX_ITEM_QUERY_BATCH_SIZE
 }
 
 fn default_selection_type() -> i64 {
@@ -121,6 +124,7 @@ pub(super) async fn get_items(
     State(state): State<AppState>,
     Query(params): Query<ItemsQueryParams>,
 ) -> ApiResult<Json<ItemGetOut>> {
+    let batch_size = normalize_batch_size(params.batch_size)?;
     let rows = query_items(
         &state.pool,
         QueryItemsInput {
@@ -130,7 +134,7 @@ pub(super) async fn get_items(
             oldest_first: params.oldest_first,
             last_modified: params.last_modified,
             newest_item_id: params.offset,
-            batch_size: params.batch_size,
+            batch_size,
         },
     )
     .await?;
@@ -154,7 +158,7 @@ pub(super) async fn get_updated_items(
             oldest_first: false,
             last_modified: params.last_modified,
             newest_item_id: 0,
-            batch_size: -1,
+            batch_size: MAX_ITEM_QUERY_BATCH_SIZE,
         },
     )
     .await?;
@@ -303,6 +307,30 @@ pub(super) async fn mark_all_items_as_read(
     mark_all_items_read(&state.pool, input.newest_item_id).await
 }
 
+fn normalize_batch_size(batch_size: i64) -> Result<i64, ApiError> {
+    if batch_size <= 0 {
+        return Ok(MAX_ITEM_QUERY_BATCH_SIZE);
+    }
+
+    if batch_size > MAX_ITEM_QUERY_BATCH_SIZE {
+        return Err(bad_request_error(format!(
+            "batchSize must be less than or equal to {MAX_ITEM_QUERY_BATCH_SIZE}"
+        )));
+    }
+
+    Ok(batch_size)
+}
+
+fn validate_bulk_item_ids(item_ids: &[i64]) -> ApiResult<()> {
+    if item_ids.len() > MAX_BULK_ITEM_IDS {
+        return Err(bad_request_error(format!(
+            "itemIds must contain {MAX_BULK_ITEM_IDS} or fewer items"
+        )));
+    }
+
+    Ok(())
+}
+
 fn item_row_to_out(item: ItemRow) -> ItemOut {
     ItemOut {
         id: item.id,
@@ -437,6 +465,8 @@ async fn mark_item_ids(
     mutation: ItemMutation,
     missing_behavior: MissingBehavior,
 ) -> ApiResult<StatusCode> {
+    validate_bulk_item_ids(item_ids)?;
+
     if item_ids.is_empty() {
         return Ok(StatusCode::OK);
     }

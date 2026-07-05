@@ -23,12 +23,13 @@ export default async function globalSetup(config) {
 
   await page.evaluate(
     ({ username }) => {
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
       localStorage.setItem(
         'newsboxone:session',
         JSON.stringify({
           username,
           token: 'test-token',
-          expiresAt: '2027-04-30T00:00:00.000Z',
+          expiresAt,
           rememberDevice: true,
         }),
       );

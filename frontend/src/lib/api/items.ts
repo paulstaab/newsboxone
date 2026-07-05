@@ -3,6 +3,8 @@
  */
 
 import { ApiError, apiGet, apiPost, type ApiRequestOptions } from './client';
+export { sanitizeArticleHtml } from '@/lib/html/sanitizeArticleHtml';
+import { sanitizeArticleHtml } from '@/lib/html/sanitizeArticleHtml';
 import type { ItemsApi } from './types';
 import {
   ItemFilterType,
@@ -81,14 +83,14 @@ export const itemsApi: ItemsApi = {
             body?: string | null;
           };
           if (typeof parsed === 'object') {
-            return parsed.content ?? parsed.body ?? '';
+            return sanitizeArticleHtml(parsed.content ?? parsed.body ?? '');
           }
         } catch {
           // Fall through to treat as raw HTML/text.
         }
       }
 
-      return response;
+      return sanitizeArticleHtml(response);
     } catch (error) {
       if (error instanceof ApiError && error.statusCode === 404) {
         return null;

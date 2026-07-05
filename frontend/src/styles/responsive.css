@@ -1,0 +1,178 @@
+@media (max-width: 760px) {
+  .timeline-shell {
+    width: min(100% - 1rem, 1120px);
+  }
+
+  .timeline-header__inner {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+    padding: var(--space-6) 0 var(--space-4);
+  }
+
+  .timeline-header__stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .timeline-header__stats > div {
+    padding: var(--space-3);
+  }
+
+  .timeline-header__stat-value {
+    font-size: var(--font-size-xl);
+  }
+
+  .folder-queue-dock {
+    margin-inline: calc((100vw - 100%) / -2);
+    padding-inline: calc((100vw - min(100% - 1rem, 1120px)) / 2);
+  }
+
+  .article-card {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .article-card__media {
+    height: 8rem;
+    min-height: 8rem;
+  }
+
+  .article-card__body {
+    padding: var(--space-4);
+  }
+
+  .pinned-action-cluster {
+    position: fixed;
+    left: 50%;
+    right: auto;
+    bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+    flex-direction: row;
+    gap: var(--space-2);
+    justify-content: center;
+    margin: 0;
+    padding: var(--space-2);
+    border: 1px solid hsl(var(--color-border));
+    border-radius: var(--radius-md);
+    background: hsl(var(--color-surface) / 0.9);
+    box-shadow: var(--shadow-md);
+    transform: translateX(-50%);
+    backdrop-filter: blur(16px);
+  }
+
+  .pinned-action-cluster button {
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+  }
+
+  .feed-management-shell {
+    width: min(100% - 1rem, 1280px);
+    padding-bottom: 6rem;
+  }
+
+  .feed-management-table {
+    min-width: 0;
+  }
+
+  .feed-management-table colgroup,
+  .feed-management-table thead {
+    display: none !important;
+  }
+
+  .feed-management-table,
+  .feed-management-table tbody {
+    display: block !important;
+    width: 100%;
+  }
+
+  .feed-management-group-row,
+  .feed-management-feed-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .feed-management-table th,
+  .feed-management-table td {
+    display: block !important;
+    padding: var(--space-4);
+  }
+
+  .feed-management-group-row td:first-child {
+    min-width: 0;
+  }
+
+  .feed-management-feed-row td:first-child {
+    grid-column: 1 / -1;
+    padding-bottom: var(--space-2);
+  }
+
+  .feed-management-feed-row td:nth-child(2),
+  .feed-management-feed-row td:nth-child(3),
+  .feed-management-feed-row td:nth-child(4) {
+    padding-top: var(--space-2);
+  }
+
+  .feed-management-feed-row td:nth-child(2)::before,
+  .feed-management-feed-row td:nth-child(3)::before,
+  .feed-management-feed-row td:nth-child(4)::before {
+    display: block;
+    margin-bottom: var(--space-2);
+    color: hsl(var(--color-text-muted));
+    font-size: var(--font-size-xs);
+    font-weight: 750;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .feed-management-feed-row td:nth-child(2)::before {
+    content: 'Last Article';
+  }
+
+  .feed-management-feed-row td:nth-child(3)::before {
+    content: 'Status';
+  }
+
+  .feed-management-feed-row td:nth-child(4)::before {
+    content: 'Actions';
+  }
+
+  .feed-management-actions {
+    left: 50%;
+    right: auto;
+    bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+    flex-direction: row;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    border: 1px solid hsl(var(--color-border));
+    border-radius: var(--radius-md);
+    background: hsl(var(--color-surface) / 0.9);
+    box-shadow: var(--shadow-md);
+    transform: translateX(-50%);
+    backdrop-filter: blur(16px);
+  }
+
+  .feed-management-actions button {
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+  }
+
+  .feed-management-dialog {
+    width: min(calc(100vw - 1rem), 56rem);
+    max-height: calc(100vh - 1rem);
+  }
+
+  .feed-management-dialog form {
+    padding: var(--space-5) !important;
+  }
+
+  .feed-management-settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .feed-management-settings-grid > div:nth-child(odd) {
+    padding-bottom: var(--space-2);
+  }
+
+  .feed-management-settings-grid > div:nth-child(even) {
+    padding-top: var(--space-2);
+  }
+}

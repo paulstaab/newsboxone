@@ -9,7 +9,7 @@ use tokio::net::TcpListener;
 use crate::auth_tokens;
 use crate::config::Config;
 
-use super::super::AppState;
+use super::super::{AppState, AuthRateLimiter};
 
 /// Creates an in-memory database populated with the minimum API fixture data.
 pub(super) async fn setup_pool() -> SqlitePool {
@@ -93,6 +93,13 @@ pub(super) fn state_with_testing_mode(pool: SqlitePool, testing_mode: bool) -> A
     build_state(pool, None, None, testing_mode)
 }
 
+/// Builds application state for API tests with production CORS origins configured.
+pub(super) fn state_with_cors_origins(pool: SqlitePool, origins: Vec<String>) -> AppState {
+    let mut config = base_config(None, None, false);
+    config.cors_allowed_origins = origins;
+    build_state_with_config(pool, config)
+}
+
 /// Builds application state for API tests with OpenAI support configured.
 pub(super) fn state_with_openai(pool: SqlitePool, base_url: &str) -> AppState {
     build_state_with_config(
@@ -108,6 +115,7 @@ pub(super) fn state_with_openai(pool: SqlitePool, base_url: &str) -> AppState {
             openai_model: "gpt-5-nano".to_string(),
             openai_timeout_seconds: 30,
             testing_mode: true,
+            cors_allowed_origins: Vec::new(),
         },
     )
 }
@@ -118,21 +126,23 @@ fn build_state(
     password: Option<&str>,
     testing_mode: bool,
 ) -> AppState {
-    build_state_with_config(
-        pool,
-        Config {
-            username: username.map(str::to_string),
-            password: password.map(str::to_string),
-            version: "dev".to_string(),
-            db_path: "data/headless-rss.sqlite3".to_string(),
-            feed_update_frequency_min: 15,
-            openai_api_key: None,
-            openai_base_url: "https://api.openai.com/v1".to_string(),
-            openai_model: "gpt-5-nano".to_string(),
-            openai_timeout_seconds: 30,
-            testing_mode,
-        },
-    )
+    build_state_with_config(pool, base_config(username, password, testing_mode))
+}
+
+fn base_config(username: Option<&str>, password: Option<&str>, testing_mode: bool) -> Config {
+    Config {
+        username: username.map(str::to_string),
+        password: password.map(str::to_string),
+        version: "dev".to_string(),
+        db_path: "data/headless-rss.sqlite3".to_string(),
+        feed_update_frequency_min: 15,
+        openai_api_key: None,
+        openai_base_url: "https://api.openai.com/v1".to_string(),
+        openai_model: "gpt-5-nano".to_string(),
+        openai_timeout_seconds: 30,
+        testing_mode,
+        cors_allowed_origins: Vec::new(),
+    }
 }
 
 fn build_state_with_config(pool: SqlitePool, config: Config) -> AppState {
@@ -141,5 +151,6 @@ fn build_state_with_config(pool: SqlitePool, config: Config) -> AppState {
         config: Arc::new(config),
         feed_http_client: crate::http_client::build_feed_http_client().unwrap(),
         article_http_client: crate::http_client::build_article_http_client().unwrap(),
+        auth_rate_limiter: AuthRateLimiter::default(),
     }
 }
