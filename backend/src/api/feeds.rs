@@ -268,7 +268,7 @@ pub(super) async fn update_feed_quality(
 /// Fetches a website page and extracts supported embedded feed links.
 async fn discover_feeds_impl(url: &str, testing_mode: bool) -> ApiResult<Json<FeedDiscoverOut>> {
     let response = crate::ssrf::get_with_safe_redirects(
-        crate::http_client::HttpClientProfile::Feed,
+        crate::http_client::HttpClientProfile::Article,
         url,
         testing_mode,
     )
