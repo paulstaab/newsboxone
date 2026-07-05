@@ -22,7 +22,7 @@ use tokio::net::TcpListener;
 use tokio::time::{Duration, sleep};
 use tracing_subscriber::EnvFilter;
 
-use api::AppState;
+use api::{AppState, AuthRateLimiter};
 use config::Config;
 
 #[derive(Parser)]
@@ -246,6 +246,7 @@ async fn serve(config: Arc<Config>, host: String, port: u16) -> anyhow::Result<(
         config: config.clone(),
         feed_http_client,
         article_http_client,
+        auth_rate_limiter: AuthRateLimiter::default(),
     };
 
     let app = api::app(state);

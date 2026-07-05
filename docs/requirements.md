@@ -33,6 +33,7 @@ It covers the repository-level infrastructure needed to ship the frontend and ba
 - `DEL-003`: The combined container shall expose the backend health endpoint at `/api/status`.
 - `DEL-004`: The combined container shall include both the Rust backend runtime and the built static frontend assets without requiring a second service container.
 - `DEL-005`: The combined container shall start correctly under an arbitrary non-root UID by keeping nginx runtime files off root-owned system paths and by using a writable persisted or temporary backend data path.
+- `DEL-006`: The combined container shall emit defense-in-depth HTTP security headers for frontend and proxied API responses, including a Content Security Policy, MIME-sniffing protection, referrer policy, and frame restrictions.
 
 ### API Surface
 - `API-001`: The combined container shall expose the NewsBoxOne API at `/api`.

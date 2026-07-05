@@ -1,10 +1,9 @@
 import { expect, test } from '@playwright/test';
+import { AUTH_STORAGE_STATE } from './constants';
 import { setupApiMocks } from './mocks';
 
-const storageStatePath = 'tests/integration/.auth/user.json';
-
 test.describe('Feed management integration coverage', () => {
-  test.use({ storageState: storageStatePath });
+  test.use({ storageState: AUTH_STORAGE_STATE });
 
   test.beforeEach(async ({ page }) => {
     await setupApiMocks(page);

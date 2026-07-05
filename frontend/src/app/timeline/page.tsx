@@ -63,6 +63,7 @@ function TimelineContent() {
 
   const timelineRef = useRef<HTMLDivElement>(null);
   const scrollToTopOnNextFolderRef = useRef(false);
+  const hasTriggeredInitialRefreshRef = useRef(false);
 
   const {
     isOpen: isPopoutOpen,
@@ -156,22 +157,23 @@ function TimelineContent() {
 
   // Automatic update on mount (US5 requirement)
   useEffect(() => {
-    if (isHydrated && isAuthenticated) {
-      markTimelineUpdateStart();
-      // Trigger refresh to get latest articles and merge with cache
-      void refresh()
-        .then(() => {
-          markTimelineUpdateComplete();
-        })
-        .catch(() => {
-          // Error already logged and retried in useTimeline
-          // Just mark the update as complete (with error)
-          markTimelineUpdateComplete();
-        });
+    if (!isHydrated || !isAuthenticated || hasTriggeredInitialRefreshRef.current) {
+      return;
     }
-    // Only run on mount when hydrated and authenticated
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHydrated, isAuthenticated]);
+
+    hasTriggeredInitialRefreshRef.current = true;
+    markTimelineUpdateStart();
+    // Trigger refresh to get latest articles and merge with cache
+    void refresh()
+      .then(() => {
+        markTimelineUpdateComplete();
+      })
+      .catch(() => {
+        // Error already logged and retried in useTimeline
+        // Just mark the update as complete (with error)
+        markTimelineUpdateComplete();
+      });
+  }, [isHydrated, isAuthenticated, refresh]);
 
   // Show toast when update fails after all retries
   useEffect(() => {
@@ -191,9 +193,7 @@ function TimelineContent() {
     // Disable the IntersectionObserver before scrolling to prevent articles from being marked read
     disableObserverTemporarily();
     window.scrollTo({ top: 0, left: 0 });
-    // disableObserverTemporarily is stable (useCallback with empty deps), so it's safe to omit
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFolder]);
+  }, [activeFolder, disableObserverTemporarily]);
 
   // Show loading state while checking authentication
   if (isInitializing || !isHydrated) {

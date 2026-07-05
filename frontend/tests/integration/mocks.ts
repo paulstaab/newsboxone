@@ -5,8 +5,9 @@
 
 import { type Page, type Route } from '@playwright/test';
 import type { ApiFeed } from '@/types';
+import { buildApiArticle } from '../fixtures/apiBuilders';
 
-const nowInSeconds = Math.floor(Date.now() / 1000);
+const nowInSeconds = 1_700_220_000;
 
 // Mock data matching MSW handlers
 export const mockFolders = [
@@ -117,8 +118,8 @@ export function getMockItems() {
       folderId: 10,
       guid: 'https://frontend.example.com/posts/folder-queue',
       guidHash: 'hash1001',
-      pubDate: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
-      lastModified: Math.floor(Date.now() / 1000) - 3600,
+      pubDate: nowInSeconds - 3600, // 1 hour ago
+      lastModified: nowInSeconds - 3600,
       starred: false,
       unread: true,
       url: 'https://frontend.example.com/posts/folder-queue',
@@ -139,8 +140,8 @@ export function getMockItems() {
       folderId: 10,
       guid: 'https://backend.example.com/posts/accessibility',
       guidHash: 'hash1002',
-      pubDate: Math.floor(Date.now() / 1000) - 7200, // 2 hours ago
-      lastModified: Math.floor(Date.now() / 1000) - 7200,
+      pubDate: nowInSeconds - 7200, // 2 hours ago
+      lastModified: nowInSeconds - 7200,
       starred: false,
       unread: true,
       url: 'https://backend.example.com/posts/accessibility',
@@ -161,8 +162,8 @@ export function getMockItems() {
       folderId: 10,
       guid: 'https://frontend.example.com/posts/observability',
       guidHash: 'hash1003',
-      pubDate: Math.floor(Date.now() / 1000) - 10800, // 3 hours ago
-      lastModified: Math.floor(Date.now() / 1000) - 10800,
+      pubDate: nowInSeconds - 10800, // 3 hours ago
+      lastModified: nowInSeconds - 10800,
       starred: false,
       unread: true,
       url: 'https://frontend.example.com/posts/observability',
@@ -183,8 +184,8 @@ export function getMockItems() {
       folderId: 20,
       guid: 'https://design.example.com/posts/colors-2025',
       guidHash: 'hash2001',
-      pubDate: Math.floor(Date.now() / 1000) - 14400, // 4 hours ago
-      lastModified: Math.floor(Date.now() / 1000) - 14400,
+      pubDate: nowInSeconds - 14400, // 4 hours ago
+      lastModified: nowInSeconds - 14400,
       starred: false,
       unread: true,
       url: 'https://design.example.com/posts/colors-2025',
@@ -205,8 +206,8 @@ export function getMockItems() {
       folderId: 20,
       guid: 'https://design.example.com/posts/motion-folder-stepper',
       guidHash: 'hash2002',
-      pubDate: Math.floor(Date.now() / 1000) - 18000, // 5 hours ago
-      lastModified: Math.floor(Date.now() / 1000) - 18000,
+      pubDate: nowInSeconds - 18000, // 5 hours ago
+      lastModified: nowInSeconds - 18000,
       starred: false,
       unread: true,
       url: 'https://design.example.com/posts/motion-folder-stepper',
@@ -227,8 +228,8 @@ export function getMockItems() {
       folderId: 30,
       guid: 'https://podcasts.example.com/episodes/42',
       guidHash: 'hash3001',
-      pubDate: Math.floor(Date.now() / 1000) - 21600, // 6 hours ago
-      lastModified: Math.floor(Date.now() / 1000) - 21600,
+      pubDate: nowInSeconds - 21600, // 6 hours ago
+      lastModified: nowInSeconds - 21600,
       starred: false,
       unread: true,
       url: 'https://podcasts.example.com/episodes/42',
@@ -240,7 +241,7 @@ export function getMockItems() {
       mediaDescription: null,
       rtl: false,
     },
-  ];
+  ].map((item) => buildApiArticle(item));
 }
 
 // Backward compatibility: export mockItems as the result of calling getMockItems()
@@ -381,7 +382,7 @@ export async function setupApiMocks(page: Page) {
         type: 'rss' as const,
         title: discoveredTitle,
         faviconLink: null,
-        added: Math.floor(Date.now() / 1000),
+        added: nowInSeconds,
         lastArticleDate: null,
         nextUpdateTime: null,
         folderId: body.folderId,
@@ -457,7 +458,7 @@ export async function setupApiMocks(page: Page) {
         useLlmSummary?: boolean | null;
         reevaluate?: boolean;
       };
-      const now = Math.floor(Date.now() / 1000);
+      const now = nowInSeconds;
 
       if (body.reevaluate) {
         feeds[feedIndex].manualUseExtractedFulltext = null;

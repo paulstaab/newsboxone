@@ -28,6 +28,15 @@ function isAutomatedBrowserSession(): boolean {
   return typeof navigator !== 'undefined' && navigator.webdriver;
 }
 
+function isRegistrationLike(registration: unknown): registration is ServiceWorkerRegistration {
+  return (
+    typeof registration === 'object' &&
+    registration !== null &&
+    'addEventListener' in registration &&
+    typeof (registration as { addEventListener?: unknown }).addEventListener === 'function'
+  );
+}
+
 /**
  * Register the service worker.
  */
@@ -48,7 +57,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
       scope,
     });
 
-    if (!(registration instanceof ServiceWorkerRegistration)) {
+    if (!isRegistrationLike(registration)) {
       console.warn('Service worker registration did not return a registration object');
       return null;
     }

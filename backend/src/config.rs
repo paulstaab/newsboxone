@@ -13,6 +13,7 @@ pub struct Config {
     pub openai_model: String,
     pub openai_timeout_seconds: u64,
     pub testing_mode: bool,
+    pub cors_allowed_origins: Vec<String>,
 }
 
 impl Config {
@@ -34,6 +35,7 @@ impl Config {
                 .ok()
                 .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
                 .unwrap_or(cfg!(test)),
+            cors_allowed_origins: get_env_list("CORS_ALLOWED_ORIGINS"),
         }
     }
 
@@ -71,6 +73,20 @@ fn get_env_str(name: &str) -> Option<String> {
         .ok()
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
+}
+
+fn get_env_list(name: &str) -> Vec<String> {
+    env::var(name)
+        .ok()
+        .map(|value| {
+            value
+                .split(',')
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn default_db_path() -> String {

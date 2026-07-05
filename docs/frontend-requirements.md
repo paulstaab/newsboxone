@@ -71,6 +71,7 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 - `TIMELINE-010`: Opening an unread article shall optimistically mark it read.
 - `TIMELINE-011`: The article pop-out shall fetch full article metadata and full HTML content on demand.
 - `TIMELINE-012`: The article pop-out shall show a heading, subheading, and one of the following: fetched content, fallback body HTML, fallback summary text, loading UI, or an error or empty state.
+- `TIMELINE-012a`: Fetched article HTML and fallback article body HTML shall be sanitized at the frontend API boundary before rendering so publisher-controlled content cannot execute scripts, event handlers, unsafe URL schemes, forms, frames, or inline styles.
 - `TIMELINE-013`: The article pop-out shall trap focus while open, disable background page scrolling, and restore focus to the opener when closed.
 - `TIMELINE-014`: The article pop-out shall close via the dedicated close button, the global Space key handler implemented in the current code, and the Escape key.
 - `TIMELINE-015`: While the pop-out is open, the underlying timeline shall be marked `aria-hidden` and removed from keyboard interaction.
@@ -98,6 +99,7 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 - `TIMELINE-037`: Timeline cache shall be stored in `localStorage` under a versioned key.
 - `TIMELINE-038`: Unread timeline sync shall page through backend item-id boundaries without skipping unread items between pages.
 - `TIMELINE-039`: Failed optimistic read mutations shall restore affected unread items locally and clear their pending read tombstones.
+- `TIMELINE-040`: Timeline effects shall declare their React hook dependencies directly and use stable refs or callbacks for intentionally one-shot behavior.
 
 ### Feed Management Page
 

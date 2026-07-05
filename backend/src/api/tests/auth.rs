@@ -159,3 +159,59 @@ async fn logout_revokes_current_token() {
 
     assert_eq!(follow_up.status(), 401);
 }
+
+#[tokio::test]
+async fn token_issuance_rate_limits_repeated_invalid_credentials() {
+    let app = app(state_with_auth(
+        setup_pool().await,
+        TEST_USERNAME,
+        TEST_PASSWORD,
+    ));
+
+    for attempt in 1..=5 {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/auth/token")
+                    .header("content-type", "application/json")
+                    .header("x-forwarded-for", "203.0.113.10")
+                    .body(Body::from(
+                        serde_json::json!({
+                            "username": TEST_USERNAME,
+                            "password": format!("wrongpass-{attempt}"),
+                            "rememberDevice": false
+                        })
+                        .to_string(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 401);
+    }
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/auth/token")
+                .header("content-type", "application/json")
+                .header("x-forwarded-for", "203.0.113.10")
+                .body(Body::from(
+                    serde_json::json!({
+                        "username": TEST_USERNAME,
+                        "password": "wrongpass-final",
+                        "rememberDevice": false
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 429);
+    assert_eq!(response.headers().get("retry-after").unwrap(), "60");
+}

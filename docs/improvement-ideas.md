@@ -15,38 +15,17 @@ Use it as a lightweight planning backlog, not as a replacement for issue trackin
 
 ## Security
 
-- Sanitize stored article HTML before rendering or before persistence: `frontend/src/components/timeline/ArticlePopout.tsx` renders feed/extracted content with `dangerouslySetInnerHTML`, while `backend/src/article_store.rs` and `backend/src/content.rs` can persist publisher-controlled HTML.
-- Protect `POST /api/auth/token` against online guessing by adding rate limiting, retry backoff, or lockout behavior around `backend/src/api/auth.rs`; token issuance currently compares credentials on every request without throttling.
-- Add explicit security headers in `docker/nginx.conf`, especially a Content Security Policy, `X-Content-Type-Options`, `Referrer-Policy`, and frame restrictions, so the combined container has defense in depth for static frontend and proxied API responses.
-- Replace `CorsLayer::permissive()` in `backend/src/api.rs` with configured allowed origins/methods/headers for production deployments, keeping broad CORS only for local development or tests.
-
 ## Technical Debt
 
 ## Code Structure
 
-- Split the large feed-management route in `frontend/src/app/feeds/page.tsx` into focused table, dialog, and action components so page rendering is easier to review and test independently.
-
 ## Maintainability
-
-- Reconcile frontend design tokens: several files reference undefined CSS variables such as `--color-primary`, `--color-text-secondary`, `--color-surface-elevated`, `--shadow-soft`, and `--shadow-xl`; align these references with `frontend/src/styles/tokens.css` or add the missing tokens intentionally.
-- Break up the 1,100+ line `frontend/src/styles/globals.css` into feature-scoped style modules or smaller component layers for timeline, feed management, app shell, and overlays.
 
 ## Usability
 
 ## Performance
 
-- Bound item query and bulk mutation sizes in `backend/src/api/items.rs`; `batchSize <= 0` currently fetches all matching articles and multi-item mutation payloads have no explicit cap, which could cause memory or database pressure on large installations.
-
 ## Testing
-
-- Add security regression coverage for article-content sanitization, CSP/header behavior, token brute-force throttling, and bounded item-list/mutation sizes.
-- Fix the lingering React `act(...)` warnings in `frontend/tests/unit/hooks/useTimeline.test.tsx`; they currently pass but mask asynchronous state-update timing issues in the timeline hook tests.
-- Reduce Playwright integration noise by making the service-worker registration mock return a registration-like object, avoiding repeated `registration.addEventListener` errors in `frontend/src/lib/sw/register.ts` during tests.
-- Add a lightweight frontend token audit test or lint script that fails when `var(--...)` references are not defined in `frontend/src/styles/tokens.css`.
-- Refresh or remove stale visual Playwright coverage in `frontend/tests/visual/us1-login-timeline.spec.ts`; it still targets an older login flow with a server-URL step, includes a placeholder `expect(true)`, and overlaps newer timeline visual coverage.
-- Replace fixed sleeps in PWA/visual Playwright tests with explicit install-prompt or UI readiness helpers so `frontend/tests/integration/pwa-install.spec.ts` and `frontend/tests/visual/pwa-install.spec.ts` are less timing-sensitive.
-- Consolidate repeated Playwright setup constants and helpers, including auth storage-state paths, login helpers, breakpoint lists, and shared integration/visual config defaults.
-- Reduce mock fixture drift by sharing typed mock builders between frontend Playwright route mocks and unit/MSW fixtures instead of maintaining large parallel mock payloads in `frontend/tests/integration/mocks.ts`.
 
 ## Documentation
 

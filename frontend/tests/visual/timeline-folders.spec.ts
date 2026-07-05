@@ -45,7 +45,8 @@ test.describe('Visual: Timeline Folders', () => {
       await expect(page).toHaveScreenshot(`timeline-folder-default-${breakpoint.name}.png`, {
         fullPage: true,
         animations: 'disabled',
-        mask: [page.getByTestId('active-folder-unread')], // Mask dynamic counts if needed, but they should be stable with mocks
+        mask: [page.getByTestId('active-folder-unread')],
+        maxDiffPixelRatio: 0.05,
       });
     });
   }

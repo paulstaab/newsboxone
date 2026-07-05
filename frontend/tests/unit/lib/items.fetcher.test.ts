@@ -1,198 +1,175 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { aggregateUnreadCounts } from '@/lib/utils/unreadAggregator';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { http, HttpResponse } from 'msw';
+import { itemsApi, sanitizeArticleHtml } from '@/lib/api/items';
+import { ApiError, AuthenticationError, NetworkError } from '@/lib/api/client';
+import { CONFIG } from '@/lib/config/env';
+import { clearSession, storeSession } from '@/lib/storage';
+import { ItemFilterType } from '@/types';
+import { buildApiArticle } from '../../fixtures/apiBuilders';
+import { server } from '../../mocks/server';
 
-/**
- * Unit tests for items fetcher
- *
- * Covers:
- * - /items fetch with default parameters (type=3, batchSize=50, getRead=false)
- * - Client-side unread aggregation from items array
- * - Exponential backoff on API errors
- * - Offline handling
- */
+function storeTestSession() {
+  storeSession({
+    username: 'reader',
+    token: 'test-token',
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    rememberDevice: true,
+  });
+}
 
-describe('getItems', () => {
+describe('itemsApi.get', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    clearSession();
+    storeTestSession();
   });
 
-  describe('default parameters', () => {
-    it('should fetch unread items with type=3 and batchSize=50', () => {
-      // TODO: Implement proper test with mocked API client
-      // getItems now uses internal API client that needs session context
-      expect(true).toBe(true);
-    });
+  afterEach(() => {
+    vi.useRealTimers();
+    clearSession();
+  });
 
-    it('should include Bearer auth header', () => {
-      // TODO: Implement proper test with mocked API client
-      expect(true).toBe(true);
+  it('fetches unread items with default query parameters and bearer auth', async () => {
+    expect.assertions(6);
+
+    server.use(
+      http.get('/api/items', ({ request }) => {
+        const url = new URL(request.url);
+        expect(url.searchParams.get('batchSize')).toBe(String(CONFIG.DEFAULT_BATCH_SIZE));
+        expect(url.searchParams.get('type')).toBe(String(ItemFilterType.ALL));
+        expect(url.searchParams.get('getRead')).toBe('false');
+        expect(request.headers.get('authorization')).toBe('Bearer test-token');
+        return HttpResponse.json({ items: [buildApiArticle({ id: 101 })] });
+      }),
+    );
+
+    const items = await itemsApi.get();
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.id).toBe(101);
+  });
+
+  it('passes pagination and filtering query parameters', async () => {
+    expect.assertions(5);
+
+    server.use(
+      http.get('/api/items', ({ request }) => {
+        const url = new URL(request.url);
+        expect(url.searchParams.get('batchSize')).toBe('25');
+        expect(url.searchParams.get('offset')).toBe('42');
+        expect(url.searchParams.get('type')).toBe(String(ItemFilterType.FEED));
+        expect(url.searchParams.get('id')).toBe('10');
+        expect(url.searchParams.get('getRead')).toBe('true');
+        return HttpResponse.json({ items: [] });
+      }),
+    );
+
+    await itemsApi.get({
+      batchSize: 25,
+      offset: 42,
+      type: ItemFilterType.FEED,
+      id: 10,
+      getRead: true,
     });
   });
 
-  describe('pagination', () => {
-    it('should support offset parameter for infinite scroll', () => {
-      // TODO: Implement with proper API client mocking
-      expect(true).toBe(true);
-    });
+  it('raises AuthenticationError and clears stale sessions on 401', async () => {
+    server.use(
+      http.get('/api/items', () => HttpResponse.json({ detail: 'Unauthorized' }, { status: 401 })),
+    );
 
-    it('should support custom batch sizes', () => {
-      // TODO: Implement with proper API client mocking
-      expect(true).toBe(true);
-    });
+    await expect(itemsApi.get()).rejects.toBeInstanceOf(AuthenticationError);
+    expect(localStorage.getItem(CONFIG.SESSION_KEY)).toBeNull();
   });
 
-  describe('filtering', () => {
-    it('should support getRead=true for showing all items', () => {
-      // TODO: Implement with proper API client mocking
-      expect(true).toBe(true);
-    });
+  it('maps network failures to NetworkError', async () => {
+    server.use(http.get('/api/items', () => HttpResponse.error()));
 
-    it('should support feed filtering with type=0', () => {
-      // TODO: Implement with proper API client mocking
-      expect(true).toBe(true);
-    });
+    await expect(itemsApi.get({}, { noRetry: true })).rejects.toBeInstanceOf(NetworkError);
   });
 
-  describe('error handling', () => {
-    it('should handle 401 Unauthorized', () => {
-      // TODO: Implement with proper API client mocking
-      expect(true).toBe(true);
-    });
+  it('retries transient API failures before returning items', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let attempts = 0;
+    server.use(
+      http.get('/api/items', () => {
+        attempts += 1;
+        if (attempts === 1) {
+          return HttpResponse.json({ detail: 'temporary' }, { status: 500 });
+        }
+        return HttpResponse.json({ items: [buildApiArticle({ id: 202 })] });
+      }),
+    );
 
-    it('should handle network errors', () => {
-      // TODO: Implement with proper API client mocking
-      expect(true).toBe(true);
-    });
+    const items = await itemsApi.get({}, { maxRetries: 1 });
 
-    it('should implement exponential backoff on retries', () => {
-      // Test will verify retry logic with increasing delays
-      // Placeholder for retry mechanism test
-      expect(true).toBe(true);
-    });
+    expect(attempts).toBe(2);
+    expect(items[0]?.id).toBe(202);
+  });
+
+  it('surfaces non-retryable API errors', async () => {
+    server.use(
+      http.get('/api/items', () => HttpResponse.json({ detail: 'bad request' }, { status: 400 })),
+    );
+
+    await expect(itemsApi.get()).rejects.toBeInstanceOf(ApiError);
   });
 });
 
-describe('aggregateUnreadCounts', () => {
-  it('should count unread items per feed', () => {
-    const items = [
-      {
-        id: 1,
-        feedId: 10,
-        unread: true,
-        starred: false,
-        title: 'Item 1',
-        guid: 'guid1',
-        guidHash: 'hash1',
-      } as any,
-      {
-        id: 2,
-        feedId: 10,
-        unread: true,
-        starred: false,
-        title: 'Item 2',
-        guid: 'guid2',
-        guidHash: 'hash2',
-      } as any,
-      {
-        id: 3,
-        feedId: 20,
-        unread: true,
-        starred: false,
-        title: 'Item 3',
-        guid: 'guid3',
-        guidHash: 'hash3',
-      } as any,
-      {
-        id: 4,
-        feedId: 10,
-        unread: false,
-        starred: false,
-        title: 'Item 4',
-        guid: 'guid4',
-        guidHash: 'hash4',
-      } as any,
-    ];
-
-    const feeds = [
-      {
-        id: 10,
-        title: 'Feed 1',
-        url: 'https://example.com/feed1',
-        enabled: true,
-        unreadCount: 0,
-      } as any,
-      {
-        id: 20,
-        title: 'Feed 2',
-        url: 'https://example.com/feed2',
-        enabled: true,
-        unreadCount: 0,
-      } as any,
-    ];
-
-    const counts = aggregateUnreadCounts(items, feeds, []);
-
-    expect(counts.feeds.find((f) => f.id === 10)?.unreadCount).toBe(2);
-    expect(counts.feeds.find((f) => f.id === 20)?.unreadCount).toBe(1);
-    expect(counts.totalUnread).toBe(3);
+describe('itemsApi.getContent', () => {
+  beforeEach(() => {
+    clearSession();
+    storeTestSession();
   });
 
-  it('should aggregate unread counts by folder', () => {
-    const items = [
-      {
-        id: 1,
-        feedId: 10,
-        unread: true,
-        starred: false,
-        title: 'Item 1',
-        guid: 'guid1',
-        guidHash: 'hash1',
-      } as any,
-      {
-        id: 2,
-        feedId: 20,
-        unread: true,
-        starred: false,
-        title: 'Item 2',
-        guid: 'guid2',
-        guidHash: 'hash2',
-      } as any,
-    ];
-
-    const feeds = [
-      { id: 10, folderId: 1, title: 'Feed 1', url: 'https://example.com/feed1' } as any,
-      { id: 20, folderId: 1, title: 'Feed 2', url: 'https://example.com/feed2' } as any,
-    ];
-
-    const counts = aggregateUnreadCounts(items, feeds, []);
-
-    // Both feeds in folder 1 should have unread items
-    expect(counts.totalUnread).toBe(2);
+  afterEach(() => {
+    clearSession();
   });
 
-  it('should handle items without feed associations', () => {
-    const items = [
-      {
-        id: 1,
-        feedId: 999,
-        unread: true,
-        starred: false,
-        title: 'Orphan',
-        guid: 'guid1',
-        guidHash: 'hash1',
-      } as any,
-    ];
+  it('returns sanitized article content from JSON responses', async () => {
+    server.use(
+      http.get('/api/items/:id/content', () =>
+        HttpResponse.text(
+          JSON.stringify({
+            content:
+              '<h2 onclick="alert(1)">Safe</h2><script>alert(1)</script><a href="javascript:alert(1)">bad</a><a href="https://example.com">good</a>',
+          }),
+        ),
+      ),
+    );
 
-    const counts = aggregateUnreadCounts(items, [], []);
+    const content = await itemsApi.getContent(100);
 
-    expect(counts.totalUnread).toBe(1);
+    expect(content).toContain('<h2>Safe</h2>');
+    expect(content).not.toContain('script');
+    expect(content).not.toContain('onclick');
+    expect(content).not.toContain('javascript:');
+    expect(content).toContain('href="https://example.com"');
+    expect(content).toContain('rel="noopener noreferrer"');
   });
 
-  it('should return zero counts for empty items array', () => {
-    const counts = aggregateUnreadCounts([], [], []);
+  it('returns null for missing content resources', async () => {
+    server.use(
+      http.get('/api/items/:id/content', () =>
+        HttpResponse.json({ detail: 'missing' }, { status: 404 }),
+      ),
+    );
 
-    expect(counts.totalUnread).toBe(0);
-    expect(counts.feeds).toHaveLength(0);
-    expect(counts.folders).toHaveLength(0);
+    await expect(itemsApi.getContent(404)).resolves.toBeNull();
+  });
+});
+
+describe('sanitizeArticleHtml', () => {
+  it('keeps safe article markup and strips active content', () => {
+    const sanitized = sanitizeArticleHtml(
+      '<p style="color:red">Hello <strong>reader</strong></p><img src="https://example.com/a.png" onerror="alert(1)"><iframe src="https://evil.example"></iframe><form><input value="x"></form>',
+    );
+
+    expect(sanitized).toContain('<p>Hello <strong>reader</strong></p>');
+    expect(sanitized).toContain('<img src="https://example.com/a.png">');
+    expect(sanitized).not.toContain('style=');
+    expect(sanitized).not.toContain('onerror');
+    expect(sanitized).not.toContain('iframe');
+    expect(sanitized).not.toContain('<form>');
+    expect(sanitized).not.toContain('<input');
   });
 });

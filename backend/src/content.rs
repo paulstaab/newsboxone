@@ -1061,6 +1061,7 @@ mod tests {
             openai_model: "gpt-5-nano".to_string(),
             openai_timeout_seconds: 30,
             testing_mode: true,
+            cors_allowed_origins: Vec::new(),
         };
 
         let enriched = enrich_article_content(
