@@ -176,7 +176,10 @@ function stripHtmlTagsFallback(html: string): string {
       break;
     }
 
-    const tagContent = html.slice(index + 1, cursor).trim().toLowerCase();
+    const tagContent = html
+      .slice(index + 1, cursor)
+      .trim()
+      .toLowerCase();
     const isClosingTag = tagContent.startsWith('/');
     const tagName = tagContent.replace(/^\/+/, '').split(/\s|\//, 1)[0];
 
