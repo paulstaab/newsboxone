@@ -4,7 +4,7 @@ import { itemsApi, sanitizeArticleHtml } from '@/lib/api/items';
 import { ApiError, AuthenticationError, NetworkError } from '@/lib/api/client';
 import { CONFIG } from '@/lib/config/env';
 import { clearSession, storeSession } from '@/lib/storage';
-import { ItemFilterType } from '@/types';
+import { ItemFilterType, normalizeArticle } from '@/types';
 import { buildApiArticle } from '../../fixtures/apiBuilders';
 import { server } from '../../mocks/server';
 
@@ -171,5 +171,39 @@ describe('sanitizeArticleHtml', () => {
     expect(sanitized).not.toContain('iframe');
     expect(sanitized).not.toContain('<form>');
     expect(sanitized).not.toContain('<input');
+  });
+
+  it('drops unterminated tag content in the non-DOM fallback', () => {
+    const globals = globalThis as unknown as {
+      DOMParser: typeof DOMParser | undefined;
+      document: Document | undefined;
+    };
+    const originalDomParser = globals.DOMParser;
+    const originalDocument = globals.document;
+
+    try {
+      globals.DOMParser = undefined;
+      globals.document = undefined;
+
+      const sanitized = sanitizeArticleHtml('<p>Safe</p><script>alert(1)');
+
+      expect(sanitized).toBe('Safe');
+      expect(sanitized).not.toContain('<script');
+    } finally {
+      globals.DOMParser = originalDomParser;
+      globals.document = originalDocument;
+    }
+  });
+
+  it('sanitizes article bodies during API normalization', () => {
+    const article = normalizeArticle(
+      buildApiArticle({
+        body: '<p style="color:red">Safe <strong>body</strong></p><script>alert(1)</script>',
+      }),
+    );
+
+    expect(article.body).toContain('<p>Safe <strong>body</strong></p>');
+    expect(article.body).not.toContain('style=');
+    expect(article.body).not.toContain('script');
   });
 });

@@ -15,6 +15,7 @@ frontend/out/
 frontend/playwright-report/
 frontend/playwright-report-e2e/
 frontend/playwright-report-integration/
+frontend/playwright-report-visual/
 frontend/test-results/
 frontend/log/
 frontend/tsconfig.tsbuildinfo

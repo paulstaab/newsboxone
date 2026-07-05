@@ -1,4 +1,5 @@
 import type { FeedType } from './feed';
+import { sanitizeArticleHtml } from '@/lib/html/sanitizeArticleHtml';
 
 /**
  * Individual news item from a feed; primary content displayed in timeline.
@@ -172,7 +173,7 @@ export function normalizeArticle(api: ApiArticle): Article {
     title: api.title ?? '(No title)',
     author: api.author ?? '',
     url: api.url ?? '',
-    body: api.body ?? '',
+    body: sanitizeArticleHtml(api.body ?? ''),
     feedId: api.feedId,
     folderId: api.folderId ?? null,
     unread: api.unread,
