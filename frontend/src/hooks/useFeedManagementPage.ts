@@ -189,8 +189,7 @@ export function useFeedManagementPage() {
 
         const feeds = await api.feeds.discover(trimmedUrl);
         if (feeds.length === 0) {
-          setNewFeedDialogError('No RSS or Atom feeds were found for this website.');
-          return;
+          throw new Error('No RSS or Atom feeds were found for this website.');
         }
 
         if (feeds.length === 1) {
