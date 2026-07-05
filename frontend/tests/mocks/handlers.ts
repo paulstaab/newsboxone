@@ -316,6 +316,31 @@ export const handlers: HttpHandler[] = [
     return HttpResponse.json({ feeds: mockFeeds });
   }),
 
+  // POST /feeds/discover - discover embedded feeds
+  http.post(`${BASE_URL}/feeds/discover`, async ({ request }) => {
+    if (!isAuthorized(request)) {
+      return new HttpResponse(null, { status: 401 });
+    }
+    const body = (await request.json()) as { url: string };
+
+    if (body.url === 'https://multi.example.com') {
+      return HttpResponse.json({
+        feeds: [
+          { title: 'Multi RSS', url: 'https://multi.example.com/rss.xml' },
+          { title: 'Multi Atom', url: 'https://multi.example.com/atom.xml' },
+        ],
+      });
+    }
+
+    if (body.url === 'https://single.example.com') {
+      return HttpResponse.json({
+        feeds: [{ title: 'Single RSS', url: 'https://single.example.com/rss.xml' }],
+      });
+    }
+
+    return HttpResponse.json({ feeds: [] });
+  }),
+
   // POST /feeds - create feed
   http.post(`${BASE_URL}/feeds`, async ({ request }) => {
     if (!isAuthorized(request)) {
@@ -326,7 +351,14 @@ export const handlers: HttpHandler[] = [
       id: Math.floor(Math.random() * 1000) + 100,
       url: body.url,
       type: 'rss',
-      title: 'New Feed',
+      title:
+        body.url === 'https://single.example.com/rss.xml'
+          ? 'Single RSS'
+          : body.url === 'https://multi.example.com/atom.xml'
+            ? 'Multi Atom'
+            : body.url === 'https://multi.example.com/rss.xml'
+              ? 'Multi RSS'
+              : 'New Feed',
       faviconLink: null,
       added: Math.floor(Date.now() / 1000),
       lastArticleDate: null,

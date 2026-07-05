@@ -286,6 +286,23 @@ describe('ApiClient', () => {
       expect(result.feed).toHaveProperty('title');
     });
 
+    it('should discover embedded feeds for a website URL', async () => {
+      server.use(
+        http.post(`${BASE_URL}${API_PATH}/feeds/discover`, async ({ request }) => {
+          const body = (await request.json()) as { url: string };
+          expect(body.url).toBe('https://example.com');
+          return HttpResponse.json({
+            feeds: [{ title: 'Example RSS', url: 'https://example.com/rss.xml' }],
+          });
+        }),
+      );
+
+      const client = getApiClient();
+      await expect(client.feeds.discover('https://example.com')).resolves.toEqual([
+        { title: 'Example RSS', url: 'https://example.com/rss.xml' },
+      ]);
+    });
+
     it('should select the created feed from a full feed list response', async () => {
       server.use(
         http.post(`${BASE_URL}${API_PATH}/feeds`, () => {
@@ -599,6 +616,7 @@ describe('ApiClient', () => {
         feeds: {
           getAll: vi.fn().mockResolvedValue({ feeds: [], starredCount: 0, newestItemId: null }),
           create: vi.fn(),
+          discover: vi.fn(),
           delete: vi.fn(),
           move: vi.fn(),
           rename: vi.fn(),

@@ -32,6 +32,12 @@ pub struct FeedEntryIngestionContext<'a> {
     pub content_state: FeedContentState,
 }
 
+/// Parsed feed payload together with the original response body used for metadata fallbacks.
+pub struct ParsedFeedDocument {
+    pub feed: Feed,
+    pub body: Vec<u8>,
+}
+
 /// Counts and guid hashes collected while ingesting a parsed feed payload.
 #[derive(Debug, Default)]
 pub struct FeedIngestionStats {
@@ -94,6 +100,16 @@ pub async fn fetch_and_parse_feed_checked(
     url: &str,
     testing_mode: bool,
 ) -> std::result::Result<Feed, FeedFetchParseError> {
+    Ok(fetch_and_parse_feed_document_checked(url, testing_mode)
+        .await?
+        .feed)
+}
+
+/// Downloads a remote feed document, parses it, and returns the raw body for metadata fallbacks.
+pub async fn fetch_and_parse_feed_document_checked(
+    url: &str,
+    testing_mode: bool,
+) -> std::result::Result<ParsedFeedDocument, FeedFetchParseError> {
     let response = ssrf::get_with_safe_redirects(
         crate::http_client::HttpClientProfile::Feed,
         url,
@@ -106,7 +122,13 @@ pub async fn fetch_and_parse_feed_checked(
     }
 
     let bytes = response.bytes().await.map_err(FeedFetchParseError::Body)?;
-    feed_rs::parser::parse(&bytes[..]).map_err(|err| FeedFetchParseError::Parse(err.to_string()))
+    let feed = feed_rs::parser::parse(&bytes[..])
+        .map_err(|err| FeedFetchParseError::Parse(err.to_string()))?;
+
+    Ok(ParsedFeedDocument {
+        feed,
+        body: bytes.to_vec(),
+    })
 }
 
 /// Ingests the bounded entry set from one parsed feed payload.

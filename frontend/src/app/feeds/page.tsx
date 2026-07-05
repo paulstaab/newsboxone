@@ -85,6 +85,10 @@ function FeedManagementContent() {
     qualityDialogRef,
     newFeedUrl,
     setNewFeedUrl,
+    newFeedDialogError,
+    discoveredFeeds,
+    selectedDiscoveredFeedUrl,
+    setSelectedDiscoveredFeedUrl,
     newFeedFolderId,
     setNewFeedFolderId,
     newFolderName,
@@ -461,15 +465,15 @@ function FeedManagementContent() {
                   Add a feed to your reading queue
                 </h2>
                 <p className="max-w-xl text-sm leading-7 text-[hsl(var(--color-text-muted))]">
-                  Paste an RSS or Atom URL, then choose whether it should land in a folder or stay
-                  uncategorized.
+                  Paste a website, RSS, or Atom URL, then choose whether it should land in a folder
+                  or stay uncategorized.
                 </p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-[minmax(0,1.7fr)_minmax(220px,1fr)]">
                 <label className="flex flex-col gap-2 text-sm font-medium text-[hsl(var(--color-text))]">
                   <span className="text-[0.7rem] uppercase tracking-[0.18em] text-[hsl(var(--color-text-muted))]">
-                    Feed URL
+                    Website or Feed URL
                   </span>
                   <input
                     type="url"
@@ -477,7 +481,7 @@ function FeedManagementContent() {
                     onChange={(event) => {
                       setNewFeedUrl(event.target.value);
                     }}
-                    placeholder="https://example.com/feed.xml"
+                    placeholder="https://example.com"
                     className="rounded-2xl border border-white/10 bg-black/10 px-4 py-3 text-sm outline-none transition placeholder:text-[hsl(var(--color-text-muted))] focus:border-[hsl(var(--color-accent-strong))] focus:ring-2 focus:ring-[hsl(var(--color-accent-strong))]"
                     aria-label="Feed URL"
                   />
@@ -505,6 +509,47 @@ function FeedManagementContent() {
                 </label>
               </div>
 
+              {newFeedDialogError ? (
+                <div className="feed-management-alert feed-management-alert--error" role="alert">
+                  <p>{newFeedDialogError}</p>
+                </div>
+              ) : null}
+
+              {discoveredFeeds.length > 1 ? (
+                <fieldset className="space-y-3 rounded-2xl border border-white/10 bg-black/10 p-4">
+                  <legend className="px-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[hsl(var(--color-text-muted))]">
+                    Choose a discovered feed
+                  </legend>
+                  <div className="space-y-2">
+                    {discoveredFeeds.map((feed) => (
+                      <label
+                        key={feed.url}
+                        className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-[hsl(var(--color-surface))]/60 p-3 text-sm transition hover:border-[hsl(var(--color-accent-strong))]"
+                      >
+                        <input
+                          type="radio"
+                          name="discovered-feed-url"
+                          value={feed.url}
+                          checked={selectedDiscoveredFeedUrl === feed.url}
+                          onChange={(event) => {
+                            setSelectedDiscoveredFeedUrl(event.target.value);
+                          }}
+                          className="mt-1 h-4 w-4 accent-[hsl(var(--color-accent-strong))]"
+                        />
+                        <span className="min-w-0 space-y-1">
+                          <span className="block font-medium text-[hsl(var(--color-text))]">
+                            {feed.title ?? 'Untitled feed'}
+                          </span>
+                          <span className="block break-all text-xs leading-5 text-[hsl(var(--color-text-muted))]">
+                            {feed.url}
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              ) : null}
+
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
@@ -518,7 +563,11 @@ function FeedManagementContent() {
                   disabled={busyLabel !== null}
                   className="rounded-full bg-[hsl(var(--color-accent-strong))] px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--color-accent-strong))] focus:ring-offset-2 focus:ring-offset-[hsl(var(--color-surface-muted))] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {busyLabel === 'Subscribe feed' ? 'Subscribing...' : 'Subscribe'}
+                  {busyLabel === 'Subscribe feed'
+                    ? 'Subscribing...'
+                    : discoveredFeeds.length > 1
+                      ? 'Subscribe to selected feed'
+                      : 'Subscribe'}
                 </button>
               </div>
             </form>

@@ -65,6 +65,10 @@ fn protected_router(state_for_middleware: AppState) -> Router<AppState> {
         .route("/feeds", get(feeds::get_feeds))
         .route("/feeds", axum::routing::post(feeds::add_feed))
         .route(
+            "/feeds/discover",
+            axum::routing::post(feeds::discover_feeds),
+        )
+        .route(
             "/feeds/{feed_id}",
             axum::routing::delete(feeds::delete_feed),
         )

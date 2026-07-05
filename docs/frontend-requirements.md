@@ -107,6 +107,8 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 - `FEEDS-004`: The page shall provide a subscription form in a modal that accepts a feed URL and allows selecting an optional destination folder before submission.
 - `FEEDS-005`: Successful subscription shall add the feed to the selected folder, or to an uncategorized group when no folder is selected.
 - `FEEDS-006`: Failed subscription attempts shall preserve the user input and show actionable error feedback without removing the current page data.
+- `FEEDS-006a`: When the subscription form receives a URL that does not look like a direct RSS or Atom feed URL, the page shall discover embedded RSS/Atom feeds before creating a subscription.
+- `FEEDS-006b`: If discovery returns one feed, the page shall subscribe automatically; if discovery returns multiple feeds, the dialog shall show title-and-URL choices and subscribe only after the user selects one.
 - `FEEDS-007`: The page shall group subscribed feeds by folder in a table and shall show feeds without a folder assignment in an `Uncategorized` group.
 - `FEEDS-008`: Feed groups and feed rows shall be ordered alphabetically by displayed name.
 - `FEEDS-009`: Each feed row shall display the feed title as the feed name without exposing the internal feed ID, the last article date relative to the current time, a dedicated status indicator, and row actions in separate table columns.

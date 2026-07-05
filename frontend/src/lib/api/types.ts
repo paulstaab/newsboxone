@@ -1,6 +1,11 @@
 import type { Article, Feed, Folder, ItemsQueryParams, ItemFilterType } from '@/types';
 import type { ApiRequestOptions } from './client';
 
+export interface DiscoveredFeed {
+  title: string | null;
+  url: string;
+}
+
 /**
  * Version response from the public API.
  */
@@ -22,6 +27,7 @@ export interface FeedsApi {
     url: string,
     folderId?: number | null,
   ): Promise<{ feed: Feed; newestItemId: number | null }>;
+  discover(url: string): Promise<DiscoveredFeed[]>;
   delete(feedId: number): Promise<void>;
   move(feedId: number, folderId: number | null): Promise<void>;
   rename(feedId: number, feedTitle: string): Promise<void>;
