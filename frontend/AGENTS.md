@@ -2,8 +2,11 @@
 
 ## Purpose
 
-This file is the single source of truth for repository-specific coding instructions.
-Use it for any automated or agent-driven work in this repository.
+This file defines mandatory frontend-specific policy for coding agents.
+It is intentionally concise to reduce token load.
+
+Follow `../AGENTS.md` first for shared repository policy.
+Use `../.agent/frontend-reference.md` for optional frontend details.
 
 ## Project Overview
 
@@ -40,58 +43,6 @@ Rules:
 - When the user asks for documentation updates, do not stop at code changes; keep the docs in sync as part of the request.
 - If you notice the docs are materially out of sync with the code while working on a related area, fix them.
 
-## Repository Structure
-
-```text
-src/
-  app/              # Next.js App Router pages
-  components/       # UI components
-  hooks/            # React hooks
-  lib/              # API clients, storage, config, utilities
-  styles/           # Global styles and design tokens
-  types/            # Shared TypeScript types
-tests/
-  integration/      # Playwright frontend integration suites with mocked API
-  unit/             # Vitest unit tests
-  visual/           # Visual regression suites
-public/             # Static assets, manifest, service worker assets
-docs/               # Maintained lightweight requirements and test docs
-scripts/            # Helper scripts, including screenshot capture
-```
-
-## Current Stack
-
-- TypeScript 5.9
-- Node.js 26+
-- Next.js 16 App Router
-- React 19
-- SWR 2.x
-- Tailwind CSS 4.1
-- date-fns 4.1
-- Playwright
-- Vitest
-- Testing Library
-- MSW
-
-For the maintained stack description, see `../docs/tech-stack.md`.
-
-## Commands
-
-- `npm run dev` - start the dev server
-- `npm run build` - build the app
-- `npm run start` - start the production server
-- `npm run lint` - run ESLint
-- `npm run lint:fix` - run ESLint with fixes
-- `npm run typecheck` - run TypeScript checks
-- `npm run format` - run Prettier write
-- `npm run format:check` - run Prettier check
-- `npm run test` - run unit tests
-- `npm run test:integration` - run Playwright frontend integration tests with mocked API
-- `npm run test:visual` - run visual regression suites
-- `npm run test:coverage` - run unit tests with coverage
-- `npm run test:e2e` - run root Playwright live-backend e2e tests
-- `npm run test:e2e:ui` - run root Playwright live-backend e2e tests in UI mode
-
 ## Working Expectations
 
 - Prefer `rg` for searching files and text.
@@ -108,19 +59,10 @@ For the maintained stack description, see `../docs/tech-stack.md`.
 - After significant combined-product behavior changes, also run `npm run test:e2e`.
 - If you do not run a relevant test suite, say so clearly.
 
-## Screenshots
-
-Use these scripts when screenshots are needed:
-
-- `./scripts/capture-timeline.sh`
-- `./scripts/capture-feeds.sh`
-- `./scripts/capture-login-page.sh`
-
-These require network access and must run outside restricted sandboxes when applicable.
-
 ## Related Docs
 
 - `../docs/frontend-requirements.md`
 - `../docs/frontend-test-cases.md`
 - `../docs/e2e-test-cases.md`
 - `../docs/tech-stack.md`
+- `../.agent/frontend-reference.md`

@@ -1,8 +1,11 @@
 # AGENTS.md
 
 ## Purpose
-This file defines how coding agents and contributors should work in this repository.
-It combines workflow guidance with implementation-aware project conventions.
+This file defines mandatory backend-specific policy for coding agents.
+It is intentionally concise to reduce token load.
+
+Follow `../AGENTS.md` first for shared repository policy.
+Use `../.agent/backend-reference.md` for optional backend details.
 
 ## Project Summary
 - `headless-rss` is a self-hosted RSS/Atom aggregator.
@@ -59,75 +62,26 @@ It combines workflow guidance with implementation-aware project conventions.
 - `add-email-credentials` must validate mailbox connectivity before persisting credentials.
 
 ## Required Workflow
-1. Bootstrap
-- Ensure the Rust toolchain is available.
-- Run `cargo fetch` if dependencies have not been downloaded yet.
+1. Develop
+- Keep requirements and test cases updated in the same task (see Documentation Sync Policy).
+- Add backend unit tests whenever practical for behavior coverage.
+- Preserve documented API behavior unless the task explicitly changes it.
+- Add or update rustdoc comments when adding or substantially changing modules or functions.
 
-2. Develop
-- Always keep requirements and test cases updated - see Documentation Sync Policy.
-- Create backend unit tests whenever practical for local behavior coverage, even though unit-test inventories are not tracked in `../docs/`.
-- Prefer small, focused changes.
-- Preserve documented API behavior and response contracts unless the task explicitly changes them.
-- When manual runtime validation is needed, start the API server from the CLI and keep it running in the background while testing.
-  - Preferred command: `cargo run -- serve --host 127.0.0.1 --port 8000`
-  - If the default bind address is acceptable, `cargo run` is also valid.
-- The local server should listen on `http://localhost:8000`.
-- When finished, update the rustdoc comments for touched modules and functions if necessary. Also document reasons for implementation decisions there.
+2. Validate after changes
+- `cargo fmt --all -- --check`
+- `cargo clippy --all-targets --all-features -- -D warnings`
+- `cargo test --all-targets --all-features`
+- `cargo run -- --help`
+- `cargo run -- update`
 
-3. Validate after changes
-- Run formatting checks from the CLI:
-  - `cargo fmt --all -- --check`
-- Run lint from the CLI:
-  - `cargo clippy --all-targets --all-features -- -D warnings`
-- Run the full test suite from the CLI:
-  - `cargo test --all-targets --all-features`
-- Validate CLI:
-  - `cargo run -- --help`
-  - `cargo run -- update`
-
-4. Optional end-to-end smoke test
-- Start server:
-  - `cargo run -- serve --host 127.0.0.1 --port 8000`
-- Verify:
-  - `curl http://localhost:8000/api/status`
-  - `docker build -t newsboxone:local ..`
-  - `docker run --rm -p 8000:8000 newsboxone:local`
-  - `curl http://localhost:8000/api/feeds`
-  - `curl http://localhost:8000/api/folders`
-  - `curl http://localhost:8000/api/version`
-
-## Repository Structure
-```
-.
-├── .devcontainer/          # VS Code dev container configuration
-├── .github/                # GitHub workflows and config
-├── .pre-commit-config.yaml # Pre-commit hooks (Rust formatting/linting)
-├── Dockerfile              # Container build definition
-├── README.md               # Project overview and local usage
-├── Cargo.toml              # Rust project manifest
-├── Cargo.lock              # Locked Rust dependencies
-├── data/                   # SQLite database location
-├── docker/                 # Docker-related scripts
-├── docs/                   # Requirements, contracts, and test catalogs
-├── migrations/             # SQLx migrations
-├── src/                    # Main Rust application code
-├── tests/                  # Rust test suite
-└── vendor/                 # Vendored crates and assets
-```
-
-## Key API Endpoints
-- `/api/status` for health checks.
-- `/api/feeds` for public feed operations in the combined product.
-- `/api/folders` for public folder operations in the combined product.
-- `/api/items` for public item operations in the combined product.
+3. Report validation
+- If you skip a relevant validation step, state it clearly.
 
 ## Environment and Storage
 - `USERNAME` and `PASSWORD` are optional and enable HTTP Basic auth only when both are set.
 - By default, SQLite data lives at `data/headless-rss.sqlite3` (or `../data/headless-rss.sqlite3` depending on the working directory). This can be overridden via the `DATABASE_PATH` environment variable.
 - SQLx migrations are applied automatically on startup.
-
-## Troubleshooting
-- If tests fail due to database state, remove the SQLite database at the effective path (the value of `DATABASE_PATH` if set, otherwise the default such as `data/headless-rss.sqlite3*`) and rerun the relevant command or restart the server.
 
 ## Documentation Sync Policy
 When implementing fixes, refactors, or new features, keep documentation synchronized in the same change:
@@ -158,17 +112,9 @@ Rules:
 
 ## Useful Paths
 - App entrypoint: `src/main.rs`
-- API router composition:
-  - `src/api.rs`
-- Core domain modules:
-  - `src/article_store.rs`
-  - `src/content.rs`
-  - `src/email.rs`
-  - `src/email_credentials.rs`
-  - `src/repo.rs`
-  - `src/updater.rs`
-- CLI: `src/main.rs`
+- API router composition: `src/api.rs`
 - Tests: `tests/`
+- Optional reference details: `../.agent/backend-reference.md`
 
 ## Notes for Agents
 - Prefer behavior-preserving edits unless the task explicitly requests behavior changes.
