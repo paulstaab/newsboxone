@@ -1,7 +1,7 @@
 # Shared Reference (Optional Detail)
 
 Use this file for low-frequency shared reference details.
-Mandatory rules are in `/AGENTS.md`.
+Mandatory rules are in `/.agent/policy-shared.md` (with routing entrypoint in `/AGENTS.md`).
 
 ## Shared Infrastructure Ownership
 
