@@ -153,6 +153,25 @@ Most users can ignore the repository structure, but for contributors:
 - `docker/`: nginx and container startup scripts
 - `docs/`: requirements, API contract, and test catalogs
 
+## Agent Instruction Map
+
+Repository instruction entrypoint:
+
+- `.github/copilot-instructions.md` -> `AGENTS.md`
+
+Mandatory policy files:
+
+- `.agent/policy-shared.md` for shared cross-stack must-follow policy
+- `backend/AGENTS.md` for backend-only mandatory policy
+- `frontend/AGENTS.md` for frontend-only mandatory policy
+
+Reference-only files (token-saving detail):
+
+- `.agent/shared-reference.md`
+- `.agent/backend-reference.md`
+- `.agent/frontend-reference.md`
+- `.agent/README.md`
+
 ## License
 
 MIT. See `LICENSE`.
