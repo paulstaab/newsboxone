@@ -59,8 +59,7 @@
     {
       "label": "Frontend: Update Dependencies",
       "type": "shell",
-      "command": "npm update",
-      "options": {
+      "command": "npm update --package-lock-only",
         "cwd": "${workspaceFolder}/frontend"
       },
       "problemMatcher": []
