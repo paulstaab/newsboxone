@@ -41,6 +41,13 @@ updates:
     assignees:
       - paulstaab
     groups:
+      typescript:
+        patterns:
+          - 'typescript'
+          - '@types/*'
       everything:
         patterns:
           - '*'
+        exclude-patterns:
+          - 'typescript'
+          - '@types/*'
