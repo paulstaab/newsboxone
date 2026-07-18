@@ -57,6 +57,15 @@
       "problemMatcher": []
     },
     {
+      "label": "Frontend: Update Dependencies",
+      "type": "shell",
+      "command": "npm update",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Frontend: Lint",
       "type": "shell",
       "command": "npm run format:check && npm run lint && npm run typecheck",
