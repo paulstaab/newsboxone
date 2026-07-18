@@ -5,21 +5,27 @@
 
   .timeline-header__inner {
     grid-template-columns: 1fr;
-    gap: var(--space-4);
-    padding: var(--space-6) 0 var(--space-4);
+    gap: var(--space-3);
+    padding: var(--space-5) 4rem var(--space-3) 0;
   }
 
   .timeline-header__stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    width: 100%;
+    display: none;
   }
 
-  .timeline-header__stats > div {
-    padding: var(--space-3);
+  .app-menu {
+    top: calc(var(--space-3) + env(safe-area-inset-top, 0px)) !important;
+    right: var(--space-3) !important;
   }
 
-  .timeline-header__stat-value {
-    font-size: var(--font-size-xl);
+  .app-menu__button {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .app-menu__panel {
+    top: calc(100% + var(--space-2));
+    right: 0;
   }
 
   .folder-queue-dock {
