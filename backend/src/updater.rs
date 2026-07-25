@@ -492,7 +492,7 @@ mod tests {
             feed_update_frequency_min: 15,
             openai_api_key: None,
             openai_base_url: "https://api.openai.com/v1".to_string(),
-            openai_model: "gpt-5-nano".to_string(),
+            openai_model: "gpt-5.6-luna".to_string(),
             openai_timeout_seconds: 30,
             testing_mode: true,
             cors_allowed_origins: Vec::new(),

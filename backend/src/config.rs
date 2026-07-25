@@ -29,7 +29,7 @@ impl Config {
             openai_api_key: get_env_str("OPENAI_API_KEY"),
             openai_base_url: env::var("OPENAI_BASE_URL")
                 .unwrap_or_else(|_| "https://api.openai.com/v1".to_string()),
-            openai_model: env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-5-nano".to_string()),
+            openai_model: env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-5.6-luna".to_string()),
             openai_timeout_seconds: get_env_u64("OPENAI_TIMEOUT_SECONDS", 30),
             testing_mode: env::var("TESTING_MODE")
                 .ok()

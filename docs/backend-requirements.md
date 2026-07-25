@@ -193,7 +193,7 @@ The same requirements apply to all implementations.
 
 - `CFG-001`: Runtime configuration shall be sourced from environment variables.
 - `CFG-002`: Supported variables shall include authentication settings, feed update frequency, service version, CORS allowed origins, and provider-specific LLM configuration including request timeout.
-- `CFG-003`: Defaults shall include `VERSION=dev`, `FEED_UPDATE_FREQUENCY_MIN=15`, `OPENAI_TIMEOUT_SECONDS=30`, and a default LLM model identifier.
+- `CFG-003`: Defaults shall include `VERSION=dev`, `FEED_UPDATE_FREQUENCY_MIN=15`, `OPENAI_MODEL=gpt-5.6-luna`, and `OPENAI_TIMEOUT_SECONDS=30`.
 
 ### CLI
 
