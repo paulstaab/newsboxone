@@ -30,7 +30,7 @@ impl Config {
             openai_base_url: env::var("OPENAI_BASE_URL")
                 .unwrap_or_else(|_| "https://api.openai.com/v1".to_string()),
             openai_model: env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-5-nano".to_string()),
-            openai_timeout_seconds: get_env_u64("OPENAI_TIMEOUT_SECONDS", 30),
+            openai_timeout_seconds: get_env_u64("OPENAI_TIMEOUT_SECONDS", 60),
             testing_mode: env::var("TESTING_MODE")
                 .ok()
                 .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))

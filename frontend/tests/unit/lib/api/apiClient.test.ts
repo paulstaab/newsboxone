@@ -617,6 +617,7 @@ describe('ApiClient', () => {
           getAll: vi.fn().mockResolvedValue({ feeds: [], starredCount: 0, newestItemId: null }),
           create: vi.fn(),
           discover: vi.fn(),
+          recommend: vi.fn(),
           delete: vi.fn(),
           move: vi.fn(),
           rename: vi.fn(),

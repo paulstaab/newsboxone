@@ -111,6 +111,15 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 - `FEEDS-006`: Failed subscription attempts shall preserve the user input and show actionable error feedback without removing the current page data.
 - `FEEDS-006a`: When the subscription form receives a URL that does not look like a direct RSS or Atom feed URL, the page shall discover embedded RSS/Atom feeds before creating a subscription.
 - `FEEDS-006b`: If discovery returns one feed, the page shall subscribe automatically; if discovery returns multiple feeds, the dialog shall show title-and-URL choices and subscribe only after the user selects one.
+- `FEEDS-006c`: The feed management page shall expose a `Discover feeds` action that opens a focused recommendation modal.
+- `FEEDS-006d`: The recommendation modal shall generate RSS/Atom recommendations only after explicit user action and shall not auto-load recommendations when the page opens.
+- `FEEDS-006e`: While recommendations are being generated, the modal shall show simple progress stages for analyzing subscriptions, finding feeds, and verifying feeds.
+- `FEEDS-006f`: Closing the recommendation modal while generation is in progress shall abort or ignore the in-flight request without mutating page state.
+- `FEEDS-006g`: Feed recommendations shall show the recommended feed title, URL, source site when available, topics when available, and a short AI-generated reason before the user subscribes.
+- `FEEDS-006h`: Activating a recommendation shall open the normal subscription confirmation flow with the verified URL fixed, allow choosing a destination folder, and create the feed only after explicit confirmation.
+- `FEEDS-006i`: After a successful subscription from the recommendation modal, the modal shall remain open, remove the subscribed recommendation from the visible results, and refresh the feed list.
+- `FEEDS-006j`: Regenerating recommendations from the modal shall replace the current recommendation results rather than appending to them.
+- `FEEDS-006k`: If recommendations are unavailable, insufficient subscriptions exist, or no verified candidates are found, the page shall show a non-blocking empty state and keep normal feed management usable; unexpected generation failures shall show a visible error.
 - `FEEDS-007`: The page shall group subscribed feeds by folder in a table and shall show feeds without a folder assignment in an `Uncategorized` group.
 - `FEEDS-008`: Feed groups and feed rows shall be ordered alphabetically by displayed name.
 - `FEEDS-009`: Each feed row shall display the feed title as the feed name without exposing the internal feed ID, the last article date relative to the current time, a dedicated status indicator, and row actions in separate table columns.

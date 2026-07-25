@@ -152,6 +152,38 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "422":
           $ref: "#/components/responses/ValidationError"
+  /api/feeds/recommendations:
+    post:
+      tags: [Feeds]
+      summary: Recommend new RSS or Atom feeds from current subscriptions
+      description: |
+        Uses the configured OpenAI-compatible LLM to generate verified RSS/Atom
+        feed candidates from the authenticated user's current regular feed
+        subscriptions and recent article titles. Newsletter/mailing-list feeds are
+        excluded from recommendation context, and no subscription is created by
+        this call.
+      operationId: recommendFeeds
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecommendFeedsRequest"
+      responses:
+        "200":
+          description: Recommended feed candidates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendFeedsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
   /api/feeds/{feedId}:
     delete:
       tags: [Feeds]
@@ -981,6 +1013,62 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DiscoveredFeed"
+    RecommendFeedsRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 10
+          description: Maximum number of verified recommendations to return.
+    RecommendedFeed:
+      type: object
+      additionalProperties: false
+      required: [title, url, siteUrl, reason, topics, latestArticleDate]
+      properties:
+        title:
+          type: string
+        url:
+          type: string
+          description: Verified RSS or Atom feed URL that can be submitted to `POST /api/feeds`.
+        siteUrl:
+          type:
+            - string
+            - "null"
+          description: Human-facing source website URL when available.
+        reason:
+          type: string
+          description: Short AI-generated reason this feed matches current subscriptions.
+        topics:
+          type: array
+          items:
+            type: string
+        latestArticleDate:
+          type:
+            - integer
+            - "null"
+          description: Unix timestamp in seconds for the newest parsed candidate article when available.
+    RecommendFeedsResponse:
+      type: object
+      additionalProperties: false
+      required: [feeds, reason, generatedAt]
+      properties:
+        feeds:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecommendedFeed"
+        reason:
+          type:
+            - string
+            - "null"
+          description: User-safe explanation when no recommendations are returned.
+        generatedAt:
+          type:
+            - integer
+            - "null"
+          description: Unix timestamp in seconds when the recommendation set was generated.
     CreateFeedResponse:
       type: object
       additionalProperties: false

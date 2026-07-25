@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { isLikelyDirectFeedUrl } from '@/lib/feeds/feedDiscovery';
-import type { DiscoveredFeed } from '@/lib/api/types';
+import type { DiscoveredFeed, RecommendedFeed } from '@/lib/api/types';
 import { type Feed, type Folder } from '@/types';
 import {
   buildFeedManagementGroups,
@@ -51,6 +51,7 @@ export function useFeedManagementPage() {
     createFeedDialogRef,
     createFolderDialogRef,
     qualityDialogRef,
+    discoveryDialogRef,
     openCreateFeedDialog,
     closeCreateFeedDialog,
   } = useFeedManagementDialogs();
@@ -81,6 +82,14 @@ export function useFeedManagementPage() {
   const [discoveredFeeds, setDiscoveredFeeds] = useState<DiscoveredFeed[]>([]);
   const [selectedDiscoveredFeedUrl, setSelectedDiscoveredFeedUrl] = useState('');
   const [newFeedFolderId, setNewFeedFolderId] = useState('');
+  const [recommendationSubscribeUrl, setRecommendationSubscribeUrl] = useState<string | null>(null);
+  const [recommendedFeeds, setRecommendedFeeds] = useState<RecommendedFeed[]>([]);
+  const [recommendationReason, setRecommendationReason] = useState<string | null>(null);
+  const [recommendationError, setRecommendationError] = useState<string | null>(null);
+  const [isGeneratingRecommendations, setIsGeneratingRecommendations] = useState(false);
+  const [recommendationProgress, setRecommendationProgress] = useState('');
+  const recommendationAbortRef = useRef<AbortController | null>(null);
+  const recommendationProgressTimersRef = useRef<number[]>([]);
   const [newFolderName, setNewFolderName] = useState('');
   const [editingFolderId, setEditingFolderId] = useState<number | null>(null);
   const [editingFolderName, setEditingFolderName] = useState('');
@@ -115,13 +124,95 @@ export function useFeedManagementPage() {
 
   const openNewFeedDialog = useCallback(() => {
     resetFeedDiscovery();
+    setRecommendationSubscribeUrl(null);
     openCreateFeedDialog();
   }, [openCreateFeedDialog, resetFeedDiscovery]);
 
   const closeNewFeedDialog = useCallback(() => {
     closeCreateFeedDialog();
     resetFeedDiscovery();
+    setRecommendationSubscribeUrl(null);
   }, [closeCreateFeedDialog, resetFeedDiscovery]);
+
+  const clearRecommendationProgressTimers = useCallback(() => {
+    for (const timer of recommendationProgressTimersRef.current) {
+      window.clearTimeout(timer);
+    }
+    recommendationProgressTimersRef.current = [];
+  }, []);
+
+  const closeDiscoveryDialog = useCallback(() => {
+    recommendationAbortRef.current?.abort();
+    recommendationAbortRef.current = null;
+    clearRecommendationProgressTimers();
+    setIsGeneratingRecommendations(false);
+    discoveryDialogRef.current?.close();
+  }, [clearRecommendationProgressTimers, discoveryDialogRef]);
+
+  const openDiscoveryDialog = useCallback(() => {
+    setRecommendationError(null);
+    setRecommendationReason(null);
+    discoveryDialogRef.current?.showModal();
+  }, [discoveryDialogRef]);
+
+  const openRecommendationSubscribeDialog = useCallback(
+    (feed: RecommendedFeed) => {
+      resetFeedDiscovery();
+      setRecommendationSubscribeUrl(feed.url);
+      setNewFeedUrlState(feed.url);
+      discoveryDialogRef.current?.close();
+      openCreateFeedDialog();
+    },
+    [discoveryDialogRef, openCreateFeedDialog, resetFeedDiscovery],
+  );
+
+  const handleGenerateRecommendations = useCallback(async () => {
+    recommendationAbortRef.current?.abort();
+    const controller = new AbortController();
+    recommendationAbortRef.current = controller;
+    clearRecommendationProgressTimers();
+    setIsGeneratingRecommendations(true);
+    setRecommendationError(null);
+    setRecommendationReason(null);
+    setRecommendedFeeds([]);
+    setRecommendationProgress('Analyzing subscriptions');
+    recommendationProgressTimersRef.current = [
+      window.setTimeout(() => {
+        setRecommendationProgress('Finding feeds');
+      }, 700),
+      window.setTimeout(() => {
+        setRecommendationProgress('Verifying feeds');
+      }, 1600),
+    ];
+
+    try {
+      const result = await api.feeds.recommend(10, { signal: controller.signal });
+      if (controller.signal.aborted) {
+        return;
+      }
+      setRecommendedFeeds(result.feeds);
+      setRecommendationReason(result.reason);
+    } catch (error) {
+      if (controller.signal.aborted) {
+        return;
+      }
+      setRecommendationError(handleRequestError(error, 'Unable to generate recommendations.'));
+    } finally {
+      if (!controller.signal.aborted) {
+        setIsGeneratingRecommendations(false);
+        setRecommendationProgress('');
+        clearRecommendationProgressTimers();
+        recommendationAbortRef.current = null;
+      }
+    }
+  }, [clearRecommendationProgressTimers, handleRequestError]);
+
+  useEffect(() => {
+    return () => {
+      recommendationAbortRef.current?.abort();
+      clearRecommendationProgressTimers();
+    };
+  }, [clearRecommendationProgressTimers]);
 
   const openQualityDialog = useCallback(
     (feed: Feed) => {
@@ -169,6 +260,13 @@ export function useFeedManagementPage() {
       setNewFeedUrlState('');
       setNewFeedFolderId('');
       resetFeedDiscovery();
+      if (recommendationSubscribeUrl) {
+        setRecommendedFeeds((current) => current.filter((feed) => feed.url !== feedUrl));
+        setRecommendationSubscribeUrl(null);
+        window.setTimeout(() => {
+          discoveryDialogRef.current?.showModal();
+        }, 0);
+      }
       closeCreateFeedDialog();
       setStatusMessage(`Subscribed to ${result.feed.title}.`);
     };
@@ -212,8 +310,10 @@ export function useFeedManagementPage() {
   }, [
     closeCreateFeedDialog,
     discoveredFeeds,
+    discoveryDialogRef,
     newFeedFolderId,
     newFeedUrl,
+    recommendationSubscribeUrl,
     resetFeedDiscovery,
     runMutation,
     selectedDiscoveredFeedUrl,
@@ -412,12 +512,19 @@ export function useFeedManagementPage() {
     createFeedDialogRef,
     createFolderDialogRef,
     qualityDialogRef,
+    discoveryDialogRef,
     newFeedUrl,
     setNewFeedUrl,
+    recommendationSubscribeUrl,
     newFeedDialogError,
     discoveredFeeds,
     selectedDiscoveredFeedUrl,
     setSelectedDiscoveredFeedUrl,
+    recommendedFeeds,
+    recommendationReason,
+    recommendationError,
+    isGeneratingRecommendations,
+    recommendationProgress,
     newFeedFolderId,
     setNewFeedFolderId,
     newFolderName,
@@ -437,10 +544,14 @@ export function useFeedManagementPage() {
     selectedQualityFeed,
     openCreateFeedDialog: openNewFeedDialog,
     closeCreateFeedDialog: closeNewFeedDialog,
+    openDiscoveryDialog,
+    closeDiscoveryDialog,
+    openRecommendationSubscribeDialog,
     openQualityDialog,
     resetQualityDialog,
     refreshPageData,
     handleSubscribe,
+    handleGenerateRecommendations,
     handleCreateFolder,
     handleRenameFolder,
     handleDeleteFolder,

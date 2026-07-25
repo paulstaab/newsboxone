@@ -43,12 +43,19 @@ function FeedManagementContent() {
     createFeedDialogRef,
     createFolderDialogRef,
     qualityDialogRef,
+    discoveryDialogRef,
     newFeedUrl,
     setNewFeedUrl,
+    recommendationSubscribeUrl,
     newFeedDialogError,
     discoveredFeeds,
     selectedDiscoveredFeedUrl,
     setSelectedDiscoveredFeedUrl,
+    recommendedFeeds,
+    recommendationReason,
+    recommendationError,
+    isGeneratingRecommendations,
+    recommendationProgress,
     newFeedFolderId,
     setNewFeedFolderId,
     newFolderName,
@@ -68,10 +75,14 @@ function FeedManagementContent() {
     selectedQualityFeed,
     openCreateFeedDialog,
     closeCreateFeedDialog,
+    openDiscoveryDialog,
+    closeDiscoveryDialog,
+    openRecommendationSubscribeDialog,
     openQualityDialog,
     resetQualityDialog,
     refreshPageData,
     handleSubscribe,
+    handleGenerateRecommendations,
     handleCreateFolder,
     handleRenameFolder,
     handleDeleteFolder,
@@ -386,7 +397,133 @@ function FeedManagementContent() {
               createFolderDialogRef.current?.showModal();
             }}
             onSubscribe={openCreateFeedDialog}
+            onDiscover={openDiscoveryDialog}
           />
+
+          <dialog
+            ref={discoveryDialogRef}
+            className="feed-management-dialog"
+            onClose={closeDiscoveryDialog}
+          >
+            <div className="space-y-6 p-6 sm:p-7">
+              <div className="space-y-2">
+                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[hsl(var(--color-text-muted))]">
+                  Feed Discovery
+                </p>
+                <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                  Discover feeds
+                </h2>
+                <p className="max-w-xl text-sm leading-7 text-[hsl(var(--color-text-muted))]">
+                  Generate RSS and Atom recommendations from your current subscriptions.
+                </p>
+              </div>
+
+              {isGeneratingRecommendations ? (
+                <div
+                  className="rounded-md border border-[hsl(var(--color-border))] bg-[hsl(var(--color-surface))] p-4"
+                  role="status"
+                >
+                  <p className="text-sm font-semibold text-[hsl(var(--color-text))]">
+                    {recommendationProgress || 'Generating recommendations'}
+                  </p>
+                  <div
+                    aria-label="Generating feed recommendations"
+                    className="recommendation-progress mt-3"
+                    role="progressbar"
+                  >
+                    <div className="recommendation-progress__indicator" />
+                  </div>
+                </div>
+              ) : null}
+
+              {recommendationError ? (
+                <div className="feed-management-alert feed-management-alert--error" role="alert">
+                  <p>{recommendationError}</p>
+                </div>
+              ) : null}
+
+              {!isGeneratingRecommendations && recommendationReason ? (
+                <div className="feed-management-empty py-6">
+                  <h2>No recommendations</h2>
+                  <p>{recommendationReason}</p>
+                </div>
+              ) : null}
+
+              {recommendedFeeds.length > 0 ? (
+                <div className="space-y-3">
+                  {recommendedFeeds.map((feed) => (
+                    <article
+                      key={feed.url}
+                      className="rounded-md border border-[hsl(var(--color-border))] bg-[hsl(var(--color-surface))] p-4"
+                    >
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 space-y-2">
+                          <h3 className="break-words text-base font-semibold text-[hsl(var(--color-text))]">
+                            {feed.title}
+                          </h3>
+                          <p className="break-all text-xs leading-5 text-[hsl(var(--color-text-muted))]">
+                            {feed.url}
+                          </p>
+                          {feed.siteUrl ? (
+                            <p className="break-all text-xs leading-5 text-[hsl(var(--color-text-muted))]">
+                              {feed.siteUrl}
+                            </p>
+                          ) : null}
+                          <p className="text-sm leading-6 text-[hsl(var(--color-text))]">
+                            {feed.reason}
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {feed.topics.map((topic) => (
+                              <span
+                                key={topic}
+                                className="rounded-md border border-[hsl(var(--color-border))] px-2 py-1 text-xs font-semibold text-[hsl(var(--color-text-muted))]"
+                              >
+                                {topic}
+                              </span>
+                            ))}
+                            {feed.latestArticleDate ? (
+                              <span className="rounded-md border border-[hsl(var(--color-border))] px-2 py-1 text-xs font-semibold text-[hsl(var(--color-text-muted))]">
+                                {formatRelativeDateTime(feed.latestArticleDate)}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="feed-management-primary-button shrink-0"
+                          onClick={() => {
+                            openRecommendationSubscribeDialog(feed);
+                          }}
+                        >
+                          Subscribe
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  className="feed-management-secondary-button"
+                  onClick={closeDiscoveryDialog}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  disabled={isGeneratingRecommendations || busyLabel !== null}
+                  className="feed-management-primary-button disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => {
+                    void handleGenerateRecommendations();
+                  }}
+                >
+                  {recommendedFeeds.length > 0 ? 'Regenerate' : 'Find recommendations'}
+                </button>
+              </div>
+            </div>
+          </dialog>
 
           <dialog
             ref={createFeedDialogRef}
@@ -408,8 +545,9 @@ function FeedManagementContent() {
                   Add a feed to your reading queue
                 </h2>
                 <p className="max-w-xl text-sm leading-7 text-[hsl(var(--color-text-muted))]">
-                  Paste a website, RSS, or Atom URL, then choose whether it should land in a folder
-                  or stay uncategorized.
+                  {recommendationSubscribeUrl
+                    ? 'Choose where this recommended feed should land.'
+                    : 'Paste a website, RSS, or Atom URL, then choose whether it should land in a folder or stay uncategorized.'}
                 </p>
               </div>
 
@@ -421,6 +559,7 @@ function FeedManagementContent() {
                   <input
                     type="url"
                     value={newFeedUrl}
+                    readOnly={recommendationSubscribeUrl !== null}
                     onChange={(event) => {
                       setNewFeedUrl(event.target.value);
                     }}

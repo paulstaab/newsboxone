@@ -1,8 +1,8 @@
-use axum::Router;
 use axum::body::Body;
 use axum::http::Request;
 use axum::http::header;
 use axum::routing::{get, post};
+use axum::{Json, Router};
 use serde_json::Value;
 use tower::ServiceExt;
 
@@ -230,6 +230,222 @@ async fn discover_feeds_returns_empty_list_when_no_supported_feeds_exist() {
         .unwrap();
     let parsed: Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(parsed["feeds"].as_array().unwrap().len(), 0);
+}
+
+#[tokio::test]
+async fn feed_recommendations_return_empty_without_llm_or_context() {
+    let response = app(state(setup_pool().await))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/feeds/recommendations")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"limit":10}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let parsed: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(parsed["feeds"].as_array().unwrap().len(), 0);
+    assert_eq!(parsed["reason"], "AI recommendations are not configured.");
+}
+
+#[tokio::test]
+async fn feed_recommendations_verify_ai_candidates() {
+    let fixture_base_url = start_recommendation_fixture_server().await;
+    let pool = setup_pool().await;
+    seed_recommendation_context(&pool).await;
+
+    let response = app(state_with_openai(pool, &fixture_base_url))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/feeds/recommendations")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"limit":10}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let parsed: Value = serde_json::from_slice(&body).unwrap();
+    let feeds = parsed["feeds"].as_array().unwrap();
+    assert_eq!(feeds.len(), 2);
+    assert!(parsed["reason"].is_null());
+    assert!(parsed["generatedAt"].as_i64().is_some());
+    assert_eq!(feeds[0]["title"], "Recommended Direct Feed");
+    assert_eq!(
+        feeds[0]["url"].as_str(),
+        Some(format!("{fixture_base_url}/recommended.xml").as_str())
+    );
+    assert_eq!(
+        feeds[0]["reason"],
+        "Similar backend and infrastructure coverage."
+    );
+    assert_eq!(feeds[1]["title"], "Recommended Site Feed");
+    assert_eq!(
+        feeds[1]["url"].as_str(),
+        Some(format!("{fixture_base_url}/site-feed.xml").as_str())
+    );
+}
+
+async fn seed_recommendation_context(pool: &sqlx::SqlitePool) {
+    for id in 20..24 {
+        sqlx::query(
+            "INSERT INTO feed (id, url, title, favicon_link, added, last_article_date, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error, is_mailing_list, last_quality_check, use_extracted_fulltext, use_llm_summary) VALUES (?, ?, ?, NULL, 123, 200, NULL, 1, 0, ?, 0, 0, NULL, 0, NULL, 0, 0)",
+        )
+        .bind(id)
+        .bind(format!("https://context-{id}.example.com/rss"))
+        .bind(format!("Context Feed {id}"))
+        .bind(format!("https://context-{id}.example.com"))
+        .execute(pool)
+        .await
+        .unwrap();
+        sqlx::query("INSERT INTO article (id, title, content, author, content_hash, enclosure_link, enclosure_mime, feed_id, fingerprint, guid, guid_hash, last_modified, media_description, media_thumbnail, pub_date, rtl, starred, unread, updated_date, url, summary) VALUES (?, ?, 'private body', 'Author', NULL, NULL, NULL, ?, NULL, ?, ?, 200, NULL, NULL, 200, 0, 0, 1, 200, ?, 'private summary')")
+            .bind(id * 10)
+            .bind(format!("Context Article {id}"))
+            .bind(id)
+            .bind(format!("guid-{id}"))
+            .bind(format!("guid-hash-{id}"))
+            .bind(format!("https://context-{id}.example.com/article"))
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+}
+
+async fn start_recommendation_fixture_server() -> String {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let base_url = format!("http://{addr}");
+
+    let app = Router::new()
+        .route(
+            "/v1/chat/completions",
+            post({
+                let base_url = base_url.clone();
+                move || {
+                    let content = serde_json::json!({
+                        "recommendations": [
+                            {
+                                "title": "Recommended Direct Feed",
+                                "url": format!("{base_url}/recommended.xml"),
+                                "reason": "Similar backend and infrastructure coverage.",
+                                "topics": ["backend", "infrastructure"]
+                            },
+                            {
+                                "title": "Recommended Site",
+                                "url": format!("{base_url}/site"),
+                                "reason": "Related systems writing.",
+                                "topics": ["systems"]
+                            },
+                            {
+                                "title": "Already subscribed",
+                                "url": "https://example.com/rss",
+                                "reason": "Duplicate.",
+                                "topics": []
+                            },
+                            {
+                                "title": "Stale Feed",
+                                "url": format!("{base_url}/stale.xml"),
+                                "reason": "Too old.",
+                                "topics": []
+                            }
+                        ]
+                    })
+                    .to_string();
+                    async move {
+                        Json(serde_json::json!({
+                            "choices": [{"message": {"content": content}}]
+                        }))
+                    }
+                }
+            }),
+        )
+        .route(
+            "/recommended.xml",
+            get({
+                let base_url = base_url.clone();
+                move || async move {
+                    ([ (header::CONTENT_TYPE, "application/atom+xml") ], recent_feed_xml(&base_url, "Recommended Direct Feed", "direct-entry"))
+                }
+            }),
+        )
+        .route(
+            "/site",
+            get(|| async {
+                ([ (header::CONTENT_TYPE, "text/html") ], r#"<!doctype html><link rel="alternate" type="application/atom+xml" title="Recommended Site Feed" href="/site-feed.xml">"#)
+            }),
+        )
+        .route(
+            "/site-feed.xml",
+            get({
+                let base_url = base_url.clone();
+                move || async move {
+                    ([ (header::CONTENT_TYPE, "application/atom+xml") ], recent_feed_xml(&base_url, "Recommended Site Feed", "site-entry"))
+                }
+            }),
+        )
+        .route(
+            "/stale.xml",
+            get({
+                let base_url = base_url.clone();
+                move || async move {
+                    ([ (header::CONTENT_TYPE, "application/atom+xml") ], stale_feed_xml(&base_url))
+                }
+            }),
+        );
+
+    tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+
+    base_url
+}
+
+fn recent_feed_xml(base_url: &str, title: &str, entry_id: &str) -> String {
+    format!(
+        r#"<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>{title}</title>
+  <link href="{base_url}/" />
+  <updated>2026-07-10T00:00:00Z</updated>
+  <id>tag:example.org,2026:{entry_id}-feed</id>
+  <entry>
+    <title>{title} Entry</title>
+    <link href="{base_url}/articles/{entry_id}" />
+    <id>tag:example.org,2026:{entry_id}</id>
+    <updated>2026-07-10T00:00:00Z</updated>
+  </entry>
+</feed>"#,
+    )
+}
+
+fn stale_feed_xml(base_url: &str) -> String {
+    format!(
+        r#"<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Stale Feed</title>
+  <link href="{base_url}/" />
+  <updated>2025-01-10T00:00:00Z</updated>
+  <id>tag:example.org,2025:stale-feed</id>
+  <entry>
+    <title>Stale Entry</title>
+    <link href="{base_url}/articles/stale" />
+    <id>tag:example.org,2025:stale</id>
+    <updated>2025-01-10T00:00:00Z</updated>
+  </entry>
+</feed>"#,
+    )
 }
 
 #[tokio::test]
