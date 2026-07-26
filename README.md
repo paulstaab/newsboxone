@@ -127,7 +127,7 @@ These are optional. If you do not set an API key, NewsBoxOne still works normall
 | ------------------------ | --------------------------- | -------------------------------------------------------------------------------------------------- |
 | `OPENAI_API_KEY`         | unset                       | Enables AI-assisted summaries, newsletter parsing, and feed recommendations.                       |
 | `OPENAI_BASE_URL`        | `https://api.openai.com/v1` | Base URL for OpenAI-compatible APIs.                                                               |
-| `OPENAI_MODEL`           | `gpt-5-nano`                | Model used for summaries, content-quality decisions, newsletter parsing, and feed recommendations. |
+| `OPENAI_MODEL`           | `gpt-5.6-luna`                | Model used for summaries, content-quality decisions, newsletter parsing, and feed recommendations. |
 | `OPENAI_TIMEOUT_SECONDS` | `60`                        | Timeout for outbound AI requests.                                                                  |
 
 ### Advanced / Operational Settings
