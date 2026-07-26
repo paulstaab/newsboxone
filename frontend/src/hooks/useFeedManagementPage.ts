@@ -146,7 +146,9 @@ export function useFeedManagementPage() {
     recommendationAbortRef.current = null;
     clearRecommendationProgressTimers();
     setIsGeneratingRecommendations(false);
-    discoveryDialogRef.current?.close();
+    if (discoveryDialogRef.current?.open) {
+      discoveryDialogRef.current.close();
+    }
   }, [clearRecommendationProgressTimers, discoveryDialogRef]);
 
   const openDiscoveryDialog = useCallback(() => {
