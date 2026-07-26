@@ -365,6 +365,36 @@ export async function setupApiMocks(page: Page) {
       return;
     }
 
+    if (pathname.endsWith('/feeds/recommendations') && method === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          feeds: [
+            {
+              title: 'Systems Weekly',
+              url: 'https://systems.example.com/rss.xml',
+              siteUrl: 'https://systems.example.com',
+              reason: 'Matches your backend and infrastructure feeds.',
+              topics: ['backend', 'infrastructure'],
+              latestArticleDate: nowInSeconds - 3600,
+            },
+            {
+              title: 'Design Notes',
+              url: 'https://design.example.com/feed.xml',
+              siteUrl: 'https://design.example.com',
+              reason: 'Adds product design coverage near your current reading.',
+              topics: ['design'],
+              latestArticleDate: nowInSeconds - 7200,
+            },
+          ],
+          reason: null,
+          generatedAt: nowInSeconds,
+        }),
+      });
+      return;
+    }
+
     if (pathname.endsWith('/feeds') && method === 'POST') {
       const body = (await request.postDataJSON()) as { url: string; folderId: number | null };
       const hostname = new URL(body.url).hostname.replace(/^www\./, '');
@@ -375,7 +405,9 @@ export async function setupApiMocks(page: Page) {
             ? 'Multi Atom'
             : body.url === 'https://multi.example.com/rss.xml'
               ? 'Multi RSS'
-              : hostname;
+              : body.url === 'https://systems.example.com/rss.xml'
+                ? 'Systems Weekly'
+                : hostname;
       const newFeed = {
         id: nextFeedId++,
         url: body.url,

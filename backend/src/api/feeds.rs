@@ -25,27 +25,27 @@ use super::errors::{
 use super::folders::resolve_folder_id;
 
 #[derive(FromRow)]
-struct FeedRow {
-    id: i64,
-    url: String,
-    title: Option<String>,
-    favicon_link: Option<String>,
-    added: i64,
-    last_article_date: Option<i64>,
-    next_update_time: Option<i64>,
-    folder_id: i64,
-    ordering: i64,
-    link: Option<String>,
-    pinned: bool,
-    update_error_count: i64,
-    last_update_error: Option<String>,
-    is_mailing_list: bool,
-    last_quality_check: Option<i64>,
-    use_extracted_fulltext: bool,
-    use_llm_summary: bool,
-    manual_use_extracted_fulltext: Option<bool>,
-    manual_use_llm_summary: Option<bool>,
-    last_manual_quality_override: Option<i64>,
+pub(super) struct FeedRow {
+    pub(super) id: i64,
+    pub(super) url: String,
+    pub(super) title: Option<String>,
+    pub(super) favicon_link: Option<String>,
+    pub(super) added: i64,
+    pub(super) last_article_date: Option<i64>,
+    pub(super) next_update_time: Option<i64>,
+    pub(super) folder_id: i64,
+    pub(super) ordering: i64,
+    pub(super) link: Option<String>,
+    pub(super) pinned: bool,
+    pub(super) update_error_count: i64,
+    pub(super) last_update_error: Option<String>,
+    pub(super) is_mailing_list: bool,
+    pub(super) last_quality_check: Option<i64>,
+    pub(super) use_extracted_fulltext: bool,
+    pub(super) use_llm_summary: bool,
+    pub(super) manual_use_extracted_fulltext: Option<bool>,
+    pub(super) manual_use_llm_summary: Option<bool>,
+    pub(super) last_manual_quality_override: Option<i64>,
 }
 
 #[derive(Serialize)]
@@ -101,8 +101,8 @@ pub(super) struct FeedDiscoverIn {
 #[derive(Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct DiscoveredFeedOut {
-    title: Option<String>,
-    url: String,
+    pub(super) title: Option<String>,
+    pub(super) url: String,
 }
 
 #[derive(Serialize)]
@@ -295,7 +295,10 @@ async fn discover_feeds_impl(url: &str, testing_mode: bool) -> ApiResult<Json<Fe
 }
 
 /// Extracts RSS/Atom alternate links from an HTML document and resolves them against the page URL.
-fn discover_embedded_feed_links(html: &str, page_url: &reqwest::Url) -> Vec<DiscoveredFeedOut> {
+pub(super) fn discover_embedded_feed_links(
+    html: &str,
+    page_url: &reqwest::Url,
+) -> Vec<DiscoveredFeedOut> {
     let mut feeds = Vec::new();
     let mut seen_urls = HashSet::new();
 
@@ -615,7 +618,10 @@ async fn load_root_folder_id(pool: &SqlitePool) -> ApiResult<Option<i64>> {
 }
 
 /// Loads one or all feed rows with quality metadata included.
-async fn load_feed_rows(pool: &SqlitePool, feed_id: Option<i64>) -> ApiResult<Vec<FeedRow>> {
+pub(super) async fn load_feed_rows(
+    pool: &SqlitePool,
+    feed_id: Option<i64>,
+) -> ApiResult<Vec<FeedRow>> {
     let rows = if let Some(feed_id) = feed_id {
         sqlx::query_as::<_, FeedRow>(
             "SELECT id, url, title, favicon_link, added, last_article_date, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error, is_mailing_list, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE id = ? AND deleted_at IS NULL ORDER BY id",

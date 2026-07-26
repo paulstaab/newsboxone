@@ -225,4 +225,162 @@ test.describe('Feed management integration coverage', () => {
     await expect(page.getByText(/subscribed to multi atom/i)).toBeVisible();
     await expect(page.getByRole('row', { name: /multi atom/i })).toBeVisible();
   });
+
+  test('[TC-FEEDS-010] feed recommendations modal generates verified candidates on demand', async ({
+    page,
+  }) => {
+    await page.goto('/feeds');
+
+    await page.getByRole('button', { name: /discover feeds/i }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('heading', { name: /^discover feeds$/i })).toBeVisible();
+
+    const recommendationRequest = page.waitForRequest((request) =>
+      request.url().endsWith('/api/feeds/recommendations'),
+    );
+    await dialog.getByRole('button', { name: /find recommendations/i }).click();
+    await recommendationRequest;
+
+    await expect(dialog.getByText('Systems Weekly')).toBeVisible();
+    await expect(dialog.getByText('https://systems.example.com/rss.xml')).toBeVisible();
+    await expect(dialog.getByText(/matches your backend and infrastructure feeds/i)).toBeVisible();
+    await expect(dialog.getByText('backend', { exact: true })).toBeVisible();
+  });
+
+  test('[TC-FEEDS-011] feed recommendation subscription reuses the add-feed flow', async ({
+    page,
+  }) => {
+    await page.goto('/feeds');
+
+    await page.getByRole('button', { name: /discover feeds/i }).click();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: /find recommendations/i })
+      .click();
+    await expect(page.getByText('Systems Weekly')).toBeVisible();
+
+    await page
+      .getByRole('article')
+      .filter({ hasText: 'Systems Weekly' })
+      .getByRole('button', { name: /^subscribe$/i })
+      .click();
+
+    const subscribeDialog = page.getByRole('dialog');
+    await expect(
+      subscribeDialog.getByRole('heading', { name: /add a feed to your reading queue/i }),
+    ).toBeVisible();
+    await expect(subscribeDialog.getByRole('textbox', { name: /feed url/i })).toHaveValue(
+      'https://systems.example.com/rss.xml',
+    );
+    await expect(subscribeDialog.getByRole('textbox', { name: /feed url/i })).toHaveAttribute(
+      'readonly',
+      '',
+    );
+
+    const createRequest = page.waitForRequest(
+      (request) => request.url().endsWith('/api/feeds') && request.method() === 'POST',
+    );
+    await subscribeDialog.getByRole('button', { name: 'Subscribe', exact: true }).click();
+
+    const request = await createRequest;
+    expect(request.postDataJSON()).toMatchObject({ url: 'https://systems.example.com/rss.xml' });
+    await expect(page.getByText(/subscribed to systems weekly/i)).toBeVisible();
+    await expect(page.getByRole('row', { name: /systems weekly/i })).toBeVisible();
+    await expect(
+      page.getByRole('dialog').getByRole('heading', { name: /^discover feeds$/i }),
+    ).toBeVisible();
+    await expect(page.getByRole('dialog').getByText('Systems Weekly')).toHaveCount(0);
+    await expect(page.getByRole('dialog').getByText('Design Notes')).toBeVisible();
+  });
+
+  test('[TC-FEEDS-012] feed recommendations empty state is non-blocking', async ({ page }) => {
+    await page.route('**/api/feeds/recommendations', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          feeds: [],
+          reason: 'Add at least 5 RSS feeds before generating recommendations.',
+          generatedAt: null,
+        }),
+      });
+    });
+
+    await page.goto('/feeds');
+    await page.getByRole('button', { name: /discover feeds/i }).click();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: /find recommendations/i })
+      .click();
+
+    await expect(page.getByText(/^no recommendations$/i)).toBeVisible();
+    await expect(page.getByText(/add at least 5 rss feeds/i)).toBeVisible();
+    await page.getByRole('button', { name: /close/i }).click();
+    await page.getByRole('button', { name: /subscribe to feed/i }).click();
+    await expect(
+      page.getByRole('heading', { name: /add a feed to your reading queue/i }),
+    ).toBeVisible();
+  });
+
+  test('[TC-FEEDS-013] feed recommendation regeneration replaces results and errors stay visible', async ({
+    page,
+  }) => {
+    const nowInSeconds = 1_700_220_000;
+    let recommendationCalls = 0;
+    await page.route('**/api/feeds/recommendations', async (route) => {
+      recommendationCalls += 1;
+
+      if (recommendationCalls === 3) {
+        await route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ detail: 'Recommendation service unavailable.' }),
+        });
+        return;
+      }
+
+      const feed =
+        recommendationCalls === 1
+          ? {
+              title: 'Systems Weekly',
+              url: 'https://systems.example.com/rss.xml',
+              siteUrl: 'https://systems.example.com',
+              reason: 'Matches your backend and infrastructure feeds.',
+              topics: ['backend', 'infrastructure'],
+              latestArticleDate: nowInSeconds - 3600,
+            }
+          : {
+              title: 'Security Dispatch',
+              url: 'https://security.example.com/feed.xml',
+              siteUrl: 'https://security.example.com',
+              reason: 'Adds adjacent security operations coverage.',
+              topics: ['security'],
+              latestArticleDate: nowInSeconds - 1800,
+            };
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          feeds: [feed],
+          reason: null,
+          generatedAt: nowInSeconds,
+        }),
+      });
+    });
+
+    await page.goto('/feeds');
+    await page.getByRole('button', { name: /discover feeds/i }).click();
+
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: /find recommendations/i }).click();
+    await expect(dialog.getByText('Systems Weekly')).toBeVisible();
+
+    await dialog.getByRole('button', { name: /regenerate/i }).click();
+    await expect(dialog.getByText('Security Dispatch')).toBeVisible();
+    await expect(dialog.getByText('Systems Weekly')).toHaveCount(0);
+
+    await dialog.getByRole('button', { name: /regenerate/i }).click();
+    await expect(dialog.getByRole('alert')).toContainText(/server encountered an error/i);
+  });
 });

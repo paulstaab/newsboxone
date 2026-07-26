@@ -1,4 +1,4 @@
-import { faFolderPlus, faPlus, faRotate } from '@fortawesome/free-solid-svg-icons';
+import { faCompass, faFolderPlus, faPlus, faRotate } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { TimelineActionButton } from '@/components/timeline/TimelineActionButton';
 
@@ -8,6 +8,7 @@ interface FeedManagementActionsProps {
   onRefresh: () => void;
   onCreateFolder: () => void;
   onSubscribe: () => void;
+  onDiscover: () => void;
 }
 
 /**
@@ -19,6 +20,7 @@ export function FeedManagementActions({
   onCreateFolder,
   onRefresh,
   onSubscribe,
+  onDiscover,
 }: FeedManagementActionsProps) {
   return (
     <div className="feed-management-actions">
@@ -36,6 +38,13 @@ export function FeedManagementActions({
         tooltip="Add folder"
         disabled={busyLabel !== null}
         onClick={onCreateFolder}
+      />
+      <TimelineActionButton
+        icon={<FontAwesomeIcon icon={faCompass} className="h-5 w-5" aria-hidden="true" />}
+        label="Discover feeds"
+        tooltip="Discover feeds"
+        disabled={busyLabel !== null}
+        onClick={onDiscover}
       />
       <TimelineActionButton
         icon={<FontAwesomeIcon icon={faPlus} className="h-5 w-5" aria-hidden="true" />}

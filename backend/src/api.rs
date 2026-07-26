@@ -22,6 +22,7 @@ mod errors;
 mod feeds;
 mod folders;
 mod items;
+mod recommendations;
 
 /// Shared application state injected into every API handler.
 ///
@@ -124,6 +125,10 @@ fn protected_router(state_for_middleware: AppState) -> Router<AppState> {
         .route(
             "/feeds/discover",
             axum::routing::post(feeds::discover_feeds),
+        )
+        .route(
+            "/feeds/recommendations",
+            axum::routing::post(recommendations::recommend_feeds),
         )
         .route(
             "/feeds/{feed_id}",

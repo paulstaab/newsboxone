@@ -6,6 +6,15 @@ export interface DiscoveredFeed {
   url: string;
 }
 
+export interface RecommendedFeed {
+  title: string;
+  url: string;
+  siteUrl: string | null;
+  reason: string;
+  topics: string[];
+  latestArticleDate: number | null;
+}
+
 /**
  * Version response from the public API.
  */
@@ -28,6 +37,10 @@ export interface FeedsApi {
     folderId?: number | null,
   ): Promise<{ feed: Feed; newestItemId: number | null }>;
   discover(url: string): Promise<DiscoveredFeed[]>;
+  recommend(
+    limit?: number,
+    options?: ApiRequestOptions,
+  ): Promise<{ feeds: RecommendedFeed[]; reason: string | null; generatedAt: number | null }>;
   delete(feedId: number): Promise<void>;
   move(feedId: number, folderId: number | null): Promise<void>;
   rename(feedId: number, feedTitle: string): Promise<void>;

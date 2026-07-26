@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const TEST_USERNAME = 'test';
+const TEST_SESSION_EXPIRES_AT = '2027-04-30T00:00:00.000Z';
 
 const storageStatePath = fileURLToPath(new URL('./.auth/user.json', import.meta.url));
 
@@ -22,8 +23,7 @@ export default async function globalSetup(config) {
   await page.goto(baseURL);
 
   await page.evaluate(
-    ({ username }) => {
-      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    ({ expiresAt, username }) => {
       localStorage.setItem(
         'newsboxone:session',
         JSON.stringify({
@@ -34,7 +34,7 @@ export default async function globalSetup(config) {
         }),
       );
     },
-    { username: TEST_USERNAME },
+    { expiresAt: TEST_SESSION_EXPIRES_AT, username: TEST_USERNAME },
   );
 
   await context.storageState({ path: storageStatePath });

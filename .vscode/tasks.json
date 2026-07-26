@@ -32,7 +32,7 @@
     {
       "label": "Backend: Serve",
       "type": "shell",
-      "command": "cargo run -- serve --host 0.0.0.0 --port 8000",
+      "command": "set -a; source \"${workspaceFolder}/.env\"; set +a; exec cargo run -- serve --host 0.0.0.0 --port 8000",
       "options": {
         "cwd": "${workspaceFolder}/backend",
         "env": {

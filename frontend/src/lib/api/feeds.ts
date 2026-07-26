@@ -3,7 +3,7 @@
  */
 
 import { apiDelete, apiGet, apiPost } from './client';
-import type { DiscoveredFeed, FeedsApi } from './types';
+import type { DiscoveredFeed, FeedsApi, RecommendedFeed } from './types';
 import { type ApiFeed, type FeedsResponse, normalizeFeed } from '@/types';
 
 /**
@@ -41,6 +41,14 @@ export const feedsApi: FeedsApi = {
   discover: async (url: string) => {
     const response = await apiPost<{ feeds: DiscoveredFeed[] }>('/feeds/discover', { url });
     return response.feeds;
+  },
+
+  recommend: async (limit = 10, options = {}) => {
+    return await apiPost<{
+      feeds: RecommendedFeed[];
+      reason: string | null;
+      generatedAt: number | null;
+    }>('/feeds/recommendations', { limit }, { ...options, noRetry: true });
   },
 
   delete: async (feedId: number) => {

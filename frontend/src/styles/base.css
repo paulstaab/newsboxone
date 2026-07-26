@@ -44,3 +44,13 @@ textarea:focus-visible {
     transform: rotate(360deg);
   }
 }
+
+@keyframes recommendation-progress {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(300%);
+  }
+}

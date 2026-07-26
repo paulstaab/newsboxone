@@ -1,7 +1,7 @@
 //! Shared helpers for OpenAI-compatible chat completion requests.
 
 use std::error::Error as StdError;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use reqwest::Client;
 use serde::Deserialize;
@@ -81,9 +81,10 @@ pub async fn request_chat_completion_content(
         feed_id = context.feed_id,
         article_id = context.article_id,
         timeout_seconds = config.openai_timeout_seconds,
-        "starting LLM request"
+        "sending LLM request"
     );
 
+    let request_started_at = Instant::now();
     let response = match client
         .post(&request_url)
         .bearer_auth(api_key)
@@ -106,6 +107,15 @@ pub async fn request_chat_completion_content(
             return None;
         }
     };
+
+    tracing::info!(
+        status = %response.status(),
+        elapsed_ms = request_started_at.elapsed().as_millis(),
+        task_name = context.task_name,
+        feed_id = context.feed_id,
+        article_id = context.article_id,
+        "LLM response received"
+    );
 
     if !response.status().is_success() {
         let status = response.status();
@@ -157,13 +167,6 @@ pub async fn request_chat_completion_content(
             return None;
         }
     };
-
-    tracing::info!(
-        task_name = context.task_name,
-        feed_id = context.feed_id,
-        article_id = context.article_id,
-        "LLM request completed"
-    );
 
     body.choices
         .first()
