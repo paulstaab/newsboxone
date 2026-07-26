@@ -153,9 +153,14 @@ async fn recommend_feeds_impl(
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({ "detail": "Unable to generate feed recommendations." })),
         ));
+    };
 
-    let raw = parse_llm_recommendations(&response_text)
-        .ok_or_else(|| bad_request_error("Unable to parse feed recommendations."))?;
+    let raw = parse_llm_recommendations(&response_text).ok_or_else(|| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "detail": "Unable to parse feed recommendations." })),
+        )
+    })?;
     let candidate_count = raw.recommendations.len().min(MAX_LLM_CANDIDATES);
     tracing::info!(
         task_name = "feed-recommendations",
