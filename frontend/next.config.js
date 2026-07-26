@@ -8,6 +8,9 @@ const nextConfig = {
   reactStrictMode: true,
   output: 'export',
   trailingSlash: true,
+  experimental: {
+    proxyTimeout: 240_000,
+  },
   images: {
     unoptimized: true,
   },

@@ -51,6 +51,7 @@ The same requirements apply to all implementations.
 - `API-004`: The public health endpoint shall be exposed at `/api/status`.
 - `API-005`: The feeds API shall expose feed-quality metadata for each feed, including effective quality flags, nullable per-attribute manual overrides, and the latest quality-check and manual-override timestamps.
 - `API-006`: The feeds API shall allow feed-quality overrides to be updated per feed by setting each attribute to `true`, `false`, or `null`, and shall allow a dedicated re-evaluation action that clears manual overrides and recomputes both quality flags.
+- `API-009`: The feeds API shall expose authenticated, on-demand, AI-generated feed recommendations derived from the current regular RSS/Atom subscriptions and shall return only candidate feed URLs that are not already subscribed.
 
 ### Feed Lifecycle And Refresh
 
@@ -71,6 +72,28 @@ The same requirements apply to all implementations.
 - `FEED-011`: Successful refresh shall clear persisted refresh error state.
 - `FEED-012`: Stale feed articles not present in the latest payload shall be eligible for cleanup only when older than 90 days, read, and unstarred.
 - `FEED-013`: The feeds API shall expose a discovery endpoint that fetches a website URL through SSRF-safe remote fetching, extracts embedded RSS and Atom `<link rel="alternate">` metadata, resolves relative feed URLs, deduplicates discovered feed URLs, and ignores unsupported feed formats.
+- `FEED-014`: Feed recommendations shall:
+  - require configured OpenAI-compatible LLM support,
+  - run only when requested by the authenticated user,
+  - use the current regular RSS/Atom subscriptions as one global recommendation context,
+  - require at least 5 current regular RSS/Atom subscriptions before calling the LLM,
+  - exclude mailing-list/newsletter feeds from the recommendation context,
+  - send feed titles, source domains, folder names when available, and up to 5 recent article titles per feed to the LLM,
+  - never send article bodies or summaries to the LLM for recommendation generation,
+  - cap recommendation input at 50 feeds and 5 article titles per feed,
+  - ask the LLM to infer topics, propose candidate feed or site URLs, balance mainstream and specialized sources, prefer the dominant language inferred from current subscriptions, and avoid YouTube, Reddit, podcast, and social feeds,
+  - use moderate model randomness so repeated requests can produce useful variety,
+  - accept direct RSS/Atom feed URLs and site URLs from the LLM,
+  - run embedded feed discovery for site URLs and select the best discovered RSS/Atom feed automatically for that site,
+  - validate every candidate through the same SSRF-safe remote-fetch and RSS/Atom parsing rules used for feed creation and embedded feed discovery,
+  - require each returned candidate feed to have at least one article from the last 90 days,
+  - rank verified candidates by topical match and freshness,
+  - return at most 10 recommendations by default,
+  - exclude exact subscribed feed URL matches while allowing alternate feeds from the same source domain,
+  - include a short user-facing AI reason for each candidate,
+  - return an empty list with a user-safe reason when LLM support is unavailable, insufficient subscription context exists, or no verified candidates are found,
+  - persist no recommendation records and maintain no recommendation cache,
+  - never subscribe the user to a recommended feed without a later explicit create-feed action.
 
 ### Folder Behavior
 
@@ -193,7 +216,7 @@ The same requirements apply to all implementations.
 
 - `CFG-001`: Runtime configuration shall be sourced from environment variables.
 - `CFG-002`: Supported variables shall include authentication settings, feed update frequency, service version, CORS allowed origins, and provider-specific LLM configuration including request timeout.
-- `CFG-003`: Defaults shall include `VERSION=dev`, `FEED_UPDATE_FREQUENCY_MIN=15`, `OPENAI_MODEL=gpt-5.6-luna`, and `OPENAI_TIMEOUT_SECONDS=30`.
+- `CFG-003`: Defaults shall include `VERSION=dev`, `FEED_UPDATE_FREQUENCY_MIN=15`, `OPENAI_TIMEOUT_SECONDS=60`, and a default LLM model identifier.
 
 ### CLI
 

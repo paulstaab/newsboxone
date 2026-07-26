@@ -113,7 +113,7 @@ pub(super) fn state_with_openai(pool: SqlitePool, base_url: &str) -> AppState {
             openai_api_key: Some("test-key".to_string()),
             openai_base_url: format!("{}/v1", base_url.trim_end_matches('/')),
             openai_model: "gpt-5.6-luna".to_string(),
-            openai_timeout_seconds: 30,
+            openai_timeout_seconds: 60,
             testing_mode: true,
             cors_allowed_origins: Vec::new(),
         },
@@ -139,7 +139,7 @@ fn base_config(username: Option<&str>, password: Option<&str>, testing_mode: boo
         openai_api_key: None,
         openai_base_url: "https://api.openai.com/v1".to_string(),
         openai_model: "gpt-5.6-luna".to_string(),
-        openai_timeout_seconds: 30,
+        openai_timeout_seconds: 60,
         testing_mode,
         cors_allowed_origins: Vec::new(),
     }

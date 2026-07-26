@@ -855,4 +855,26 @@
     font-size: 0.95rem;
     padding: var(--space-2) 0;
   }
+
+  .recommendation-progress {
+    height: 0.5rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgb(0 0 0 / 20%);
+  }
+
+  .recommendation-progress__indicator {
+    width: 33.333%;
+    height: 100%;
+    border-radius: inherit;
+    background: hsl(var(--color-accent-strong));
+    animation: recommendation-progress 1.4s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .recommendation-progress__indicator {
+      width: 66.667%;
+      animation: none;
+    }
+  }
 }
