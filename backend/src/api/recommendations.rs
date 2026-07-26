@@ -149,10 +149,10 @@ async fn recommend_feeds_impl(
     )
     .await
     else {
-        return Err(bad_request_error(
-            "Unable to generate feed recommendations.",
+        return Err((
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "detail": "Unable to generate feed recommendations." })),
         ));
-    };
 
     let raw = parse_llm_recommendations(&response_text)
         .ok_or_else(|| bad_request_error("Unable to parse feed recommendations."))?;
