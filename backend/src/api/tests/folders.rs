@@ -69,6 +69,28 @@ async fn create_folder_invalid_name_returns_422() {
 }
 
 #[tokio::test]
+async fn create_folder_whitespace_only_name_returns_422() {
+    let response = app(state(setup_pool().await))
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/folders")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"name":" \n\t "}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 422);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let parsed: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(parsed["detail"], "Folder name is invalid");
+}
+
+#[tokio::test]
 async fn delete_nonexistent_folder_returns_404() {
     let response = app(state(setup_pool().await))
         .oneshot(
@@ -208,6 +230,28 @@ async fn rename_folder_invalid_name_returns_422() {
                 .uri("/api/folders/2")
                 .header("content-type", "application/json")
                 .body(Body::from(r#"{"name":""}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 422);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let parsed: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(parsed["detail"], "Folder name is invalid");
+}
+
+#[tokio::test]
+async fn rename_folder_whitespace_only_name_returns_422() {
+    let response = app(state(setup_pool().await))
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri("/api/folders/2")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"name":" \n\t "}"#))
                 .unwrap(),
         )
         .await

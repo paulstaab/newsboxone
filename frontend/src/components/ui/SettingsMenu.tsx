@@ -36,6 +36,24 @@ export function SettingsMenu({ position = 'top-right', className = '' }: Setting
   const [showInstallOption, setShowInstallOption] = useState(canPromptInstall);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    let cancelled = false;
+    const syncInstallOption = () => {
+      queueMicrotask(() => {
+        if (cancelled) return;
+        setShowInstallOption(canPromptInstall());
+      });
+    };
+
+    window.addEventListener('beforeinstallprompt', syncInstallOption);
+    window.addEventListener('appinstalled', syncInstallOption);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('beforeinstallprompt', syncInstallOption);
+      window.removeEventListener('appinstalled', syncInstallOption);
+    };
+  }, []);
+
   // Close menu when clicking outside
 
   useEffect(() => {
@@ -104,7 +122,8 @@ export function SettingsMenu({ position = 'top-right', className = '' }: Setting
         type="button"
         id="settings-menu-button"
         onClick={() => {
-          setIsOpen(!isOpen);
+          setShowInstallOption(canPromptInstall());
+          setIsOpen((current) => !current);
         }}
         className="app-menu__button"
         aria-label="Burger menu"

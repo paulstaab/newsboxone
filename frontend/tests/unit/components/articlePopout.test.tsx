@@ -157,6 +157,7 @@ describe('ArticlePopout', () => {
       expect(screen.getByText('Popout Article Title')).toBeDefined();
     });
 
+    screen.getByRole('dialog').focus();
     fireEvent.keyDown(document, { key });
 
     await waitFor(() => {
@@ -201,6 +202,38 @@ describe('ArticlePopout', () => {
 
     screen.getByLabelText('Editable field').focus();
     fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.getByText('Popout Article Title')).toBeDefined();
+  });
+
+  it('does not close when Space is pressed on an article link', async () => {
+    mockContentResponse.data = '<a href="https://example.com/details">Read details</a>';
+    mockContentResponse.error = null;
+    mockContentResponse.isLoading = false;
+
+    function Harness() {
+      const { isOpen, openPopout, closePopout, dialogRef, closeButtonRef } = useArticlePopout();
+
+      useEffect(() => {
+        openPopout({ id: mockArticle.id, feedId: mockArticle.feedId });
+      }, [openPopout]);
+
+      return (
+        <ArticlePopout
+          isOpen={isOpen}
+          article={mockArticle}
+          onClose={closePopout}
+          dialogRef={dialogRef}
+          closeButtonRef={closeButtonRef}
+        />
+      );
+    }
+
+    render(<Harness />);
+
+    const link = await screen.findByRole('link', { name: 'Read details' });
+    link.focus();
+    fireEvent.keyDown(document, { key: ' ' });
 
     expect(screen.getByText('Popout Article Title')).toBeDefined();
   });

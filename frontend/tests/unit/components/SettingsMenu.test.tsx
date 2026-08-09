@@ -4,13 +4,18 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { SettingsMenu } from '@/components/ui/SettingsMenu';
 
-const { mockPush, mockLogout, mockAuthState } = vi.hoisted(() => ({
-  mockPush: vi.fn(),
-  mockLogout: vi.fn<() => Promise<void>>(),
-  mockAuthState: {
-    isAuthenticated: true,
+const { mockPush, mockLogout, mockAuthState, mockInstallState, mockCanPromptInstall } = vi.hoisted(
+  () => {
+    const mockInstallState = { available: false };
+    return {
+      mockPush: vi.fn(),
+      mockLogout: vi.fn<() => Promise<void>>(),
+      mockAuthState: { isAuthenticated: true },
+      mockInstallState,
+      mockCanPromptInstall: vi.fn(() => mockInstallState.available),
+    };
   },
-}));
+);
 
 vi.mock('next/link', () => ({
   default: ({ children, href, ...props }: { children: ReactNode; href: string }) => (
@@ -33,7 +38,7 @@ vi.mock('@/hooks/useAuth', () => ({
       ? {
           username: 'test',
           token: 'token',
-          expiresAt: '2026-05-05T00:00:00.000Z',
+          expiresAt: '2099-05-05T00:00:00.000Z',
           rememberDevice: false,
           viewMode: 'card',
           sortOrder: 'newest',
@@ -52,7 +57,7 @@ vi.mock('@/hooks/useAuth', () => ({
 }));
 
 vi.mock('@/lib/pwa/installPrompt', () => ({
-  canPromptInstall: () => false,
+  canPromptInstall: mockCanPromptInstall,
   triggerInstallPrompt: vi.fn(),
 }));
 
@@ -70,7 +75,9 @@ describe('SettingsMenu', () => {
   beforeEach(() => {
     mockPush.mockReset();
     mockLogout.mockReset();
+    mockCanPromptInstall.mockClear();
     mockAuthState.isAuthenticated = true;
+    mockInstallState.available = false;
   });
 
   it('shows logout for authenticated users and signs out once with redirect', async () => {
@@ -140,5 +147,27 @@ describe('SettingsMenu', () => {
     const integrationsLink = screen.getByRole('menuitem', { name: /^integrations$/i });
     expect(integrationsLink).toHaveAttribute('href', '/integrations');
     expect(screen.queryByRole('heading', { name: /^karakeep$/i })).toBeNull();
+  });
+
+  it('enables installation when browser eligibility arrives after mount', async () => {
+    const user = userEvent.setup();
+    render(<SettingsMenu />);
+
+    mockInstallState.available = true;
+    window.dispatchEvent(new Event('beforeinstallprompt'));
+    await user.click(screen.getByRole('button', { name: /burger menu/i }));
+
+    expect(screen.getByRole('menuitem', { name: 'Install App' })).toBeEnabled();
+  });
+
+  it('cancels queued install-state synchronization after unmount', async () => {
+    const { unmount } = render(<SettingsMenu />);
+    expect(mockCanPromptInstall).toHaveBeenCalledTimes(1);
+
+    window.dispatchEvent(new Event('beforeinstallprompt'));
+    unmount();
+    await Promise.resolve();
+
+    expect(mockCanPromptInstall).toHaveBeenCalledTimes(1);
   });
 });

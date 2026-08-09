@@ -20,7 +20,7 @@ let mockAuthReturn: MockAuthReturn = {
   session: {
     username: 'user',
     token: 'test-token',
-    expiresAt: '2026-04-01T00:00:00.000Z',
+    expiresAt: '2099-04-01T00:00:00.000Z',
     rememberDevice: false,
     viewMode: 'card',
     sortOrder: 'newest',
@@ -48,7 +48,7 @@ beforeEach(() => {
     session: {
       username: 'user',
       token: 'test-token',
-      expiresAt: '2026-04-01T00:00:00.000Z',
+      expiresAt: '2099-04-01T00:00:00.000Z',
       rememberDevice: false,
       viewMode: 'card',
       sortOrder: 'newest',
@@ -67,7 +67,7 @@ describe('useItems', () => {
       session: {
         username: 'user1',
         token: 'test-token-1',
-        expiresAt: '2026-04-01T00:00:00.000Z',
+        expiresAt: '2099-04-01T00:00:00.000Z',
         rememberDevice: false,
         viewMode: 'card',
         sortOrder: 'newest',
@@ -140,7 +140,7 @@ describe('useItems', () => {
       session: {
         username: 'user2',
         token: 'test-token-2',
-        expiresAt: '2026-04-01T00:00:00.000Z',
+        expiresAt: '2099-04-01T00:00:00.000Z',
         rememberDevice: false,
         viewMode: 'card',
         sortOrder: 'newest',

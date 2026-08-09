@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
-const EXCLUDED_SELECTORS = ['input', 'textarea', 'select', '[contenteditable="true"]'];
+const EDITABLE_SELECTORS = ['input', 'textarea', 'select', '[contenteditable="true"]'];
+const SPACE_EXCLUDED_SELECTORS = ['a[href]', 'button', ...EDITABLE_SELECTORS];
 
 function getFocusableElements(container: HTMLElement | null): HTMLElement[] {
   if (!container) return [];
@@ -11,9 +12,9 @@ function getFocusableElements(container: HTMLElement | null): HTMLElement[] {
   );
 }
 
-function isExcludedTarget(target: HTMLElement | null): boolean {
+function matchesTarget(target: HTMLElement | null, selectors: string[]): boolean {
   if (!target) return false;
-  return EXCLUDED_SELECTORS.some((selector) => Boolean(target.closest(selector)));
+  return selectors.some((selector) => Boolean(target.closest(selector)));
 }
 
 export interface ArticlePopoutKey {
@@ -75,14 +76,16 @@ export function useArticlePopout(): UseArticlePopoutResult {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       const activeElement = document.activeElement as HTMLElement | null;
-      if (isExcludedTarget(activeElement)) return;
 
-      if (
-        event.key === 'Escape' ||
-        event.key === ' ' ||
-        event.key === 'Spacebar' ||
-        event.key === 'Space'
-      ) {
+      if (event.key === 'Escape') {
+        if (matchesTarget(activeElement, EDITABLE_SELECTORS)) return;
+        event.preventDefault();
+        closePopout();
+        return;
+      }
+
+      if (event.key === ' ' || event.key === 'Spacebar' || event.key === 'Space') {
+        if (matchesTarget(activeElement, SPACE_EXCLUDED_SELECTORS)) return;
         event.preventDefault();
         closePopout();
         return;

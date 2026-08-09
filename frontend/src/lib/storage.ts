@@ -8,6 +8,31 @@ import { type StoredSession, type UserPreferences, DEFAULT_PREFERENCES } from '@
 
 export const PREFERENCES_CHANGED_EVENT = 'newsboxone:preferences-changed';
 
+function parseStoredSession(value: string): StoredSession | null {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!parsed || typeof parsed !== 'object') return null;
+
+    const session = parsed as Partial<StoredSession>;
+    const expiresAt = typeof session.expiresAt === 'string' ? Date.parse(session.expiresAt) : NaN;
+    if (
+      typeof session.username !== 'string' ||
+      session.username.trim().length === 0 ||
+      typeof session.token !== 'string' ||
+      session.token.length === 0 ||
+      typeof session.rememberDevice !== 'boolean' ||
+      !Number.isFinite(expiresAt) ||
+      expiresAt <= Date.now()
+    ) {
+      return null;
+    }
+
+    return session as StoredSession;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Stores session data in the appropriate storage based on rememberDevice flag.
  */
@@ -15,10 +40,8 @@ export function storeSession(session: StoredSession): void {
   const storage = session.rememberDevice ? localStorage : sessionStorage;
   storage.setItem(CONFIG.SESSION_KEY, JSON.stringify(session));
 
-  // If using sessionStorage, ensure localStorage doesn't have stale data
-  if (!session.rememberDevice) {
-    localStorage.removeItem(CONFIG.SESSION_KEY);
-  }
+  const staleStorage = session.rememberDevice ? sessionStorage : localStorage;
+  staleStorage.removeItem(CONFIG.SESSION_KEY);
 }
 
 /**
@@ -31,21 +54,17 @@ export function loadSession(): StoredSession | null {
   // Try localStorage first (remember-device was enabled)
   const localStored = localStorage.getItem(CONFIG.SESSION_KEY);
   if (localStored) {
-    try {
-      return JSON.parse(localStored) as StoredSession;
-    } catch {
-      localStorage.removeItem(CONFIG.SESSION_KEY);
-    }
+    const session = parseStoredSession(localStored);
+    if (session) return session;
+    localStorage.removeItem(CONFIG.SESSION_KEY);
   }
 
   // Fall back to sessionStorage
   const sessionStored = sessionStorage.getItem(CONFIG.SESSION_KEY);
   if (sessionStored) {
-    try {
-      return JSON.parse(sessionStored) as StoredSession;
-    } catch {
-      sessionStorage.removeItem(CONFIG.SESSION_KEY);
-    }
+    const session = parseStoredSession(sessionStored);
+    if (session) return session;
+    sessionStorage.removeItem(CONFIG.SESSION_KEY);
   }
 
   return null;

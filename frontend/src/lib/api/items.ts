@@ -62,8 +62,8 @@ export const itemsApi: ItemsApi = {
   },
 
   getById: async (id: number) => {
-    const items = await itemsApi.get({ id, getRead: true, batchSize: 1 });
-    return items[0] ?? null;
+    const items = await itemsApi.get({ offset: id, getRead: true, batchSize: 1 });
+    return items[0]?.id === id ? items[0] : null;
   },
 
   getContent: async (id: number) => {

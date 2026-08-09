@@ -61,7 +61,7 @@ pub(super) async fn create_folder(
     State(state): State<AppState>,
     Json(input): Json<FolderCreateIn>,
 ) -> ApiResult<Json<FolderCreateOut>> {
-    if input.name.is_empty() {
+    if input.name.trim().is_empty() {
         return Err(folder_name_invalid());
     }
 
@@ -116,7 +116,7 @@ pub(super) async fn rename_folder(
     Path(folder_id): Path<i64>,
     Json(input): Json<FolderRenameIn>,
 ) -> ApiResult<StatusCode> {
-    if input.name.is_empty() {
+    if input.name.trim().is_empty() {
         return Err(folder_name_invalid());
     }
 
