@@ -83,6 +83,11 @@ async fn create_folder_whitespace_only_name_returns_422() {
         .unwrap();
 
     assert_eq!(response.status(), 422);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let parsed: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(parsed["detail"], "Folder name is invalid");
 }
 
 #[tokio::test]
@@ -253,6 +258,11 @@ async fn rename_folder_whitespace_only_name_returns_422() {
         .unwrap();
 
     assert_eq!(response.status(), 422);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let parsed: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(parsed["detail"], "Folder name is invalid");
 }
 
 #[tokio::test]

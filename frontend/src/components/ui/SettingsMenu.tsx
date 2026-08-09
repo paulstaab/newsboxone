@@ -37,8 +37,10 @@ export function SettingsMenu({ position = 'top-right', className = '' }: Setting
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let cancelled = false;
     const syncInstallOption = () => {
       queueMicrotask(() => {
+        if (cancelled) return;
         setShowInstallOption(canPromptInstall());
       });
     };
@@ -46,6 +48,7 @@ export function SettingsMenu({ position = 'top-right', className = '' }: Setting
     window.addEventListener('beforeinstallprompt', syncInstallOption);
     window.addEventListener('appinstalled', syncInstallOption);
     return () => {
+      cancelled = true;
       window.removeEventListener('beforeinstallprompt', syncInstallOption);
       window.removeEventListener('appinstalled', syncInstallOption);
     };

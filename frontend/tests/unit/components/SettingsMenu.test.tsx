@@ -4,16 +4,18 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { SettingsMenu } from '@/components/ui/SettingsMenu';
 
-const { mockPush, mockLogout, mockAuthState, mockInstallState } = vi.hoisted(() => ({
-  mockPush: vi.fn(),
-  mockLogout: vi.fn<() => Promise<void>>(),
-  mockAuthState: {
-    isAuthenticated: true,
+const { mockPush, mockLogout, mockAuthState, mockInstallState, mockCanPromptInstall } = vi.hoisted(
+  () => {
+    const mockInstallState = { available: false };
+    return {
+      mockPush: vi.fn(),
+      mockLogout: vi.fn<() => Promise<void>>(),
+      mockAuthState: { isAuthenticated: true },
+      mockInstallState,
+      mockCanPromptInstall: vi.fn(() => mockInstallState.available),
+    };
   },
-  mockInstallState: {
-    available: false,
-  },
-}));
+);
 
 vi.mock('next/link', () => ({
   default: ({ children, href, ...props }: { children: ReactNode; href: string }) => (
@@ -55,7 +57,7 @@ vi.mock('@/hooks/useAuth', () => ({
 }));
 
 vi.mock('@/lib/pwa/installPrompt', () => ({
-  canPromptInstall: () => mockInstallState.available,
+  canPromptInstall: mockCanPromptInstall,
   triggerInstallPrompt: vi.fn(),
 }));
 
@@ -73,6 +75,7 @@ describe('SettingsMenu', () => {
   beforeEach(() => {
     mockPush.mockReset();
     mockLogout.mockReset();
+    mockCanPromptInstall.mockClear();
     mockAuthState.isAuthenticated = true;
     mockInstallState.available = false;
   });
@@ -155,5 +158,16 @@ describe('SettingsMenu', () => {
     await user.click(screen.getByRole('button', { name: /burger menu/i }));
 
     expect(screen.getByRole('menuitem', { name: 'Install App' })).toBeEnabled();
+  });
+
+  it('cancels queued install-state synchronization after unmount', async () => {
+    const { unmount } = render(<SettingsMenu />);
+    expect(mockCanPromptInstall).toHaveBeenCalledTimes(1);
+
+    window.dispatchEvent(new Event('beforeinstallprompt'));
+    unmount();
+    await Promise.resolve();
+
+    expect(mockCanPromptInstall).toHaveBeenCalledTimes(1);
   });
 });
