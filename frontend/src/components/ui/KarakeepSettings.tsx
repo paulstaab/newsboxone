@@ -81,6 +81,7 @@ export function KarakeepSettings() {
           autoComplete="url"
           placeholder="https://karakeep.example"
           value={preferences.karakeepBaseUrl}
+          disabled={isTesting}
           onChange={(event) => {
             updateConnectionField('karakeepBaseUrl', event.target.value);
           }}
@@ -94,6 +95,7 @@ export function KarakeepSettings() {
           autoComplete="off"
           placeholder="Karakeep API key"
           value={preferences.karakeepApiToken}
+          disabled={isTesting}
           onChange={(event) => {
             updateConnectionField('karakeepApiToken', event.target.value);
           }}

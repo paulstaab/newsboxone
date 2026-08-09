@@ -100,8 +100,10 @@ function TimelineContent() {
 
   const { toasts, showToast, dismissToast } = useToast();
   const { preferences } = useKarakeepPreferences();
-  const [savingToKarakeepIds, setSavingToKarakeepIds] = useState<Set<number>>(new Set());
-  const [karakeepBookmarkIds, setKarakeepBookmarkIds] = useState<Map<number, string>>(new Map());
+  const [savingToKarakeepIds, setSavingToKarakeepIds] = useState<Set<number>>(() => new Set());
+  const [karakeepBookmarkIds, setKarakeepBookmarkIds] = useState<Map<number, string>>(
+    () => new Map(),
+  );
   const savingToKarakeepIdsRef = useRef<Set<number>>(new Set());
   const karakeepAvailable =
     preferences.karakeepEnabled &&

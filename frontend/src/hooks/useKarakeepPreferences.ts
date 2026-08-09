@@ -22,7 +22,6 @@ export function useKarakeepPreferences() {
 
   const updatePreferences = useCallback((next: UserPreferences) => {
     storePreferences(next);
-    setPreferences(next);
   }, []);
 
   return { preferences, updatePreferences };

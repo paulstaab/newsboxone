@@ -103,7 +103,7 @@ describe('ArticleCard', () => {
 
   it('saves to Karakeep from the bookmark button without opening the card', () => {
     const onOpen = vi.fn();
-    const onSaveToKarakeep = vi.fn<() => Promise<void>>().mockResolvedValue();
+    const onSaveToKarakeep = vi.fn<(article: ArticlePreview) => Promise<void>>().mockResolvedValue();
     render(
       <ArticleCard article={mockArticle} onOpen={onOpen} onSaveToKarakeep={onSaveToKarakeep} />,
     );
@@ -115,7 +115,7 @@ describe('ArticleCard', () => {
   });
 
   it('highlights articles successfully saved to Karakeep', () => {
-    const onSaveToKarakeep = vi.fn<() => Promise<void>>().mockResolvedValue();
+    const onSaveToKarakeep = vi.fn<(article: ArticlePreview) => Promise<void>>().mockResolvedValue();
     render(
       <ArticleCard article={mockArticle} onSaveToKarakeep={onSaveToKarakeep} isSavedToKarakeep />,
     );
@@ -133,7 +133,7 @@ describe('ArticleCard', () => {
   it('saves to Karakeep on touch long press and suppresses the follow-up click', () => {
     vi.useFakeTimers();
     const onOpen = vi.fn();
-    const onSaveToKarakeep = vi.fn<() => Promise<void>>().mockResolvedValue();
+    const onSaveToKarakeep = vi.fn<(article: ArticlePreview) => Promise<void>>().mockResolvedValue();
     render(
       <ArticleCard article={mockArticle} onOpen={onOpen} onSaveToKarakeep={onSaveToKarakeep} />,
     );
