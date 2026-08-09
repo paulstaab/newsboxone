@@ -1,6 +1,14 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, type CSSProperties } from 'react';
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useTimeline } from '@/hooks/useTimeline';
 import { useFolderQueueDocking } from '@/hooks/useFolderQueueDocking';
@@ -20,6 +28,8 @@ import {
   markTimelineUpdateComplete,
 } from '@/lib/metrics/metricsClient';
 import { FullscreenStatus } from '@/components/ui/FullscreenStatus';
+import { useKarakeepPreferences } from '@/hooks/useKarakeepPreferences';
+import { deleteKarakeepBookmark, KarakeepError, saveKarakeepBookmark } from '@/lib/karakeep/client';
 
 /**
  * Timeline page content component
@@ -89,6 +99,16 @@ function TimelineContent() {
   }, [activeArticles, isPopoutOpen, popoutArticleKey]);
 
   const { toasts, showToast, dismissToast } = useToast();
+  const { preferences } = useKarakeepPreferences();
+  const [savingToKarakeepIds, setSavingToKarakeepIds] = useState<Set<number>>(() => new Set());
+  const [karakeepBookmarkIds, setKarakeepBookmarkIds] = useState<Map<number, string>>(
+    () => new Map(),
+  );
+  const savingToKarakeepIdsRef = useRef<Set<number>>(new Set());
+  const karakeepAvailable =
+    preferences.karakeepEnabled &&
+    preferences.karakeepConnectionVerified &&
+    Boolean(preferences.karakeepBaseUrl && preferences.karakeepApiToken);
 
   const handleOpenArticle = useCallback(
     (article: ArticlePreview, opener: HTMLElement) => {
@@ -100,6 +120,83 @@ function TimelineContent() {
       }
     },
     [markItemRead, openPopout, setSelectedArticleElement, setSelectedArticleId],
+  );
+
+  const handleSaveToKarakeep = useCallback(
+    async (article: ArticlePreview) => {
+      if (savingToKarakeepIdsRef.current.has(article.id)) return;
+
+      const isRemoving = karakeepBookmarkIds.has(article.id);
+      savingToKarakeepIdsRef.current.add(article.id);
+      setSavingToKarakeepIds((current) => new Set(current).add(article.id));
+      try {
+        const config = {
+          baseUrl: preferences.karakeepBaseUrl,
+          apiToken: preferences.karakeepApiToken,
+        };
+        const savedBookmarkId = karakeepBookmarkIds.get(article.id);
+        if (savedBookmarkId) {
+          await deleteKarakeepBookmark(config, savedBookmarkId);
+          setKarakeepBookmarkIds((current) => {
+            const next = new Map(current);
+            next.delete(article.id);
+            return next;
+          });
+          showToast({
+            title: 'Removed from Karakeep',
+            message: article.title || 'Article removed.',
+            type: 'success',
+            duration: 2500,
+          });
+          return;
+        }
+
+        const bookmarkId = await saveKarakeepBookmark(
+          {
+            ...config,
+          },
+          {
+            url: article.url,
+            title: article.title,
+            summary: article.summary,
+          },
+        );
+        setKarakeepBookmarkIds((current) => new Map(current).set(article.id, bookmarkId));
+        showToast({
+          title: 'Saved to Karakeep',
+          message: article.title || 'Article saved.',
+          type: 'success',
+          duration: 2500,
+        });
+        if (article.unread) {
+          await markItemRead(article.id);
+        }
+      } catch (error) {
+        showToast({
+          title: isRemoving ? 'Karakeep removal failed' : 'Karakeep save failed',
+          message:
+            error instanceof KarakeepError
+              ? error.message
+              : `Karakeep could not ${isRemoving ? 'remove' : 'save'} this article.`,
+          type: 'error',
+          duration: 5000,
+        });
+      } finally {
+        savingToKarakeepIdsRef.current.delete(article.id);
+        setSavingToKarakeepIds((current) => {
+          const next = new Set(current);
+          next.delete(article.id);
+          return next;
+        });
+      }
+    },
+    [
+      karakeepBookmarkIds,
+      markItemRead,
+      preferences.karakeepApiToken,
+      preferences.karakeepBaseUrl,
+      showToast,
+    ],
   );
 
   useEffect(() => {
@@ -342,6 +439,9 @@ function TimelineContent() {
                   isLoading={isUpdating && activeArticles.length === 0}
                   emptyMessage={`No unread articles left in ${activeFolder.name}.`}
                   onOpenArticle={handleOpenArticle}
+                  onSaveToKarakeep={karakeepAvailable ? handleSaveToKarakeep : undefined}
+                  savingToKarakeepIds={savingToKarakeepIds}
+                  savedToKarakeepIds={new Set(karakeepBookmarkIds.keys())}
                   registerArticle={registerArticle}
                   selectedArticleId={selectedArticleId}
                   isUpdating={isUpdating}

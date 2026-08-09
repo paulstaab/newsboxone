@@ -38,7 +38,8 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 - `APP-011`: The shared burger menu shall list timeline before feed management and use the feed management entry to navigate to the feed management page.
 - `APP-012`: When an authenticated session exists, the shared burger menu shall expose a logout action that revokes the current backend-issued browser token, clears frontend session storage, and routes the user to `/login`; if backend revocation fails, local sign-out shall still complete.
 - `APP-013`: The shared burger menu shall expose an About entry that routes to `/about`.
-- `APP-014`: Login, timeline, feed management, and about routes shall set a descriptive document title for the active page.
+- `APP-014`: Login, timeline, feed management, about, and integrations routes shall set a descriptive document title for the active page.
+- `APP-015`: The shared burger menu shall expose an Integrations entry that routes to `/integrations`, where browser-local Karakeep connection settings are available without requiring backend Karakeep configuration.
 
 ### Login Page
 
@@ -100,6 +101,8 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 - `TIMELINE-038`: Unread timeline sync shall page through backend item-id boundaries without skipping unread items between pages.
 - `TIMELINE-039`: Failed optimistic read mutations shall restore affected unread items locally and clear their pending read tombstones.
 - `TIMELINE-040`: Timeline effects shall declare their React hook dependencies directly and use stable refs or callbacks for intentionally one-shot behavior.
+- `TIMELINE-041`: When browser-local Karakeep is enabled and verified, each timeline article card shall expose a save-to-Karakeep action, keep that action highlighted after a successful save while the card remains displayed, and delete the Karakeep bookmark when the highlighted action is activated again.
+- `TIMELINE-042`: On touch devices, long-pressing a timeline article card shall save it to Karakeep without opening the article.
 
 ### Feed Management Page
 

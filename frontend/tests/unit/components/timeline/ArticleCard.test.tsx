@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ArticleCard } from '@/components/timeline/ArticleCard';
@@ -41,6 +41,10 @@ const mockArticle: ArticlePreview = {
 };
 
 describe('ArticleCard', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders article summary information correctly', () => {
     render(<ArticleCard article={mockArticle} onOpen={vi.fn()} />);
 
@@ -95,5 +99,57 @@ describe('ArticleCard', () => {
     fireEvent.keyDown(screen.getByRole('option'), { key: 'Enter' });
 
     expect(onOpen).toHaveBeenCalledWith(mockArticle, expect.any(HTMLElement));
+  });
+
+  it('saves to Karakeep from the bookmark button without opening the card', () => {
+    const onOpen = vi.fn();
+    const onSaveToKarakeep = vi
+      .fn<(article: ArticlePreview) => Promise<void>>()
+      .mockResolvedValue();
+    render(
+      <ArticleCard article={mockArticle} onOpen={onOpen} onSaveToKarakeep={onSaveToKarakeep} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /save test article title to karakeep/i }));
+
+    expect(onSaveToKarakeep).toHaveBeenCalledWith(mockArticle);
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it('highlights articles successfully saved to Karakeep', () => {
+    const onSaveToKarakeep = vi
+      .fn<(article: ArticlePreview) => Promise<void>>()
+      .mockResolvedValue();
+    render(
+      <ArticleCard article={mockArticle} onSaveToKarakeep={onSaveToKarakeep} isSavedToKarakeep />,
+    );
+
+    const savedButton = screen.getByRole('button', {
+      name: /remove test article title from karakeep/i,
+    });
+    expect(savedButton).toHaveAttribute('aria-pressed', 'true');
+    expect(savedButton).toHaveClass('article-card__karakeep-button--saved');
+
+    fireEvent.click(savedButton);
+    expect(onSaveToKarakeep).toHaveBeenCalledWith(mockArticle);
+  });
+
+  it('saves to Karakeep on touch long press and suppresses the follow-up click', () => {
+    vi.useFakeTimers();
+    const onOpen = vi.fn();
+    const onSaveToKarakeep = vi
+      .fn<(article: ArticlePreview) => Promise<void>>()
+      .mockResolvedValue();
+    render(
+      <ArticleCard article={mockArticle} onOpen={onOpen} onSaveToKarakeep={onSaveToKarakeep} />,
+    );
+
+    const card = screen.getByRole('option');
+    fireEvent.pointerDown(card, { pointerType: 'touch', clientX: 8, clientY: 8 });
+    vi.advanceTimersByTime(600);
+    fireEvent.click(card);
+
+    expect(onSaveToKarakeep).toHaveBeenCalledWith(mockArticle);
+    expect(onOpen).not.toHaveBeenCalled();
   });
 });

@@ -26,6 +26,8 @@ It is built for homelab deployment: persistent local storage, required login pro
   NewsBoxOne can evaluate feed quality, prefer extracted full text when a feed is thin, and generate concise summaries when configured with an OpenAI-compatible API.
 - AI-assisted feed discovery:
   generate recommendations from your existing subscriptions, review why each source was suggested, and subscribe only after explicit confirmation. NewsBoxOne verifies every recommendation as an active RSS or Atom feed before showing it.
+- Optional Karakeep integration:
+  save timeline articles directly to Karakeep with the bookmark button or a mobile long-press.
 - Safe self-hosted defaults:
   data stays in SQLite on your storage, authenticated access is expected, and remote fetches are restricted to reduce SSRF risk.
 
@@ -34,6 +36,14 @@ It is built for homelab deployment: persistent local storage, required login pro
 Open **Feed management**, choose **Discover feeds**, and generate a fresh set of recommendations based on the feeds you already follow.
 
 Recommendation generation is optional and requires `OPENAI_API_KEY`. NewsBoxOne sends feed metadata and recent article titles as context, but not article bodies or summaries. Suggested URLs are fetched through the same SSRF protections used for normal feed discovery, parsed as RSS or Atom, checked for recent activity, and filtered against your current subscriptions. Recommendations are not persisted and are never subscribed automatically.
+
+## Karakeep Integration
+
+Open the burger menu, choose **Integrations**, and enter your Karakeep server URL and API key. Test the connection, then enable the integration.
+
+Once enabled, each timeline card has a bookmark button. Activating it saves the article directly from the browser and keeps the button highlighted while the card is displayed. Activating the highlighted button again permanently deletes that bookmark from Karakeep. On mobile, long-pressing a card also activates the Karakeep action without opening the article.
+
+This integration is entirely frontend-side: NewsBoxOne's backend does not connect to Karakeep and requires no Karakeep environment variables. The server URL, API key, and enabled state are stored in that browser's `localStorage`, so configure each browser separately and only use it on devices you trust. The browser must be able to reach the Karakeep server, Karakeep must allow the NewsBoxOne origin through CORS, and an HTTPS NewsBoxOne page requires an HTTPS Karakeep endpoint.
 
 ## Trust And Safety Warning
 
@@ -127,7 +137,7 @@ These are optional. If you do not set an API key, NewsBoxOne still works normall
 | ------------------------ | --------------------------- | -------------------------------------------------------------------------------------------------- |
 | `OPENAI_API_KEY`         | unset                       | Enables AI-assisted summaries, newsletter parsing, and feed recommendations.                       |
 | `OPENAI_BASE_URL`        | `https://api.openai.com/v1` | Base URL for OpenAI-compatible APIs.                                                               |
-| `OPENAI_MODEL`           | `gpt-5.6-luna`                | Model used for summaries, content-quality decisions, newsletter parsing, and feed recommendations. |
+| `OPENAI_MODEL`           | `gpt-5.6-luna`              | Model used for summaries, content-quality decisions, newsletter parsing, and feed recommendations. |
 | `OPENAI_TIMEOUT_SECONDS` | `60`                        | Timeout for outbound AI requests.                                                                  |
 
 ### Advanced / Operational Settings

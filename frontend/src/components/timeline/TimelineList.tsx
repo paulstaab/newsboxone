@@ -12,6 +12,9 @@ interface TimelineListProps {
   isLoading?: boolean;
   emptyMessage?: string;
   onOpenArticle?: (article: ArticlePreview, opener: HTMLElement) => void;
+  onSaveToKarakeep?: (article: ArticlePreview) => Promise<void>;
+  savingToKarakeepIds?: ReadonlySet<number>;
+  savedToKarakeepIds?: ReadonlySet<number>;
   registerArticle?: (id: number) => (node: HTMLElement | null) => void;
   selectedArticleId?: number | null;
   onMarkAllRead?: () => Promise<void>;
@@ -28,6 +31,9 @@ export function TimelineList({
   isLoading,
   emptyMessage,
   onOpenArticle,
+  onSaveToKarakeep,
+  savingToKarakeepIds,
+  savedToKarakeepIds,
   registerArticle,
   selectedArticleId,
   onMarkAllRead,
@@ -103,6 +109,9 @@ export function TimelineList({
             key={`${String(article.id)}-${String(article.feedId)}`}
             article={article}
             onOpen={onOpenArticle}
+            onSaveToKarakeep={onSaveToKarakeep}
+            isSavingToKarakeep={savingToKarakeepIds?.has(article.id)}
+            isSavedToKarakeep={savedToKarakeepIds?.has(article.id)}
             registerArticle={registerArticle}
             isSelected={article.id === selectedArticleId}
           />
