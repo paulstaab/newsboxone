@@ -43,6 +43,10 @@ export interface UserPreferences {
   viewMode: ViewMode;
   sortOrder: SortOrder;
   showRead: boolean;
+  karakeepEnabled: boolean;
+  karakeepBaseUrl: string;
+  karakeepApiToken: string;
+  karakeepConnectionVerified: boolean;
 }
 
 /** Default preferences applied when none are stored */
@@ -50,4 +54,8 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   viewMode: 'card',
   sortOrder: 'newest',
   showRead: false,
+  karakeepEnabled: false,
+  karakeepBaseUrl: '',
+  karakeepApiToken: '',
+  karakeepConnectionVerified: false,
 };

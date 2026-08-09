@@ -129,4 +129,16 @@ describe('SettingsMenu', () => {
       expect(screen.queryByRole('menuitem', { name: /about newsboxone/i })).toBeNull();
     });
   });
+
+  it('links to browser-local integration settings from the burger menu', async () => {
+    const user = userEvent.setup();
+
+    render(<SettingsMenu />);
+
+    await user.click(screen.getByRole('button', { name: /burger menu/i }));
+
+    const integrationsLink = screen.getByRole('menuitem', { name: /^integrations$/i });
+    expect(integrationsLink).toHaveAttribute('href', '/integrations');
+    expect(screen.queryByRole('heading', { name: /^karakeep$/i })).toBeNull();
+  });
 });

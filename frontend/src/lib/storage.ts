@@ -6,6 +6,8 @@
 import { CONFIG } from './config/env';
 import { type StoredSession, type UserPreferences, DEFAULT_PREFERENCES } from '@/types';
 
+export const PREFERENCES_CHANGED_EVENT = 'newsboxone:preferences-changed';
+
 /**
  * Stores session data in the appropriate storage based on rememberDevice flag.
  */
@@ -64,6 +66,7 @@ export function clearSession(): void {
 export function storePreferences(preferences: UserPreferences): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(CONFIG.PREFERENCES_KEY, JSON.stringify(preferences));
+  window.dispatchEvent(new Event(PREFERENCES_CHANGED_EVENT));
 }
 
 /**

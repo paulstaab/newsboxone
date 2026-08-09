@@ -109,7 +109,7 @@ export function SettingsMenu({ position = 'top-right', className = '' }: Setting
         className="app-menu__button"
         aria-label="Burger menu"
         aria-expanded={isOpen}
-        aria-haspopup="true"
+        aria-haspopup="menu"
       >
         <svg
           className="app-menu__button-icon"
@@ -126,12 +126,7 @@ export function SettingsMenu({ position = 'top-right', className = '' }: Setting
 
       {/* Burger menu dropdown */}
       {isOpen && (
-        <div
-          className="app-menu__panel"
-          role="menu"
-          aria-orientation="vertical"
-          aria-labelledby="settings-menu-button"
-        >
+        <div className="app-menu__panel" role="menu" aria-labelledby="settings-menu-button">
           <div className="app-menu__content">
             <Link
               href="/timeline"
@@ -209,6 +204,32 @@ export function SettingsMenu({ position = 'top-right', className = '' }: Setting
                 />
               </svg>
               <span>About NewsBoxOne</span>
+            </Link>
+
+            <Link
+              href="/integrations"
+              className="app-menu__item"
+              role="menuitem"
+              aria-current={pathname === '/integrations' ? 'page' : undefined}
+              onClick={() => {
+                setIsOpen(false);
+              }}
+            >
+              <svg
+                className="app-menu__icon"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 12h8M12 8v8M7 4v3M17 4v3M7 17v3M17 17v3M4 7h3M17 7h3M4 17h3M17 17h3M8 7h8a1 1 0 011 1v8a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z"
+                />
+              </svg>
+              <span>Integrations</span>
             </Link>
 
             {/* Install App Option */}
