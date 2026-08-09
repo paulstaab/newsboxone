@@ -87,11 +87,22 @@ describe('PWA Install Prompt', () => {
 
       expect(isDismissed()).toBe(false);
     });
+
+    it.each(['invalid', String(Date.now() + 24 * 60 * 60 * 1000)])(
+      'should clear an invalid dismissal timestamp (%s)',
+      async (timestamp) => {
+        const { isDismissed } = await import('@/lib/pwa/installPrompt');
+        localStorage.setItem('pwa-install-dismissed', timestamp);
+
+        expect(isDismissed()).toBe(false);
+        expect(localStorage.getItem('pwa-install-dismissed')).toBeNull();
+      },
+    );
   });
 
   describe('prompt triggering', () => {
     it('should trigger install prompt when conditions met', async () => {
-      const { captureInstallPromptEvent, triggerInstallPrompt } =
+      const { canPromptInstall, captureInstallPromptEvent, triggerInstallPrompt } =
         await import('@/lib/pwa/installPrompt');
 
       const mockPrompt = vi.fn().mockResolvedValue(undefined);
@@ -106,6 +117,7 @@ describe('PWA Install Prompt', () => {
 
       expect(mockPrompt).toHaveBeenCalled();
       expect(result).toBe('accepted');
+      expect(canPromptInstall()).toBe(false);
     });
 
     it('should return null if no prompt available', async () => {
@@ -130,6 +142,19 @@ describe('PWA Install Prompt', () => {
       const result = await triggerInstallPrompt();
 
       expect(result).toBe('dismissed');
+    });
+
+    it('should consume the captured event when prompting fails', async () => {
+      const { canPromptInstall, captureInstallPromptEvent, triggerInstallPrompt } =
+        await import('@/lib/pwa/installPrompt');
+      const mockEvent = {
+        prompt: vi.fn().mockRejectedValue(new Error('prompt failed')),
+        userChoice: Promise.resolve({ outcome: 'accepted' }),
+      } as unknown as BeforeInstallPromptEvent;
+      captureInstallPromptEvent(mockEvent);
+
+      await expect(triggerInstallPrompt()).resolves.toBeNull();
+      expect(canPromptInstall()).toBe(false);
     });
   });
 

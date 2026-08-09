@@ -51,7 +51,9 @@ test.describe('PWA install integration coverage', () => {
     await page.goto('/timeline');
     await dispatchInstallPrompt(page);
     await page.getByRole('button', { name: /burger menu/i }).click();
-    await expect(page.getByRole('menuitem', { name: /install/i })).toBeVisible();
+    const installAction = page.getByRole('menuitem', { name: 'Install App', exact: true });
+    await expect(installAction).toBeVisible();
+    await expect(installAction).toBeEnabled();
   });
 
   test('[TC-APP-009] install state reacts to appinstalled', async ({ page }) => {

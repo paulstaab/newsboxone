@@ -4,11 +4,14 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { SettingsMenu } from '@/components/ui/SettingsMenu';
 
-const { mockPush, mockLogout, mockAuthState } = vi.hoisted(() => ({
+const { mockPush, mockLogout, mockAuthState, mockInstallState } = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockLogout: vi.fn<() => Promise<void>>(),
   mockAuthState: {
     isAuthenticated: true,
+  },
+  mockInstallState: {
+    available: false,
   },
 }));
 
@@ -33,7 +36,7 @@ vi.mock('@/hooks/useAuth', () => ({
       ? {
           username: 'test',
           token: 'token',
-          expiresAt: '2026-05-05T00:00:00.000Z',
+          expiresAt: '2099-05-05T00:00:00.000Z',
           rememberDevice: false,
           viewMode: 'card',
           sortOrder: 'newest',
@@ -52,7 +55,7 @@ vi.mock('@/hooks/useAuth', () => ({
 }));
 
 vi.mock('@/lib/pwa/installPrompt', () => ({
-  canPromptInstall: () => false,
+  canPromptInstall: () => mockInstallState.available,
   triggerInstallPrompt: vi.fn(),
 }));
 
@@ -71,6 +74,7 @@ describe('SettingsMenu', () => {
     mockPush.mockReset();
     mockLogout.mockReset();
     mockAuthState.isAuthenticated = true;
+    mockInstallState.available = false;
   });
 
   it('shows logout for authenticated users and signs out once with redirect', async () => {
@@ -140,5 +144,16 @@ describe('SettingsMenu', () => {
     const integrationsLink = screen.getByRole('menuitem', { name: /^integrations$/i });
     expect(integrationsLink).toHaveAttribute('href', '/integrations');
     expect(screen.queryByRole('heading', { name: /^karakeep$/i })).toBeNull();
+  });
+
+  it('enables installation when browser eligibility arrives after mount', async () => {
+    const user = userEvent.setup();
+    render(<SettingsMenu />);
+
+    mockInstallState.available = true;
+    window.dispatchEvent(new Event('beforeinstallprompt'));
+    await user.click(screen.getByRole('button', { name: /burger menu/i }));
+
+    expect(screen.getByRole('menuitem', { name: 'Install App' })).toBeEnabled();
   });
 });

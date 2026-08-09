@@ -298,7 +298,7 @@ export async function setupApiMocks(page: Page) {
         contentType: 'application/json',
         body: JSON.stringify({
           token: 'test-token',
-          expiresAt: body.rememberDevice ? 1_777_507_200 : 1_743_206_400,
+          expiresAt: 4_081_104_000,
         }),
       });
       return;

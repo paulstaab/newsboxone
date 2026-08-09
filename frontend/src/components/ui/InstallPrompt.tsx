@@ -6,7 +6,7 @@
  * Respects user dismissals with 7-day cooldown.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   setupInstallPromptListeners,
   shouldShowPrompt,
@@ -36,6 +36,27 @@ export function InstallPrompt({ delayMs = 3000, showDuringActivity = false }: In
   const [show, setShow] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
 
+  const schedulePrompt = useCallback(() => {
+    if (!shouldShowPrompt()) {
+      return null;
+    }
+
+    if (showDuringActivity) {
+      setShow(true);
+      return null;
+    }
+
+    const idleTimer = setTimeout(() => {
+      if (shouldShowPrompt()) {
+        setShow(true);
+      }
+    }, 2000);
+
+    return () => {
+      clearTimeout(idleTimer);
+    };
+  }, [showDuringActivity]);
+
   useEffect(() => {
     // Setup event listeners
     const cleanup = setupInstallPromptListeners();
@@ -45,30 +66,26 @@ export function InstallPrompt({ delayMs = 3000, showDuringActivity = false }: In
     };
     window.addEventListener('appinstalled', handleInstalled);
 
-    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+    let cleanupScheduledPrompt: (() => void) | null = null;
+    const handleBeforeInstallPrompt = () => {
+      cleanupScheduledPrompt?.();
+      cleanupScheduledPrompt = schedulePrompt();
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
     // Check if we should show the prompt after delay
     const timer = setTimeout(() => {
-      if (shouldShowPrompt()) {
-        // If we care about activity, wait for idle
-        if (!showDuringActivity) {
-          // Wait a bit more to ensure user isn't actively reading
-          idleTimer = setTimeout(() => {
-            setShow(true);
-          }, 2000);
-        } else {
-          setShow(true);
-        }
-      }
+      cleanupScheduledPrompt = schedulePrompt();
     }, delayMs);
 
     return () => {
       clearTimeout(timer);
-      if (idleTimer) clearTimeout(idleTimer);
+      cleanupScheduledPrompt?.();
       window.removeEventListener('appinstalled', handleInstalled);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       cleanup();
     };
-  }, [delayMs, showDuringActivity]);
+  }, [delayMs, schedulePrompt]);
 
   const handleInstall = async () => {
     setIsInstalling(true);

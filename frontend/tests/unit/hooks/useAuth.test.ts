@@ -12,7 +12,7 @@ describe('auth session utilities', () => {
     storeSession({
       username: 'testuser',
       token: 'issued-token',
-      expiresAt: '2026-04-01T00:00:00.000Z',
+      expiresAt: '2099-04-01T00:00:00.000Z',
       rememberDevice: false,
     });
 
@@ -21,28 +21,30 @@ describe('auth session utilities', () => {
   });
 
   it('stores localStorage when rememberDevice is enabled', () => {
+    sessionStorage.setItem('newsboxone:session', 'stale-session');
     storeSession({
       username: 'testuser',
       token: 'issued-token',
-      expiresAt: '2026-04-01T00:00:00.000Z',
+      expiresAt: '2099-04-01T00:00:00.000Z',
       rememberDevice: true,
     });
 
     expect(localStorage.getItem('newsboxone:session')).not.toBeNull();
+    expect(sessionStorage.getItem('newsboxone:session')).toBeNull();
   });
 
   it('loads stored sessions from browser storage', () => {
     storeSession({
       username: 'testuser',
       token: 'issued-token',
-      expiresAt: '2026-04-01T00:00:00.000Z',
+      expiresAt: '2099-04-01T00:00:00.000Z',
       rememberDevice: true,
     });
 
     expect(loadSession()).toEqual({
       username: 'testuser',
       token: 'issued-token',
-      expiresAt: '2026-04-01T00:00:00.000Z',
+      expiresAt: '2099-04-01T00:00:00.000Z',
       rememberDevice: true,
     });
   });
@@ -51,7 +53,7 @@ describe('auth session utilities', () => {
     storeSession({
       username: 'testuser',
       token: 'issued-token',
-      expiresAt: '2026-04-01T00:00:00.000Z',
+      expiresAt: '2099-04-01T00:00:00.000Z',
       rememberDevice: true,
     });
 
@@ -60,11 +62,30 @@ describe('auth session utilities', () => {
     expect(loadSession()).toBeNull();
   });
 
+  it.each([
+    ['malformed JSON', '{'],
+    ['missing fields', '{}'],
+    [
+      'expired session',
+      JSON.stringify({
+        username: 'testuser',
+        token: 'expired-token',
+        expiresAt: '2020-01-01T00:00:00.000Z',
+        rememberDevice: true,
+      }),
+    ],
+  ])('rejects and removes %s', (_label, stored) => {
+    localStorage.setItem('newsboxone:session', stored);
+
+    expect(loadSession()).toBeNull();
+    expect(localStorage.getItem('newsboxone:session')).toBeNull();
+  });
+
   it('round-trips stored and in-memory session shapes', () => {
     const stored = {
       username: 'testuser',
       token: 'issued-token',
-      expiresAt: '2026-04-01T00:00:00.000Z',
+      expiresAt: '2099-04-01T00:00:00.000Z',
       rememberDevice: true,
     };
 

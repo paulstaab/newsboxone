@@ -57,6 +57,12 @@ export function isDismissed(): boolean {
 
   const dismissalTime = parseInt(dismissedAt, 10);
   const now = Date.now();
+
+  if (!Number.isFinite(dismissalTime) || dismissalTime > now) {
+    localStorage.removeItem(DISMISSAL_KEY);
+    return false;
+  }
+
   const timeSinceDismissal = now - dismissalTime;
 
   // If cooldown has expired, clear the dismissal
@@ -73,16 +79,20 @@ export function isDismissed(): boolean {
  * Returns the user's choice or null if no prompt is available.
  */
 export async function triggerInstallPrompt(): Promise<'accepted' | 'dismissed' | null> {
-  if (!capturedPromptEvent) {
+  const promptEvent = capturedPromptEvent;
+  if (!promptEvent) {
     return null;
   }
 
+  // A beforeinstallprompt event may only be consumed once.
+  capturedPromptEvent = null;
+
   try {
     // Show the install prompt
-    await capturedPromptEvent.prompt();
+    await promptEvent.prompt();
 
     // Wait for the user's choice
-    const choiceResult = await capturedPromptEvent.userChoice;
+    const choiceResult = await promptEvent.userChoice;
 
     if (choiceResult.outcome === 'dismissed') {
       recordDismissal();

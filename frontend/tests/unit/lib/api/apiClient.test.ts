@@ -7,14 +7,14 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../mocks/server';
 import { getApiClient, createApiClient, resetApiClient, type ApiClient } from '@/lib/api/apiClient';
-import { ApiError, AuthenticationError } from '@/lib/api/client';
+import { apiGet, ApiError, AuthenticationError } from '@/lib/api/client';
 import { storeSession, clearSession } from '@/lib/storage';
 
 const BASE_URL = '';
 const API_PATH = '/api';
 
 const TEST_TOKEN = 'test-token';
-const TEST_EXPIRY = '2026-04-30T00:00:00.000Z';
+const TEST_EXPIRY = '2099-04-30T00:00:00.000Z';
 
 beforeEach(() => {
   server.resetHandlers();
@@ -154,6 +154,22 @@ describe('ApiClient', () => {
         expect((error as ApiError).body).toEqual(errorBody);
       }
     }, 15000); // Increase timeout to account for retries
+
+    it('should preserve malformed JSON error bodies as text', async () => {
+      server.use(
+        http.get(`${BASE_URL}${API_PATH}/malformed-error`, () => {
+          return new HttpResponse('{invalid', {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }),
+      );
+
+      await expect(apiGet('/malformed-error')).rejects.toMatchObject({
+        status: 400,
+        body: '{invalid',
+      });
+    });
   });
 
   describe('response parsing', () => {
@@ -502,12 +518,18 @@ describe('ApiClient', () => {
 
     it('should fetch a single item by ID', async () => {
       const client = getApiClient();
-      const result = await client.items.getById(1001);
+      const result = await client.items.getById(1002);
 
       expect(result).not.toBeNull();
       if (result) {
-        expect(result.id).toBe(1001);
+        expect(result.id).toBe(1002);
       }
+    });
+
+    it('should return null when a requested item ID does not exist', async () => {
+      const client = getApiClient();
+
+      await expect(client.items.getById(1500)).resolves.toBeNull();
     });
 
     it('should fetch updated items', async () => {

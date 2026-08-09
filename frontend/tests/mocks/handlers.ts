@@ -290,7 +290,7 @@ export const handlers: HttpHandler[] = [
     if (body.username === 'testuser' && body.password === 'testpass') {
       return HttpResponse.json({
         token: VALID_TOKEN,
-        expiresAt: body.rememberDevice ? 1_777_507_200 : 1_743_206_400,
+        expiresAt: 4_081_104_000,
       });
     }
 
@@ -461,6 +461,8 @@ export const handlers: HttpHandler[] = [
     const getRead = url.searchParams.get('getRead') !== 'false';
     const type = parseInt(url.searchParams.get('type') ?? '3', 10);
     const id = parseInt(url.searchParams.get('id') ?? '0', 10);
+    const offset = parseInt(url.searchParams.get('offset') ?? '0', 10);
+    const batchSize = parseInt(url.searchParams.get('batchSize') ?? '100', 10);
 
     let filteredItems = [...mockItems];
 
@@ -481,6 +483,12 @@ export const handlers: HttpHandler[] = [
       // Starred only
       filteredItems = filteredItems.filter((item) => item.starred);
     }
+
+    if (offset > 0) {
+      filteredItems = filteredItems.filter((item) => item.id <= offset);
+    }
+    filteredItems.sort((left, right) => right.id - left.id);
+    filteredItems = filteredItems.slice(0, batchSize);
 
     return HttpResponse.json({ items: filteredItems });
   }),

@@ -165,11 +165,12 @@ export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions
 
       // Handle other errors
       if (!response.ok) {
-        let body: unknown;
+        const responseBody = await response.text();
+        let body: unknown = responseBody;
         try {
-          body = await response.json();
+          body = responseBody ? (JSON.parse(responseBody) as unknown) : undefined;
         } catch {
-          body = await response.text();
+          // Preserve malformed or non-JSON error bodies as text.
         }
 
         throw new ApiError(response.status, response.statusText, body);
