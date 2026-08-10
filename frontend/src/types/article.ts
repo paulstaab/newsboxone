@@ -173,7 +173,7 @@ function normalizeThumbnailUrl(thumbnailUrl: string | null, articleUrl: string):
     return null;
   }
 
-  const decodedThumbnailUrl = rawThumbnailUrl.replace(/&amp;/gi, '&').replace(/&amp;/gi, '&');
+  const decodedThumbnailUrl = rawThumbnailUrl.replace(/&amp;/gi, '&');
   const protocolReadyThumbnailUrl = decodedThumbnailUrl.startsWith('//')
     ? `https:${decodedThumbnailUrl}`
     : decodedThumbnailUrl;

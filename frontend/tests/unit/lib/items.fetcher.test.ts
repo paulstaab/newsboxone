@@ -206,7 +206,6 @@ describe('sanitizeArticleHtml', () => {
     expect(article.body).not.toContain('style=');
     expect(article.body).not.toContain('script');
   });
-
 });
 
 describe('normalizeArticle', () => {
@@ -229,6 +228,17 @@ describe('normalizeArticle', () => {
     );
 
     expect(article.mediaThumbnail).toBe('https://cdn.example.com/thumb.jpg');
+  });
+
+  it('decodes HTML-escaped thumbnail URLs without double-unescaping', () => {
+    const article = normalizeArticle(
+      buildApiArticle({
+        url: 'https://example.com/news/story',
+        mediaThumbnail: 'https://cdn.example.com/thumb.jpg?foo=1&amp;bar=2',
+      }),
+    );
+
+    expect(article.mediaThumbnail).toBe('https://cdn.example.com/thumb.jpg?foo=1&bar=2');
   });
 
   it('drops unsupported thumbnail URL schemes', () => {
