@@ -207,6 +207,9 @@ describe('sanitizeArticleHtml', () => {
     expect(article.body).not.toContain('script');
   });
 
+});
+
+describe('normalizeArticle', () => {
   it('resolves relative thumbnail URLs against the article URL', () => {
     const article = normalizeArticle(
       buildApiArticle({
