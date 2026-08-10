@@ -164,15 +164,46 @@ export interface ItemsQueryParams {
   lastModified?: number;
 }
 
+/**
+ * Normalizes API-provided thumbnail URLs for safe browser rendering.
+ */
+function normalizeThumbnailUrl(thumbnailUrl: string | null, articleUrl: string): string | null {
+  const rawThumbnailUrl = thumbnailUrl?.trim();
+  if (!rawThumbnailUrl) {
+    return null;
+  }
+
+  const decodedThumbnailUrl = rawThumbnailUrl.replace(/&amp;/gi, '&');
+  const protocolReadyThumbnailUrl = decodedThumbnailUrl.startsWith('//')
+    ? `https:${decodedThumbnailUrl}`
+    : decodedThumbnailUrl;
+
+  try {
+    const resolvedUrl = articleUrl.trim()
+      ? new URL(protocolReadyThumbnailUrl, articleUrl)
+      : new URL(protocolReadyThumbnailUrl);
+
+    if (resolvedUrl.protocol !== 'http:' && resolvedUrl.protocol !== 'https:') {
+      return null;
+    }
+
+    return resolvedUrl.toString();
+  } catch {
+    return null;
+  }
+}
+
 /** Transforms API article into internal Article with defaults */
 export function normalizeArticle(api: ApiArticle): Article {
+  const articleUrl = api.url?.trim() ?? '';
+
   return {
     id: api.id,
     guid: api.guid,
     guidHash: api.guidHash,
     title: api.title ?? '(No title)',
     author: api.author ?? '',
-    url: api.url ?? '',
+    url: articleUrl,
     body: sanitizeArticleHtml(api.body ?? ''),
     feedId: api.feedId,
     folderId: api.folderId ?? null,
@@ -184,7 +215,7 @@ export function normalizeArticle(api: ApiArticle): Article {
     enclosureMime: api.enclosureMime,
     fingerprint: api.fingerprint ?? '',
     contentHash: api.contentHash ?? '',
-    mediaThumbnail: api.mediaThumbnail,
+    mediaThumbnail: normalizeThumbnailUrl(api.mediaThumbnail, articleUrl),
     mediaDescription: api.mediaDescription,
     rtl: api.rtl,
   };

@@ -206,4 +206,35 @@ describe('sanitizeArticleHtml', () => {
     expect(article.body).not.toContain('style=');
     expect(article.body).not.toContain('script');
   });
+
+  it('resolves relative thumbnail URLs against the article URL', () => {
+    const article = normalizeArticle(
+      buildApiArticle({
+        url: 'https://example.com/news/story',
+        mediaThumbnail: '/images/cover.jpg',
+      }),
+    );
+
+    expect(article.mediaThumbnail).toBe('https://example.com/images/cover.jpg');
+  });
+
+  it('normalizes protocol-relative thumbnail URLs', () => {
+    const article = normalizeArticle(
+      buildApiArticle({
+        mediaThumbnail: '//cdn.example.com/thumb.jpg',
+      }),
+    );
+
+    expect(article.mediaThumbnail).toBe('https://cdn.example.com/thumb.jpg');
+  });
+
+  it('drops unsupported thumbnail URL schemes', () => {
+    const article = normalizeArticle(
+      buildApiArticle({
+        mediaThumbnail: 'javascript:alert(1)',
+      }),
+    );
+
+    expect(article.mediaThumbnail).toBeNull();
+  });
 });
