@@ -207,3 +207,47 @@ describe('sanitizeArticleHtml', () => {
     expect(article.body).not.toContain('script');
   });
 });
+
+describe('normalizeArticle', () => {
+  it('resolves relative thumbnail URLs against the article URL', () => {
+    const article = normalizeArticle(
+      buildApiArticle({
+        url: 'https://example.com/news/story',
+        mediaThumbnail: '/images/cover.jpg',
+      }),
+    );
+
+    expect(article.mediaThumbnail).toBe('https://example.com/images/cover.jpg');
+  });
+
+  it('normalizes protocol-relative thumbnail URLs', () => {
+    const article = normalizeArticle(
+      buildApiArticle({
+        mediaThumbnail: '//cdn.example.com/thumb.jpg',
+      }),
+    );
+
+    expect(article.mediaThumbnail).toBe('https://cdn.example.com/thumb.jpg');
+  });
+
+  it('decodes HTML-escaped thumbnail URLs without double-unescaping', () => {
+    const article = normalizeArticle(
+      buildApiArticle({
+        url: 'https://example.com/news/story',
+        mediaThumbnail: 'https://cdn.example.com/thumb.jpg?foo=1&amp;bar=2',
+      }),
+    );
+
+    expect(article.mediaThumbnail).toBe('https://cdn.example.com/thumb.jpg?foo=1&bar=2');
+  });
+
+  it('drops unsupported thumbnail URL schemes', () => {
+    const article = normalizeArticle(
+      buildApiArticle({
+        mediaThumbnail: 'javascript:alert(1)',
+      }),
+    );
+
+    expect(article.mediaThumbnail).toBeNull();
+  });
+});
