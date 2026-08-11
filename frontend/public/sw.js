@@ -3,7 +3,7 @@
  * Provides offline shell caching and network status awareness.
  */
 
-const CACHE_NAME = 'newsboxone-v1';
+const CACHE_NAME = 'newsboxone-v2';
 const scopePath = self.registration ? new URL(self.registration.scope).pathname : '/';
 const normalizedScope = scopePath.endsWith('/') ? scopePath.slice(0, -1) : scopePath;
 const basePath = normalizedScope === '/' ? '' : normalizedScope;
@@ -40,6 +40,7 @@ self.addEventListener('activate', (event) => {
 // Fetch event - network-first with cache fallback for navigation
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+  const isSameOrigin = new URL(request.url).origin === self.location.origin;
 
   // Only handle GET requests
   if (request.method !== 'GET') {
@@ -72,10 +73,11 @@ self.addEventListener('fetch', (event) => {
 
   // For static assets, use cache-first strategy
   if (
-    request.destination === 'style' ||
-    request.destination === 'script' ||
-    request.destination === 'image' ||
-    request.destination === 'font'
+    isSameOrigin &&
+    (request.destination === 'style' ||
+      request.destination === 'script' ||
+      request.destination === 'image' ||
+      request.destination === 'font')
   ) {
     event.respondWith(
       caches.match(request).then((cached) => {
