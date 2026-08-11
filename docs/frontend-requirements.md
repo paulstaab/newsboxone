@@ -29,6 +29,7 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 - `APP-002`: The application shall expose a skip link to `#main-content` for keyboard users.
 - `APP-003`: The application shall wrap page content in a shared auth context and SWR data layer.
 - `APP-004`: The application shall register a service worker from the client shell.
+- `APP-004a`: The service worker shall cache only same-origin static assets so cross-origin publisher images are loaded directly by the browser.
 - `APP-005`: The application shall show an offline banner when the browser reports offline status and allow the banner to be dismissed until connectivity changes again.
 - `APP-006`: The application shall render an always visible burger menu from the shared app shell.
 - `APP-007`: The burger menu shall expose a manual PWA install action and disable it when installation is unavailable.
