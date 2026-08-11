@@ -14,7 +14,7 @@ interface FetchEventLike {
 }
 
 async function loadFetchHandler(): Promise<(event: FetchEventLike) => void> {
-  const source = await readFile(new URL('../../../public/sw.js', import.meta.url), 'utf8');
+  const source = await readFile(path.join(process.cwd(), 'public/sw.js'), 'utf8');
   const listeners = new Map<string, (event: FetchEventLike) => void>();
 
   vm.runInNewContext(source, {
