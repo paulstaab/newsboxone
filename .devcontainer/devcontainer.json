@@ -15,7 +15,8 @@
         "dbaeumer.vscode-eslint",
         "ms-playwright.playwright",
         "rust-lang.rust-analyzer",
-        "openai.chatgpt"
+        "openai.chatgpt",
+        "Anthropic.claude-code"
       ]
     }
   },
