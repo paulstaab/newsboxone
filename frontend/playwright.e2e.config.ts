@@ -60,7 +60,7 @@ export default defineConfig({
       },
     },
     {
-      command: `npm run dev -- --hostname 127.0.0.1 --port ${String(FRONTEND_PORT)}`,
+      command: `npm run dev -- --webpack --hostname 127.0.0.1 --port ${String(FRONTEND_PORT)}`,
       cwd: path.join(ROOT_DIR, 'frontend'),
       url: frontendOrigin,
       reuseExistingServer: !process.env.CI,

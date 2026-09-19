@@ -223,89 +223,85 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
   }, [feeds]);
 
   // Refresh with error handling (retry logic handled at page level)
-  const refresh = useCallback(
-    async (_options?: RefreshOptions): Promise<void> => {
-      void _options;
-      const startedAt = Date.now();
-      setIsSyncing(true);
-      try {
-        let fetchedFeedsResponse: FeedsSummary | null = null;
-        if (feeds.length === 0) {
-          try {
-            fetchedFeedsResponse = await api.feeds.getAll();
-          } catch {
-            fetchedFeedsResponse = null;
-          }
+  const refresh = useCallback(async (): Promise<void> => {
+    const startedAt = Date.now();
+    setIsSyncing(true);
+    try {
+      let fetchedFeedsResponse: FeedsSummary | null = null;
+      if (feeds.length === 0) {
+        try {
+          fetchedFeedsResponse = await api.feeds.getAll();
+        } catch {
+          fetchedFeedsResponse = null;
         }
-        const effectiveFeeds = feeds.length > 0 ? feeds : (fetchedFeedsResponse?.feeds ?? []);
-        const effectiveFeedFolderMap = new Map<number, number>(
-          effectiveFeeds.map((feed) => [feed.id, feed.folderId ?? UNCATEGORIZED_FOLDER_ID]),
-        );
-        const effectiveFeedNameMap = new Map<number, string>(
-          effectiveFeeds.map((feed) => [feed.id, feed.title]),
-        );
-        const effectiveFeedTypeMap = new Map<number, ArticlePreview['feedType']>(
-          effectiveFeeds.map((feed) => [feed.id, feed.type]),
-        );
-        let effectiveFolders = foldersData ?? [];
-        if (effectiveFolders.length === 0) {
-          try {
-            effectiveFolders = await api.folders.getAll();
-          } catch {
-            effectiveFolders = [];
-          }
-        }
-        const { items, serverUnreadIds } = await withTimeout(
-          fetchUnreadItemsForSync(),
-          SYNC_TIMEOUT_MS,
-        );
-        const now = Date.now();
-
-        setEnvelope((current) => {
-          const { envelope: reconciled } = reconcileTimelineCache(current, serverUnreadIds, now);
-          const previews = items
-            .map((article) =>
-              toArticlePreview(
-                article,
-                resolveFolderId(article, effectiveFeedFolderMap),
-                now,
-                effectiveFeedNameMap.get(article.feedId) ?? 'Unknown source',
-                effectiveFeedTypeMap.get(article.feedId) ?? 'rss',
-              ),
-            )
-            .filter((preview): preview is ArticlePreview => preview !== null);
-
-          const merged = mergeItemsIntoCache(reconciled, previews, now);
-          const nextEnvelope = applyFeedMetadata(
-            applyFolderNames(merged, effectiveFolders),
-            effectiveFeedNameMap,
-            effectiveFeedTypeMap,
-          );
-
-          storeTimelineCache(nextEnvelope);
-          return nextEnvelope;
-        });
-
-        setLastUpdateError(null);
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Update failed';
-        setLastUpdateError(errorMessage);
-
-        if (process.env.NODE_ENV === 'development') {
-          console.debug('❌ Timeline update failed:', errorMessage);
-        }
-
-        throw error;
-      } finally {
-        const elapsed = Date.now() - startedAt;
-        if (elapsed < MIN_SYNC_INDICATOR_MS) {
-          await delay(MIN_SYNC_INDICATOR_MS - elapsed);
-        }
-        setIsSyncing(false);
       }
-    },
-    [feeds, foldersData],
-  );
+      const effectiveFeeds = feeds.length > 0 ? feeds : (fetchedFeedsResponse?.feeds ?? []);
+      const effectiveFeedFolderMap = new Map<number, number>(
+        effectiveFeeds.map((feed) => [feed.id, feed.folderId ?? UNCATEGORIZED_FOLDER_ID]),
+      );
+      const effectiveFeedNameMap = new Map<number, string>(
+        effectiveFeeds.map((feed) => [feed.id, feed.title]),
+      );
+      const effectiveFeedTypeMap = new Map<number, ArticlePreview['feedType']>(
+        effectiveFeeds.map((feed) => [feed.id, feed.type]),
+      );
+      let effectiveFolders = foldersData ?? [];
+      if (effectiveFolders.length === 0) {
+        try {
+          effectiveFolders = await api.folders.getAll();
+        } catch {
+          effectiveFolders = [];
+        }
+      }
+      const { items, serverUnreadIds } = await withTimeout(
+        fetchUnreadItemsForSync(),
+        SYNC_TIMEOUT_MS,
+      );
+      const now = Date.now();
+
+      setEnvelope((current) => {
+        const { envelope: reconciled } = reconcileTimelineCache(current, serverUnreadIds, now);
+        const previews = items
+          .map((article) =>
+            toArticlePreview(
+              article,
+              resolveFolderId(article, effectiveFeedFolderMap),
+              now,
+              effectiveFeedNameMap.get(article.feedId) ?? 'Unknown source',
+              effectiveFeedTypeMap.get(article.feedId) ?? 'rss',
+            ),
+          )
+          .filter((preview): preview is ArticlePreview => preview !== null);
+
+        const merged = mergeItemsIntoCache(reconciled, previews, now);
+        const nextEnvelope = applyFeedMetadata(
+          applyFolderNames(merged, effectiveFolders),
+          effectiveFeedNameMap,
+          effectiveFeedTypeMap,
+        );
+
+        storeTimelineCache(nextEnvelope);
+        return nextEnvelope;
+      });
+
+      setLastUpdateError(null);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Update failed';
+      setLastUpdateError(errorMessage);
+
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('❌ Timeline update failed:', errorMessage);
+      }
+
+      throw error;
+    } finally {
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < MIN_SYNC_INDICATOR_MS) {
+        await delay(MIN_SYNC_INDICATOR_MS - elapsed);
+      }
+      setIsSyncing(false);
+    }
+  }, [feeds, foldersData]);
 
   useEffect(() => {
     if (!isHydrated || (feedNameMap.size === 0 && feedTypeMap.size === 0)) return;

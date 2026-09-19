@@ -174,24 +174,29 @@ describe('sanitizeArticleHtml', () => {
   });
 
   it('drops unterminated tag content in the non-DOM fallback', () => {
-    const globals = globalThis as unknown as {
-      DOMParser: typeof DOMParser | undefined;
-      document: Document | undefined;
-    };
-    const originalDomParser = globals.DOMParser;
-    const originalDocument = globals.document;
+    const originalDomParser = Object.getOwnPropertyDescriptor(globalThis, 'DOMParser');
+    const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
 
     try {
-      globals.DOMParser = undefined;
-      globals.document = undefined;
+      Object.defineProperty(globalThis, 'DOMParser', { configurable: true, value: undefined });
+      Object.defineProperty(globalThis, 'document', { configurable: true, value: undefined });
 
       const sanitized = sanitizeArticleHtml('<p>Safe</p><script>alert(1)');
 
       expect(sanitized).toBe('Safe');
       expect(sanitized).not.toContain('<script');
     } finally {
-      globals.DOMParser = originalDomParser;
-      globals.document = originalDocument;
+      if (originalDomParser) {
+        Object.defineProperty(globalThis, 'DOMParser', originalDomParser);
+      } else {
+        Reflect.deleteProperty(globalThis, 'DOMParser');
+      }
+
+      if (originalDocument) {
+        Object.defineProperty(globalThis, 'document', originalDocument);
+      } else {
+        Reflect.deleteProperty(globalThis, 'document');
+      }
     }
   });
 

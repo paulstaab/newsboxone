@@ -42,8 +42,9 @@ export function markTimelineFolderRead(
 
   const folder = current.folders[folderId];
   const itemIds = folder.articles.map((article) => article.id);
-  const { [folderId]: _removed, ...updatedFolders } = current.folders;
-  void _removed;
+  const updatedFolders = Object.fromEntries(
+    Object.entries(current.folders).filter(([id]) => Number(id) !== folderId),
+  );
 
   const remainingQueue = sortFolderQueueEntries(Object.values(updatedFolders));
   const nextActiveId = findNextActiveId(remainingQueue);

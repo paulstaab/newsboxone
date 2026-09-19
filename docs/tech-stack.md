@@ -35,6 +35,7 @@ It describes the shared runtime, major technologies, development workflow, and p
 - Styling: Tailwind CSS 4.1
 - Date utilities: `date-fns` 4.x
 - Test and mock tooling: Playwright, Vitest, Testing Library, MSW
+- Playwright frontend server mode: `next dev --webpack` for stable browser test runs under Next.js 16
 - Frontend dependency resolution: npm lockfile with an override that keeps transitive `postcss` consumers on the patched 8.5.x line
 
 ## API And Auth

@@ -13,9 +13,9 @@ type MockImageProps = React.ImgHTMLAttributes<HTMLImageElement> & {
 
 vi.mock('next/image', () => ({
   default: (props: MockImageProps) => {
-    const { unoptimized, fill, ...rest } = props;
-    void unoptimized;
-    void fill;
+    const rest = { ...props };
+    delete rest.unoptimized;
+    delete rest.fill;
     return <img alt="" {...rest} />;
   },
 }));
