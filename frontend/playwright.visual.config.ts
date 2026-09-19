@@ -29,7 +29,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npm run dev -- --hostname 127.0.0.1 --port ${PORT}`,
+    command: `npm run dev -- --webpack --hostname 127.0.0.1 --port ${PORT}`,
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
