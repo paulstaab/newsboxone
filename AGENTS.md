@@ -14,7 +14,6 @@ Shared must-follow policy is externalized to `.agent/policy-shared.md`.
 
 ## Compatibility
 
-- Keep `.github/copilot-instructions.md` pointing to this root file.
 - Keep this file short and routing-focused.
 - Shared must-follow rules live in `.agent/policy-shared.md`.
 

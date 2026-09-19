@@ -15,8 +15,8 @@
         "dbaeumer.vscode-eslint",
         "ms-playwright.playwright",
         "rust-lang.rust-analyzer",
-        "openai.chatgpt"
-      ]
+        "openai.chatgpt",
+        "anthropic.claude-code"
     }
   },
   "forwardPorts": [3000, 8000],
