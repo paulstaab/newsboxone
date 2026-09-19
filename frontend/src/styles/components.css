@@ -699,18 +699,6 @@
     outline-color: hsl(var(--color-selection));
   }
 
-  .article-card--unread {
-    box-shadow:
-      inset 4px 0 0 hsl(var(--color-accent-strong)),
-      var(--shadow-sm);
-  }
-
-  .article-card--unread:hover {
-    box-shadow:
-      inset 4px 0 0 hsl(var(--color-accent-strong)),
-      var(--shadow-md);
-  }
-
   .article-card--selected {
     box-shadow:
       inset 4px 0 0 hsl(var(--color-selection)),

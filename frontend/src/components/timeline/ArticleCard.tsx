@@ -150,7 +150,11 @@ export function ArticleCard({
         author ? ` by ${author}` : ''
       } (${article.unread ? 'unread' : 'read'})`}
     >
-      <div className="article-card__media">
+      <div
+        className={`article-card__media${
+          article.thumbnailUrl ? '' : ' article-card__media--fallback'
+        }`}
+      >
         {article.thumbnailUrl ? (
           <Image
             src={article.thumbnailUrl}

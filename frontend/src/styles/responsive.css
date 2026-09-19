@@ -44,12 +44,21 @@
   }
 
   .article-card__media {
-    height: 8rem;
-    min-height: 8rem;
+    height: clamp(13rem, 58vw, 18rem);
+    min-height: 13rem;
+  }
+
+  .article-card__media--fallback {
+    display: none;
   }
 
   .article-card__body {
-    padding: var(--space-4);
+    padding: var(--space-4) var(--space-4) var(--space-5);
+  }
+
+  .article-card__excerpt--clamped {
+    -webkit-line-clamp: 7;
+    line-clamp: 7;
   }
 
   .pinned-action-cluster {

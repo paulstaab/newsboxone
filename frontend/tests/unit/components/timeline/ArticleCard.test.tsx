@@ -69,9 +69,10 @@ describe('ArticleCard', () => {
 
   it('does not render thumbnail if url is missing', () => {
     const article = { ...mockArticle, thumbnailUrl: null };
-    render(<ArticleCard article={article} onOpen={vi.fn()} />);
+    const { container } = render(<ArticleCard article={article} onOpen={vi.fn()} />);
 
     expect(screen.queryByRole('img')).toBeNull();
+    expect(container.querySelector('.article-card__media--fallback')).not.toBeNull();
   });
 
   it('calls onOpen when the card is clicked', () => {
