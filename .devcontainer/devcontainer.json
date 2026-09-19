@@ -16,8 +16,7 @@
         "ms-playwright.playwright",
         "rust-lang.rust-analyzer",
         "openai.chatgpt",
-        "Anthropic.claude-code"
-      ]
+        "anthropic.claude-code"
     }
   },
   "forwardPorts": [3000, 8000],
