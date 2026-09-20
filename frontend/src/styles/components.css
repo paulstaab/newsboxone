@@ -637,6 +637,7 @@
     width: min(100%, 62rem);
     grid-template-columns: minmax(0, 1.15fr) minmax(20rem, 0.85fr);
     border: 1px solid hsl(var(--color-border));
+    border-radius: 0;
     background: hsl(var(--color-surface-muted));
     box-shadow: var(--shadow-lg);
   }
@@ -773,6 +774,12 @@
   .login-page__submit:hover,
   .empty-state__action:hover {
     background: hsl(var(--color-accent-strong));
+  }
+
+  .login-page__submit:focus-visible,
+  .empty-state__action:focus-visible {
+    outline: 2px solid hsl(var(--color-accent-strong));
+    outline-offset: 2px;
   }
 
   .login-page__authenticating {
