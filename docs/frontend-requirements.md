@@ -40,8 +40,8 @@ The requirements should be phrased to stay implementation-agnostic wherever poss
 - `APP-012`: When an authenticated session exists, the shared burger menu shall expose a logout action that revokes the current backend-issued browser token, clears frontend session storage, and routes the user to `/login`; if backend revocation fails, local sign-out shall still complete.
 - `APP-013`: The shared burger menu shall expose an About entry that routes to `/about`.
 - `APP-014`: Login, timeline, feed management, about, and integrations routes shall set a descriptive document title for the active page.
-- `APP-016`: The frontend shall provide a coherent responsive visual system across login, timeline, feed management, dialogs, menus, empty states, and integration settings in both light and dark color schemes.
 - `APP-015`: The shared burger menu shall expose an Integrations entry that routes to `/integrations`, where browser-local Karakeep connection settings are available without requiring backend Karakeep configuration.
+- `APP-016`: The frontend shall provide a coherent responsive visual system across login, timeline, feed management, dialogs, menus, empty states, and integration settings in both light and dark color schemes.
 
 ### Login Page
 
