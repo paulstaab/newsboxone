@@ -1,20 +1,20 @@
 :root {
   /* Color tokens stored as HSL for easy opacity manipulation */
-  --color-surface: 220 20% 10%;
-  --color-surface-muted: 220 14% 16%;
-  --color-accent: 199 89% 48%;
-  --color-accent-strong: 199 100% 62%;
+  --color-surface: 210 12% 8%;
+  --color-surface-muted: 210 10% 13%;
+  --color-accent: 163 72% 38%;
+  --color-accent-strong: 160 77% 48%;
   --color-primary: var(--color-accent);
   --color-primary-hover: var(--color-accent-strong);
-  --color-selection: 199 100% 62%;
-  --color-selection-bg: 199 100% 62% / 0.12;
-  --color-text: 210 40% 98%;
-  --color-text-muted: 218 17% 65%;
+  --color-selection: 160 77% 48%;
+  --color-selection-bg: 163 72% 38% / 0.14;
+  --color-text: 40 20% 96%;
+  --color-text-muted: 210 9% 66%;
   --color-text-secondary: var(--color-text-muted);
-  --color-text-tertiary: 217 12% 52%;
-  --color-border: 217 16% 24%;
-  --color-surface-elevated: 220 16% 14%;
-  --color-surface-hover: 220 14% 20%;
+  --color-text-tertiary: 210 7% 52%;
+  --color-border: 210 10% 24%;
+  --color-surface-elevated: 210 10% 16%;
+  --color-surface-hover: 210 9% 19%;
 
   /* Spacing scale in multiples of 4 */
   --space-1: 0.25rem;
@@ -30,6 +30,7 @@
   /* Typography */
   --font-sans:
     'Inter', 'Helvetica Neue', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: Georgia, 'Times New Roman', serif;
   --font-mono:
     'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     'Liberation Mono', 'Courier New', monospace;
@@ -49,27 +50,27 @@
   --radius-xl: 1rem;
 
   /* Elevation */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.12);
-  --shadow-md: 0 8px 24px rgba(14, 21, 47, 0.35);
-  --shadow-lg: 0 20px 45px rgba(10, 16, 34, 0.45);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.14);
+  --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.22);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.34);
   --shadow-soft: var(--shadow-md);
   --shadow-xl: 0 28px 72px rgba(5, 10, 24, 0.52);
 }
 
 @media (prefers-color-scheme: light) {
   :root {
-    --color-surface: 214 32% 96%;
-    --color-surface-muted: 214 30% 92%;
-    --color-accent: 213 94% 34%;
-    --color-accent-strong: 210 92% 50%;
-    --color-selection: 210 92% 50%;
-    --color-selection-bg: 210 92% 50% / 0.12;
-    --color-text: 224 33% 12%;
-    --color-text-muted: 225 12% 44%;
+    --color-surface: 45 18% 96%;
+    --color-surface-muted: 0 0% 100%;
+    --color-accent: 166 78% 27%;
+    --color-accent-strong: 166 80% 23%;
+    --color-selection: 166 78% 27%;
+    --color-selection-bg: 166 78% 27% / 0.1;
+    --color-text: 210 18% 12%;
+    --color-text-muted: 210 8% 42%;
     --color-text-secondary: var(--color-text-muted);
-    --color-text-tertiary: 222 10% 54%;
-    --color-border: 220 14% 85%;
+    --color-text-tertiary: 210 7% 53%;
+    --color-border: 210 12% 82%;
     --color-surface-elevated: 0 0% 100%;
-    --color-surface-hover: 214 24% 88%;
+    --color-surface-hover: 45 12% 92%;
   }
 }
