@@ -127,9 +127,7 @@ export function ArticleCard({
 
   return (
     <div
-      className={`article-card${article.unread ? ' article-card--unread' : ''}${
-        isSelected ? ' article-card--selected' : ''
-      }`}
+      className={`article-card${isSelected ? ' article-card--selected' : ''}`}
       ref={registerArticle ? registerArticle(article.id) : undefined}
       data-article-id={article.id}
       onClick={handleCardClick}

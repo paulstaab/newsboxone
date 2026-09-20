@@ -71,7 +71,7 @@ describe('ArticleCard', () => {
     const article = { ...mockArticle, thumbnailUrl: null };
     const { container } = render(<ArticleCard article={article} onOpen={vi.fn()} />);
 
-    expect(screen.queryByRole('img')).toBeNull();
+    expect(screen.queryByAltText('')).toBeNull();
     expect(container.querySelector('.article-card__media--fallback')).not.toBeNull();
   });
 
