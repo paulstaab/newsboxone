@@ -1,12 +1,12 @@
 @media (max-width: 760px) {
   .timeline-shell {
-    width: min(100% - 1rem, 1120px);
+    width: min(100% - 1.25rem, 1180px);
   }
 
   .timeline-header__inner {
     grid-template-columns: 1fr;
     gap: var(--space-3);
-    padding: var(--space-5) 4rem var(--space-3) 0;
+    padding: var(--space-6) 4rem var(--space-5) 0;
   }
 
   .timeline-header__stats {
@@ -53,7 +53,7 @@
   }
 
   .article-card__body {
-    padding: var(--space-4) var(--space-4) var(--space-5);
+    padding: var(--space-5) var(--space-4) var(--space-6);
   }
 
   .article-card__excerpt--clamped {
@@ -194,5 +194,36 @@
 
   .feed-management-settings-grid > div:nth-child(even) {
     padding-top: var(--space-2);
+  }
+
+  .login-page {
+    place-items: stretch;
+    padding: 0;
+  }
+
+  .login-page__shell {
+    min-height: 100vh;
+    grid-template-columns: 1fr;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .login-page__brand {
+    min-height: auto;
+    border-right: 0;
+    padding: 5rem var(--space-6) var(--space-8);
+  }
+
+  .login-page__brand h1 {
+    font-size: 2.25rem;
+  }
+
+  .login-page__form-panel {
+    justify-content: flex-start;
+    padding: var(--space-8) var(--space-6) 4rem;
+  }
+
+  .empty-state {
+    padding-inline: 0;
   }
 }

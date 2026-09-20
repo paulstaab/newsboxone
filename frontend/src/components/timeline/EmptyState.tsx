@@ -137,36 +137,21 @@ export function EmptyState({ type, message, action }: EmptyStateProps) {
   const content = getContent();
 
   return (
-    <div className="flex px-4 py-10 sm:py-16">
-      <section className="relative mx-auto w-full max-w-2xl overflow-hidden rounded-[28px] border border-[hsl(var(--color-border))] bg-[linear-gradient(180deg,hsl(var(--color-surface-muted)_/_0.96)_0%,hsl(var(--color-surface)_/_0.98)_100%)] px-6 py-10 text-center shadow-[var(--shadow-lg)] sm:px-10 sm:py-14">
-        <div className="pointer-events-none absolute inset-x-10 top-0 h-28 rounded-full bg-[radial-gradient(circle_at_center,hsl(var(--color-accent)_/_0.18),transparent_70%)] blur-2xl" />
-
-        <div className="relative flex flex-col items-center">
+    <div className="empty-state">
+      <section className="empty-state__content">
+        <div className="empty-state__inner">
           {content.icon && (
-            <div
-              className={`mb-6 flex h-24 w-24 items-center justify-center rounded-full ring-1 ring-inset backdrop-blur-sm ${content.iconClassName}`}
-            >
-              {content.icon}
-            </div>
+            <div className={`empty-state__icon ${content.iconClassName}`}>{content.icon}</div>
           )}
 
-          <span className="mb-4 inline-flex items-center rounded-full border border-[hsl(var(--color-border))] bg-[hsl(var(--color-surface)_/_0.6)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-[hsl(var(--color-text-muted))]">
-            {content.badge}
-          </span>
+          <span className="empty-state__badge">{content.badge}</span>
 
-          <h3 className="mb-3 text-3xl font-semibold tracking-[-0.03em] text-[hsl(var(--color-text))] sm:text-[2.1rem]">
-            {content.title}
-          </h3>
+          <h3>{content.title}</h3>
 
-          <p className="mb-8 max-w-xl text-balance text-base leading-8 text-[hsl(var(--color-text-muted))] sm:text-lg">
-            {content.description}
-          </p>
+          <p>{content.description}</p>
 
           {action && (
-            <button
-              onClick={action.onClick}
-              className="rounded-full bg-[hsl(var(--color-accent))] px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_hsl(var(--color-accent)_/_0.3)] transition-transform transition-colors hover:bg-[hsl(var(--color-accent-strong))] hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--color-accent-strong))] focus:ring-offset-2 focus:ring-offset-[hsl(var(--color-surface))]"
-            >
+            <button onClick={action.onClick} className="empty-state__action">
               {action.label}
             </button>
           )}

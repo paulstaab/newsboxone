@@ -15,7 +15,7 @@ test.describe('Visual: Current Login', () => {
     test(`login form at ${name}`, async ({ page }) => {
       await page.setViewportSize(viewport);
       await page.goto('/login');
-      await expect(page.getByRole('heading', { name: /welcome to newsboxone/i })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Welcome back', exact: true })).toBeVisible();
       await expect(page.getByLabel(/username/i)).toBeVisible();
       await expect(page).toHaveScreenshot(`login-current-${name}.png`, {
         fullPage: true,

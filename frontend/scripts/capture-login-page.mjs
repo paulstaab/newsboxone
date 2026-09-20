@@ -18,7 +18,7 @@ const context = await browser.newContext({ viewport: { width: 1280, height: 720 
 const page = await context.newPage();
 
 await page.goto(`${appBaseUrl}/login/`, { waitUntil: 'domcontentloaded' });
-await page.getByRole('heading', { name: /welcome to newsboxone/i }).waitFor();
+await page.getByRole('heading', { name: /welcome back/i }).waitFor();
 await page.screenshot({ path: outputs.login, fullPage: true });
 
 await browser.close();
