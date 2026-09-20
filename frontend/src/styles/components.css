@@ -745,6 +745,11 @@
     color: hsl(var(--color-text));
   }
 
+  .login-page__field input:focus-visible {
+    border-color: transparent;
+    outline: 2px solid hsl(var(--color-accent-strong));
+  }
+
   .login-page__remember {
     display: flex;
     align-items: center;
