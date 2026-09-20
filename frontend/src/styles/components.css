@@ -667,7 +667,6 @@
     font-weight: 760;
     line-height: 0.9;
     overflow-wrap: anywhere;
-    white-space: nowrap;
   }
 
   .login-page__brand > p:last-child {
@@ -746,8 +745,8 @@
   }
 
   .login-page__field input:focus-visible {
-    border-color: transparent;
     outline: 2px solid hsl(var(--color-accent-strong));
+    outline-offset: 1px;
   }
 
   .login-page__remember {
