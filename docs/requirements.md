@@ -34,6 +34,7 @@ It covers the repository-level infrastructure needed to ship the frontend and ba
 - `DEL-004`: The combined container shall include both the Rust backend runtime and the built static frontend assets without requiring a second service container.
 - `DEL-005`: The combined container shall start correctly under an arbitrary non-root UID by keeping nginx runtime files off root-owned system paths and by using a writable persisted or temporary backend data path.
 - `DEL-006`: The combined container shall emit defense-in-depth HTTP security headers for frontend and proxied API responses, including a Content Security Policy, MIME-sniffing protection, referrer policy, and frame restrictions.
+- `DEL-007`: The combined container shall allow deployments to configure an optional Karakeep HTTP(S) origin with `KARAKEEP_URL` without rebuilding the image, add it to the frontend Content Security Policy `connect-src` directive, and expose it to the frontend as runtime configuration.
 
 ### API Surface
 - `API-001`: The combined container shall expose the NewsBoxOne API at `/api`.

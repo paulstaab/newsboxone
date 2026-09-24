@@ -39,11 +39,11 @@ Recommendation generation is optional and requires `OPENAI_API_KEY`. NewsBoxOne 
 
 ## Karakeep Integration
 
-Open the burger menu, choose **Integrations**, and enter your Karakeep server URL and API key. Test the connection, then enable the integration.
+Open the burger menu, choose **Integrations**, and enter your Karakeep server URL and API key. When `KARAKEEP_URL` is configured for the container, the server URL is prefilled and cannot be changed in the browser. Test the connection, then enable the integration.
 
 Once enabled, each timeline card has a bookmark button. Activating it saves the article directly from the browser and keeps the button highlighted while the card is displayed. Activating the highlighted button again permanently deletes that bookmark from Karakeep. On mobile, long-pressing a card also activates the Karakeep action without opening the article.
 
-This integration is entirely frontend-side: NewsBoxOne's backend does not connect to Karakeep and requires no Karakeep environment variables. The server URL, API key, and enabled state are stored in that browser's `localStorage`, so configure each browser separately and only use it on devices you trust. The browser must be able to reach the Karakeep server, Karakeep must allow the NewsBoxOne origin through CORS, and an HTTPS NewsBoxOne page requires an HTTPS Karakeep endpoint.
+This integration is entirely frontend-side: NewsBoxOne's backend does not connect to Karakeep. The API key and enabled state are stored in that browser's `localStorage`, so configure each browser separately and only use it on devices you trust. The server URL can also be stored there, or supplied to every browser with `KARAKEEP_URL`. The browser must be able to reach the Karakeep server, Karakeep must allow the NewsBoxOne origin through CORS, and an HTTPS NewsBoxOne page requires an HTTPS Karakeep endpoint.
 
 ## Trust And Safety Warning
 
@@ -145,6 +145,7 @@ These are optional. If you do not set an API key, NewsBoxOne still works normall
 | Variable       | Default | What it controls                                                                                     |
 | -------------- | ------- | ---------------------------------------------------------------------------------------------------- |
 | `BACKEND_PORT` | `8001`  | Internal backend port used behind nginx inside the container. Most users do not need to change this. |
+| `KARAKEEP_URL` | unset | Optional Karakeep `http` or `https` origin. It is added to the frontend Content Security Policy, prefilled in integration settings, and locked against browser edits. |
 | `TESTING_MODE` | unset   | Test-only behavior. Do not enable this in normal deployments.                                        |
 
 ## Recommended Homelab Setup

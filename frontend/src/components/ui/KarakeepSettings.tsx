@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { useKarakeepPreferences } from '@/hooks/useKarakeepPreferences';
 import { KarakeepError, testKarakeepConnection } from '@/lib/karakeep/client';
+import { getConfiguredKarakeepUrl } from '@/lib/config/env';
 
 /** Renders the browser-local Karakeep integration configuration. */
 export function KarakeepSettings() {
   const { preferences, updatePreferences } = useKarakeepPreferences();
+  const isKarakeepUrlConfigured = Boolean(getConfiguredKarakeepUrl());
   const [isTesting, setIsTesting] = useState(false);
   const [connectionMessage, setConnectionMessage] = useState<string | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -81,7 +83,7 @@ export function KarakeepSettings() {
           autoComplete="url"
           placeholder="https://karakeep.example"
           value={preferences.karakeepBaseUrl}
-          disabled={isTesting}
+          disabled={isTesting || isKarakeepUrlConfigured}
           onChange={(event) => {
             updateConnectionField('karakeepBaseUrl', event.target.value);
           }}

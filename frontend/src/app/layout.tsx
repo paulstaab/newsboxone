@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import type { ReactNode } from 'react';
 import '../styles/globals.css';
 import { SWRProvider } from '@/lib/swr/provider';
@@ -39,6 +40,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="scroll-smooth" data-scroll-behavior="smooth">
+      <head>
+        <Script src={`${APP_BASE_PATH}/runtime-config.js`} strategy="beforeInteractive" />
+      </head>
       <body className="min-h-screen bg-[hsl(var(--color-surface))] text-[hsl(var(--color-text))] antialiased">
         <SkipLink href="#main-content">Skip to main content</SkipLink>
         <AuthProvider>
