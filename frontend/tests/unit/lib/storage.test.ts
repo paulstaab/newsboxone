@@ -8,14 +8,46 @@ describe('Karakeep runtime configuration', () => {
     delete window.__NEWSBOXONE_CONFIG__;
   });
 
-  it('prefills the deployment URL over a browser-local URL', () => {
+  it('prefills the deployment URL and resets verification for a different stored URL', () => {
     localStorage.setItem(
       CONFIG.PREFERENCES_KEY,
-      JSON.stringify({ ...DEFAULT_PREFERENCES, karakeepBaseUrl: 'https://old.example' }),
+      JSON.stringify({
+        ...DEFAULT_PREFERENCES,
+        karakeepBaseUrl: 'https://old.example',
+        karakeepEnabled: true,
+        karakeepConnectionVerified: true,
+      }),
     );
     window.__NEWSBOXONE_CONFIG__ = { karakeepUrl: 'https://karakeep.example' };
 
-    expect(loadPreferences().karakeepBaseUrl).toBe('https://karakeep.example');
+    expect(loadPreferences()).toMatchObject({
+      karakeepBaseUrl: 'https://karakeep.example',
+      karakeepEnabled: false,
+      karakeepConnectionVerified: false,
+    });
+    expect(JSON.parse(localStorage.getItem(CONFIG.PREFERENCES_KEY) ?? '{}')).toMatchObject({
+      karakeepBaseUrl: 'https://karakeep.example',
+      karakeepEnabled: false,
+      karakeepConnectionVerified: false,
+    });
+  });
+
+  it('preserves verification for the configured URL', () => {
+    localStorage.setItem(
+      CONFIG.PREFERENCES_KEY,
+      JSON.stringify({
+        ...DEFAULT_PREFERENCES,
+        karakeepBaseUrl: 'https://karakeep.example',
+        karakeepEnabled: true,
+        karakeepConnectionVerified: true,
+      }),
+    );
+    window.__NEWSBOXONE_CONFIG__ = { karakeepUrl: 'https://karakeep.example' };
+
+    expect(loadPreferences()).toMatchObject({
+      karakeepEnabled: true,
+      karakeepConnectionVerified: true,
+    });
   });
 
   it('keeps the deployment URL when preferences are stored', () => {

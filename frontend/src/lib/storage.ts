@@ -105,12 +105,21 @@ export function loadPreferences(): UserPreferences {
   if (stored) {
     try {
       const parsed = JSON.parse(stored) as Partial<UserPreferences>;
-      // Merge with defaults to handle missing fields
-      return {
+      const configuredUrlChanged = Boolean(
+        configuredKarakeepUrl && parsed.karakeepBaseUrl !== configuredKarakeepUrl,
+      );
+      const preferences = {
         ...DEFAULT_PREFERENCES,
         ...parsed,
         ...(configuredKarakeepUrl ? { karakeepBaseUrl: configuredKarakeepUrl } : {}),
+        ...(configuredUrlChanged
+          ? { karakeepEnabled: false, karakeepConnectionVerified: false }
+          : {}),
       };
+      if (configuredUrlChanged) {
+        localStorage.setItem(CONFIG.PREFERENCES_KEY, JSON.stringify(preferences));
+      }
+      return preferences;
     } catch {
       localStorage.removeItem(CONFIG.PREFERENCES_KEY);
     }
