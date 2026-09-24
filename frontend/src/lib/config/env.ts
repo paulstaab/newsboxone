@@ -9,6 +9,20 @@ const RAW_BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  */
 export const APP_BASE_PATH = RAW_BASE_PATH ? `/${RAW_BASE_PATH.replace(/^\/|\/$/g, '')}` : '';
 
+declare global {
+  interface Window {
+    __NEWSBOXONE_CONFIG__?: {
+      karakeepUrl?: string;
+    };
+  }
+}
+
+/** Returns the deployment-provided Karakeep URL, when configured. */
+export function getConfiguredKarakeepUrl(): string {
+  if (typeof window === 'undefined') return '';
+  return window.__NEWSBOXONE_CONFIG__?.karakeepUrl?.trim() ?? '';
+}
+
 /**
  * Feature flags for conditional functionality.
  */

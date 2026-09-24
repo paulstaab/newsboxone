@@ -3,7 +3,7 @@
  * Supports session vs. local storage based on remember-device setting.
  */
 
-import { CONFIG } from './config/env';
+import { CONFIG, getConfiguredKarakeepUrl } from './config/env';
 import { type StoredSession, type UserPreferences, DEFAULT_PREFERENCES } from '@/types';
 
 export const PREFERENCES_CHANGED_EVENT = 'newsboxone:preferences-changed';
@@ -84,7 +84,11 @@ export function clearSession(): void {
  */
 export function storePreferences(preferences: UserPreferences): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(CONFIG.PREFERENCES_KEY, JSON.stringify(preferences));
+  const configuredKarakeepUrl = getConfiguredKarakeepUrl();
+  const nextPreferences = configuredKarakeepUrl
+    ? { ...preferences, karakeepBaseUrl: configuredKarakeepUrl }
+    : preferences;
+  localStorage.setItem(CONFIG.PREFERENCES_KEY, JSON.stringify(nextPreferences));
   window.dispatchEvent(new Event(PREFERENCES_CHANGED_EVENT));
 }
 
@@ -95,18 +99,35 @@ export function storePreferences(preferences: UserPreferences): void {
 export function loadPreferences(): UserPreferences {
   if (typeof window === 'undefined') return DEFAULT_PREFERENCES;
 
+  const configuredKarakeepUrl = getConfiguredKarakeepUrl();
+
   const stored = localStorage.getItem(CONFIG.PREFERENCES_KEY);
   if (stored) {
     try {
       const parsed = JSON.parse(stored) as Partial<UserPreferences>;
-      // Merge with defaults to handle missing fields
-      return { ...DEFAULT_PREFERENCES, ...parsed };
+      const configuredUrlChanged = Boolean(
+        configuredKarakeepUrl && parsed.karakeepBaseUrl !== configuredKarakeepUrl,
+      );
+      const preferences = {
+        ...DEFAULT_PREFERENCES,
+        ...parsed,
+        ...(configuredKarakeepUrl ? { karakeepBaseUrl: configuredKarakeepUrl } : {}),
+        ...(configuredUrlChanged
+          ? { karakeepEnabled: false, karakeepConnectionVerified: false }
+          : {}),
+      };
+      if (configuredUrlChanged) {
+        localStorage.setItem(CONFIG.PREFERENCES_KEY, JSON.stringify(preferences));
+      }
+      return preferences;
     } catch {
       localStorage.removeItem(CONFIG.PREFERENCES_KEY);
     }
   }
 
-  return DEFAULT_PREFERENCES;
+  return configuredKarakeepUrl
+    ? { ...DEFAULT_PREFERENCES, karakeepBaseUrl: configuredKarakeepUrl }
+    : DEFAULT_PREFERENCES;
 }
 
 /**
