@@ -52,7 +52,15 @@ class IntersectionObserver {
 vi.stubGlobal('IntersectionObserver', IntersectionObserver);
 
 beforeAll(() => {
-  server.listen({ onUnhandledRequest: 'error' });
+  const listenOptions: Parameters<typeof server.listen>[0] & {
+    onUnhandledFrame?: 'error';
+    onUnhandledRequest?: 'error';
+  } = {
+    onUnhandledFrame: 'error',
+    onUnhandledRequest: 'error',
+  };
+
+  server.listen(listenOptions);
 });
 afterEach(() => {
   server.resetHandlers();
