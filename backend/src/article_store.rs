@@ -79,7 +79,7 @@ pub fn article_record_from_feed_entry(feed_id: i64, entry: &Entry) -> Option<Art
         .map(|summary| summary.content.clone());
     let title = entry.title.as_ref().map(|title| title.content.clone());
     let url = entry.links.first().map(|link| link.href.clone());
-    let author = entry.authors.first().map(|author| author.name.clone());
+    let author = entry.authors.first().and_then(|author| author.name.clone());
     let now_ts = unix_now();
     let updated = entry.updated.map(|dt| dt.timestamp()).unwrap_or(now_ts);
     let published = entry.published.map(|dt| dt.timestamp()).unwrap_or(updated);
