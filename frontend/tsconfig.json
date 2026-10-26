@@ -16,10 +16,8 @@
     "jsx": "react-jsx",
     "incremental": true,
     "types": ["node", "vitest/globals"],
-    "ignoreDeprecations": "6.0",
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
     "plugins": [
       {

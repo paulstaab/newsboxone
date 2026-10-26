@@ -48,7 +48,7 @@ export function OfflineBanner({
   // Reset dismissed state when coming back online then going offline again
   useEffect(() => {
     if (isOnline) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      // oxlint-disable-next-line react/set-state-in-effect
       setDismissed(false);
     }
   }, [isOnline]);

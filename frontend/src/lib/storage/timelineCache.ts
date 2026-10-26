@@ -271,7 +271,7 @@ export function mergeItemsIntoCache(
   // Merge articles into each folder
   for (const [folderId, newFolderArticles] of articlesByFolder) {
     const existingFolder = folders[folderId];
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     if (!existingFolder) {
       // Create new folder entry if it doesn't exist
       const unreadCount = newFolderArticles.filter((a) => a.unread).length;
@@ -299,7 +299,7 @@ export function mergeItemsIntoCache(
     const unreadCount = prunedArticles.filter((a) => a.unread).length;
 
     if (unreadCount === 0 && prunedArticles.length === 0) {
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      // oxlint-disable-next-line typescript/no-dynamic-delete
       delete folders[folderId];
     } else {
       folders[folderId] = {

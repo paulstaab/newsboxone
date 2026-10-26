@@ -39,14 +39,13 @@ This project uses [husky](https://typicode.github.io/husky/) and [lint-staged](h
 
 The pre-commit hook automatically:
 
-- **Lints** JavaScript/TypeScript files with ESLint (and auto-fixes issues)
 - **Type-checks** TypeScript files with `tsc --noEmit`
-- **Formats** code with Prettier
+- **Formats** code with Oxfmt
 
 To manually run these checks:
 
 ```bash
-npm run lint          # Run ESLint
+npm run lint          # Run Oxlint with type-aware checks
 npm run typecheck     # Run TypeScript type checking
 npm run format:check  # Check formatting
 npm run format        # Auto-format all files
@@ -58,14 +57,16 @@ To bypass the pre-commit hook (not recommended):
 git commit --no-verify
 ```
 
+Linting runs separately with `npm run lint`, including in CI. Oxfmt is the formatter.
+
 ### Available Scripts
 
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
-- `npm run lint` - Run ESLint
-- `npm run lint:fix` - Run ESLint with auto-fix
+- `npm run lint` - Run Oxlint with type-aware checks
+- `npm run lint:fix` - Run Oxlint with type-aware checks with auto-fix
 - `npm run typecheck` - Run TypeScript type checking
-- `npm run format` - Format code with Prettier
+- `npm run format` - Format code with Oxfmt
 - `npm run format:check` - Check code formatting
 - `npm run test` - Run unit tests
 - `npm run test:watch` - Run unit tests in watch mode

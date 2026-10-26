@@ -34,7 +34,12 @@ export interface ReadStateMutation {
 }
 
 export type MutationType =
-  'markRead' | 'markUnread' | 'star' | 'unstar' | 'markFeedRead' | 'markFolderRead';
+  | 'markRead'
+  | 'markUnread'
+  | 'star'
+  | 'unstar'
+  | 'markFeedRead'
+  | 'markFolderRead';
 
 export type MutationStatus = 'pending' | 'in-flight' | 'success' | 'failed';
 

@@ -1,0 +1,28 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "singleQuote": true,
+  "semi": true,
+  "trailingComma": "all",
+  "tabWidth": 2,
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    "node_modules/",
+    ".next/",
+    "out/",
+    "dist/",
+    "build/",
+    "coverage/",
+    "package-lock.json",
+    "playwright-report/",
+    "playwright-report-e2e/",
+    "playwright-report-integration/",
+    "playwright-report-visual/",
+    "test-results/",
+    "tests/integration/.auth/",
+    ".devcontainer/",
+    ".github/agents/",
+    ".specify/",
+    "specs/"
+  ]
+}

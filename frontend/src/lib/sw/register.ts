@@ -25,6 +25,7 @@ export function isServiceWorkerSupported(): boolean {
  * Detects webdriver-driven browser sessions where Playwright blocks service workers.
  */
 function isAutomatedBrowserSession(): boolean {
+  // oxlint-disable-next-line typescript/prefer-optional-chain -- DOM types omit server-side absence.
   return typeof navigator !== 'undefined' && navigator.webdriver;
 }
 

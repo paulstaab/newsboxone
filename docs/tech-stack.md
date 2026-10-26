@@ -27,13 +27,17 @@ It describes the shared runtime, major technologies, development workflow, and p
 
 ## Frontend Stack
 
-- Language: TypeScript 5.9
+- Language: TypeScript 7.0
 - Runtime: Node.js 26+
 - Framework: Next.js 16 App Router
 - UI library: React 19
 - Data fetching: SWR 2.x
 - Styling: Tailwind CSS 4.1
 - Date utilities: `date-fns` 4.x
+- Linting: Oxlint with `oxlint-tsgolint` for type-aware checks; `options.typeAware` is set in the repository-root `.oxlintrc.json` so workspace-root and frontend lint runs share it; formatting remains Oxfmt
+- TypeScript path aliases: relative `paths` entries without the removed `baseUrl` option
+- Lint rules: migrated ESLint core, strict/stylistic TypeScript, React/hooks, Next.js, and accessibility rules in `frontend/.oxlintrc.json`; test-specific exceptions remain scoped to tests
+- Migration coverage: Next.js `no-location-assign-relative-destination` has no Oxlint equivalent. React JSX usage rules and strict-mode checks are redundant; React Compiler `config`/`gating` checks have no configurable Oxlint counterpart.
 - Test and mock tooling: Playwright, Vitest, Testing Library, MSW
 - Playwright frontend server mode: `next dev --webpack` for stable browser test runs under Next.js 16
 - Frontend dependency resolution: npm lockfile with an override that keeps transitive `postcss` consumers on the patched 8.5.x line

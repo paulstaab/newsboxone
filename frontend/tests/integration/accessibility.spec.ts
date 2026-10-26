@@ -36,11 +36,18 @@ test.describe('Accessibility integration coverage', () => {
   test('[TC-APP-001] skip link is reachable from the keyboard', async ({ page }) => {
     await page.goto('/login');
     await page.waitForLoadState('networkidle');
+    await expect
+      .poll(async () => page.evaluate(() => document.activeElement?.id ?? null))
+      .toBe('username');
     const skipLink = page.getByRole('link', { name: /skip to main content/i });
-    await skipLink.focus();
-    await expect(skipLink).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect
+      .poll(async () => skipLink.evaluate((element) => element === document.activeElement))
+      .toBe(true);
     await page.keyboard.press('Enter');
-    await expect(page.locator('#main-content')).toBeFocused();
+    await expect
+      .poll(async () => page.evaluate(() => document.activeElement?.id ?? null))
+      .toBe('main-content');
   });
 
   test('[TC-APP-002] login page has no axe violations', async ({ page, makeAxeBuilder }) => {

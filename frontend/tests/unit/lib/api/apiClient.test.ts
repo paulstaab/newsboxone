@@ -680,7 +680,7 @@ describe('ApiClient', () => {
 
       // Test that mock works
       expect(mockClient.feeds).toHaveProperty('getAll');
-      // eslint-disable-next-line @typescript-eslint/unbound-method
+      // oxlint-disable-next-line typescript/unbound-method
       expect(vi.isMockFunction(mockClient.feeds.getAll)).toBe(true);
     });
   });

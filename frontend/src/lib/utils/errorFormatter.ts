@@ -10,7 +10,13 @@ import { ApiError, AuthenticationError, NetworkError } from '@/lib/api/client';
  * Categorized error type for UI decisions.
  */
 export type ErrorCategory =
-  'authentication' | 'network' | 'not_found' | 'rate_limit' | 'server' | 'validation' | 'unknown';
+  | 'authentication'
+  | 'network'
+  | 'not_found'
+  | 'rate_limit'
+  | 'server'
+  | 'validation'
+  | 'unknown';
 
 /**
  * Formatted error with user-friendly message and metadata.

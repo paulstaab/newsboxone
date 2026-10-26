@@ -74,7 +74,7 @@ jobs:
         run: npm ci
       - name: Check formatting
         run: npm run format:check
-      - name: Run ESLint
+      - name: Run Oxlint
         run: npm run lint
       - name: Type check
         run: npm run typecheck
