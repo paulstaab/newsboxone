@@ -12,9 +12,7 @@
     "vscode": {
       "extensions": [
         "alexcvzz.vscode-sqlite",
-        "oxc.oxc-vscode",
         "ms-playwright.playwright",
-        "rust-lang.rust-analyzer",
         "openai.chatgpt"
       ]
     }
