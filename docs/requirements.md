@@ -44,6 +44,7 @@ It covers the repository-level infrastructure needed to ship the frontend and ba
 - `API-005`: The combined product shall expose feed-quality metadata and feed-quality mutation actions through the shared `/api/feeds` surface so the feed management page can manage per-feed quality behavior without CLI access.
 - `API-006`: Deleting an email newsletter feed through `/api/feeds/{feedId}` shall remove its articles, hide the feed from normal product views, and suppress future emails from the same sender.
 - `API-007`: The combined product shall expose AI-generated RSS/Atom feed recommendations through the shared `/api/feeds/recommendations` surface without adding subscriptions automatically.
+- `API-008`: Read, unstarred articles shall expire by default 30 days after their last change, with configurable read retention, separately opt-in unread expiry, permanent starred retention, and compact identities preventing expired articles from reappearing while seen in their source feeds. Identity expiry shall use the last successful feed refresh as its 90-day reference clock so outages cannot expire identities.
 
 ### Developer Workflow
 - `DEV-001`: The repository shall provide a single root devcontainer configuration for working on frontend and backend together.

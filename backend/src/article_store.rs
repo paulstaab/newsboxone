@@ -34,6 +34,7 @@ pub struct ArticleRecord {
 pub enum InsertArticleOutcome {
     Inserted { guid_hash: String },
     Duplicate { guid_hash: String },
+    FeedDeleted { guid_hash: String },
 }
 
 /// Shared context for enriching and persisting a candidate article.
@@ -103,13 +104,13 @@ pub fn article_record_from_feed_entry(feed_id: i64, entry: &Entry) -> Option<Art
     })
 }
 
-/// Returns whether an article with the given guid hash is already persisted.
+/// Checks compact identities, including articles whose payload has expired.
 pub async fn article_exists_by_guid_hash(
     pool: &SqlitePool,
     guid_hash: &str,
 ) -> Result<bool, sqlx::Error> {
-    let existing: Option<i64> =
-        sqlx::query_scalar("SELECT id FROM article WHERE guid_hash = ? LIMIT 1")
+    let existing: Option<String> =
+        sqlx::query_scalar("SELECT guid_hash FROM article_identity WHERE guid_hash = ? LIMIT 1")
             .bind(guid_hash)
             .fetch_optional(pool)
             .await?;
@@ -153,7 +154,7 @@ pub async fn enrich_article_record(
     }
 }
 
-/// Enriches a new article and persists it when its guid hash is not already stored.
+/// Enriches a new article and atomically inserts it unless duplicated or its feed was deleted.
 pub async fn ingest_article_if_new(
     context: &ArticleIngestionContext<'_>,
     article: ArticleRecord,
@@ -174,7 +175,25 @@ pub async fn ingest_article_if_new(
     .await;
 
     let mut tx = context.pool.begin().await?;
-    repo::insert_article_record(tx.as_mut(), article.clone()).await?;
+    let inserted = repo::insert_article_record(tx.as_mut(), article.clone()).await?;
+    if !inserted {
+        let active =
+            sqlx::query_scalar::<_, i64>("SELECT id FROM feed WHERE id = ? AND deleted_at IS NULL")
+                .bind(article.feed_id)
+                .fetch_optional(tx.as_mut())
+                .await?
+                .is_some();
+        tx.commit().await?;
+        return Ok(if active {
+            InsertArticleOutcome::Duplicate {
+                guid_hash: article.guid_hash,
+            }
+        } else {
+            InsertArticleOutcome::FeedDeleted {
+                guid_hash: article.guid_hash,
+            }
+        });
+    }
     if let Some(pub_date) = article.pub_date {
         repo::advance_feed_last_article_date(tx.as_mut(), article.feed_id, pub_date).await?;
     }

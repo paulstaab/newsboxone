@@ -42,7 +42,7 @@ pub(super) struct UpdatedItemsQueryParams {
 struct ItemRow {
     id: i64,
     title: Option<String>,
-    content: Option<String>,
+    body: Option<String>,
     author: Option<String>,
     content_hash: Option<String>,
     enclosure_link: Option<String>,
@@ -60,7 +60,6 @@ struct ItemRow {
     unread: bool,
     updated_date: Option<i64>,
     url: Option<String>,
-    summary: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -331,12 +330,13 @@ fn validate_bulk_item_ids(item_ids: &[i64]) -> ApiResult<()> {
     Ok(())
 }
 
+/// Maps a projected timeline row to its public article payload.
 fn item_row_to_out(item: ItemRow) -> ItemOut {
     ItemOut {
         id: item.id,
         title: item.title,
         author: item.author,
-        body: item.summary.or(item.content),
+        body: item.body,
         content_hash: item.content_hash,
         enclosure_link: item.enclosure_link,
         enclosure_mime: item.enclosure_mime,
@@ -356,6 +356,7 @@ fn item_row_to_out(item: ItemRow) -> ItemOut {
     }
 }
 
+/// Loads bounded timeline bodies without transferring unused full text alongside summaries.
 async fn query_items(pool: &SqlitePool, input: QueryItemsInput) -> ApiResult<Vec<ItemRow>> {
     let QueryItemsInput {
         selection_type,
@@ -368,7 +369,7 @@ async fn query_items(pool: &SqlitePool, input: QueryItemsInput) -> ApiResult<Vec
     } = input;
 
     let mut qb: QueryBuilder<'_, Sqlite> = QueryBuilder::new(
-        "SELECT article.id, article.title, article.content, article.author, article.content_hash, article.enclosure_link, article.enclosure_mime, article.feed_id, article.fingerprint, article.guid, article.guid_hash, article.last_modified, article.media_description, article.media_thumbnail, article.pub_date, article.rtl, article.starred, article.unread, article.updated_date, article.url, article.summary FROM article JOIN feed ON feed.id = article.feed_id",
+        "SELECT article.id, article.title, COALESCE(article.summary, article.content) AS body, article.author, article.content_hash, article.enclosure_link, article.enclosure_mime, article.feed_id, article.fingerprint, article.guid, article.guid_hash, article.last_modified, article.media_description, article.media_thumbnail, article.pub_date, article.rtl, article.starred, article.unread, article.updated_date, article.url FROM article JOIN feed ON feed.id = article.feed_id",
     );
 
     qb.push(" WHERE feed.deleted_at IS NULL");

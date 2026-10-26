@@ -41,17 +41,16 @@ pub async fn create_token(
     })
 }
 
-/// Returns the current token record when it exists and has not expired.
+/// Reads an unexpired token without acquiring the database writer lock.
 pub async fn find_active_token(
     pool: &SqlitePool,
     token: &str,
 ) -> Result<Option<AuthTokenRecord>, sqlx::Error> {
-    delete_expired_tokens(pool).await?;
-
     let row = sqlx::query_as::<_, AuthTokenRow>(
-        "SELECT token, username, expires_at FROM auth_token WHERE token = ? LIMIT 1",
+        "SELECT token, username, expires_at FROM auth_token WHERE token = ? AND expires_at > ? LIMIT 1",
     )
     .bind(token)
+    .bind(unix_timestamp_now())
     .fetch_optional(pool)
     .await?;
 
