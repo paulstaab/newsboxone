@@ -33,5 +33,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
 [dev-dependencies]
 assert_cmd = "2.2"
+chrono = "0.4"
 tempfile = "3.27"
 tower = { version = "0.5", features = ["util"] }

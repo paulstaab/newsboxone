@@ -323,10 +323,14 @@ async fn seed_recommendation_context(pool: &sqlx::SqlitePool) {
     }
 }
 
+/// Serves candidate feeds dated relative to one shared clock sample.
 async fn start_recommendation_fixture_server() -> String {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     let base_url = format!("http://{addr}");
+    let now = chrono::Utc::now();
+    let recent_date = (now - chrono::Duration::days(1)).to_rfc3339();
+    let stale_date = (now - chrono::Duration::days(91)).to_rfc3339();
 
     let app = Router::new()
         .route(
@@ -375,8 +379,9 @@ async fn start_recommendation_fixture_server() -> String {
             "/recommended.xml",
             get({
                 let base_url = base_url.clone();
+                let recent_date = recent_date.clone();
                 move || async move {
-                    ([ (header::CONTENT_TYPE, "application/atom+xml") ], recent_feed_xml(&base_url, "Recommended Direct Feed", "direct-entry"))
+                    ([ (header::CONTENT_TYPE, "application/atom+xml") ], recent_feed_xml(&base_url, "Recommended Direct Feed", "direct-entry", &recent_date))
                 }
             }),
         )
@@ -391,7 +396,7 @@ async fn start_recommendation_fixture_server() -> String {
             get({
                 let base_url = base_url.clone();
                 move || async move {
-                    ([ (header::CONTENT_TYPE, "application/atom+xml") ], recent_feed_xml(&base_url, "Recommended Site Feed", "site-entry"))
+                    ([ (header::CONTENT_TYPE, "application/atom+xml") ], recent_feed_xml(&base_url, "Recommended Site Feed", "site-entry", &recent_date))
                 }
             }),
         )
@@ -400,7 +405,7 @@ async fn start_recommendation_fixture_server() -> String {
             get({
                 let base_url = base_url.clone();
                 move || async move {
-                    ([ (header::CONTENT_TYPE, "application/atom+xml") ], stale_feed_xml(&base_url))
+                    ([ (header::CONTENT_TYPE, "application/atom+xml") ], stale_feed_xml(&base_url, &stale_date))
                 }
             }),
         );
@@ -412,37 +417,39 @@ async fn start_recommendation_fixture_server() -> String {
     base_url
 }
 
-fn recent_feed_xml(base_url: &str, title: &str, entry_id: &str) -> String {
+/// Builds an active Atom candidate using the fixture server's shared recent date.
+fn recent_feed_xml(base_url: &str, title: &str, entry_id: &str, updated: &str) -> String {
     format!(
         r#"<?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <title>{title}</title>
   <link href="{base_url}/" />
-  <updated>2026-07-10T00:00:00Z</updated>
+  <updated>{updated}</updated>
   <id>tag:example.org,2026:{entry_id}-feed</id>
   <entry>
     <title>{title} Entry</title>
     <link href="{base_url}/articles/{entry_id}" />
     <id>tag:example.org,2026:{entry_id}</id>
-    <updated>2026-07-10T00:00:00Z</updated>
+    <updated>{updated}</updated>
   </entry>
 </feed>"#,
     )
 }
 
-fn stale_feed_xml(base_url: &str) -> String {
+/// Builds an Atom candidate dated outside the recommendation freshness window.
+fn stale_feed_xml(base_url: &str, updated: &str) -> String {
     format!(
         r#"<?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <title>Stale Feed</title>
   <link href="{base_url}/" />
-  <updated>2025-01-10T00:00:00Z</updated>
+  <updated>{updated}</updated>
   <id>tag:example.org,2025:stale-feed</id>
   <entry>
     <title>Stale Entry</title>
     <link href="{base_url}/articles/stale" />
     <id>tag:example.org,2025:stale</id>
-    <updated>2025-01-10T00:00:00Z</updated>
+    <updated>{updated}</updated>
   </entry>
 </feed>"#,
     )
