@@ -688,15 +688,17 @@ async fn tc_db_012_identity_expiry_uses_successful_feed_time_and_protects_retain
 
 #[tokio::test]
 async fn tc_db_013_successful_payload_touches_identities_beyond_ingestion_cap() {
+    let ingestion_cap = crate::feed_ingestion::MAX_FEED_ENTRIES;
+    let known_identities = ingestion_cap + 1;
     let pool = db::create_memory_pool().await.unwrap();
     seed_feed(&pool, false).await;
     let mut xml = String::from(
         "<feed xmlns='http://www.w3.org/2005/Atom'><id>feed</id><title>Feed</title><updated>2026-01-01T00:00:00Z</updated>",
     );
-    for i in 0..52 {
+    for i in 0..known_identities + 1 {
         let guid = format!("entry-{i}");
         xml.push_str(&format!("<entry><id>{guid}</id><title>Entry</title><updated>2026-01-01T00:00:00Z</updated></entry>"));
-        if i < 51 {
+        if i < known_identities {
             let mut record = article(&guid);
             record.guid_hash = crate::article_store::guid_hash(&guid);
             repo::insert_article_record(&pool, record).await.unwrap();
@@ -731,7 +733,7 @@ async fn tc_db_013_successful_payload_touches_identities_beyond_ingestion_cap() 
     let stats = crate::feed_ingestion::ingest_feed_entries(&context, &parsed.entries)
         .await
         .unwrap();
-    assert_eq!(stats.processed, 50);
+    assert_eq!(stats.processed, ingestion_cap);
     assert_eq!(stats.inserted, 0);
     let clock: i64 = sqlx::query_scalar("SELECT last_successful_refresh_at FROM feed")
         .fetch_one(&pool)
@@ -746,12 +748,12 @@ async fn tc_db_013_successful_payload_touches_identities_beyond_ingestion_cap() 
         .fetch_one(&pool)
         .await
         .unwrap(),
-        51
+        known_identities as i64
     );
     assert!(
         !crate::article_store::article_exists_by_guid_hash(
             &pool,
-            &crate::article_store::guid_hash("entry-51")
+            &crate::article_store::guid_hash(&format!("entry-{known_identities}"))
         )
         .await
         .unwrap()

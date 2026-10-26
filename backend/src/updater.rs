@@ -216,7 +216,7 @@ async fn update_feed_batch(
     Ok(feeds.len())
 }
 
-/// Refreshes one feed, ingests up to 50 entries, updates dynamic cadence, and clears error state.
+/// Refreshes one feed, ingests up to 25 entries, updates dynamic cadence, and clears error state.
 async fn update_single_feed(
     pool: &SqlitePool,
     article_http_client: &reqwest::Client,
