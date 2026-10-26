@@ -5,7 +5,7 @@ import { ArticlePopout } from '@/components/timeline/ArticlePopout';
 import { useArticlePopout } from '@/hooks/useArticlePopout';
 import type { ArticlePreview } from '@/types';
 
-/* eslint-disable @next/next/no-img-element */
+/* oxlint-disable nextjs/no-img-element */
 type MockImageProps = React.ImgHTMLAttributes<HTMLImageElement> & {
   unoptimized?: boolean;
   fill?: boolean;
@@ -19,7 +19,7 @@ vi.mock('next/image', () => ({
     return <img alt="" {...rest} />;
   },
 }));
-/* eslint-enable @next/next/no-img-element */
+/* oxlint-enable nextjs/no-img-element */
 
 const { mockContentResponse } = vi.hoisted(() => ({
   mockContentResponse: {

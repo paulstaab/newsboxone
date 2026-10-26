@@ -42,6 +42,7 @@ export function normalizeKarakeepBaseUrl(value: string): string {
   }
 
   if (
+    // oxlint-disable-next-line typescript/prefer-optional-chain -- DOM types omit server-side absence.
     typeof window !== 'undefined' &&
     window.location.protocol === 'https:' &&
     url.protocol === 'http:'

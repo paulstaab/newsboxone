@@ -38,7 +38,7 @@ export function RequestStateToast({ message, onDismiss }: RequestStateToastProps
 
   useLayoutEffect(() => {
     if (message) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      // oxlint-disable-next-line react/set-state-in-effect
       setIsVisible(true);
 
       // Auto-dismiss after duration
