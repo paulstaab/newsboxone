@@ -12,14 +12,14 @@ use crate::content::FeedContentState;
 use crate::ssrf;
 
 /// Maximum number of entries ingested from a single feed payload.
-pub const MAX_FEED_ENTRIES: usize = 50;
+pub const MAX_FEED_ENTRIES: usize = 25;
 /// Jitter window in seconds for sparse-feed refreshes.
 pub const THIRTY_MINUTES: i64 = 1_800;
 /// Maximum interval for active feeds.
 pub const TWELVE_HOURS: i64 = 43_200;
 /// One day in seconds.
 pub const ONE_DAY: i64 = 86_400;
-/// Retention window for stale feed-article cleanup.
+/// Recency window for feed recommendation eligibility.
 pub const NINETY_DAYS: i64 = 90 * ONE_DAY;
 
 /// Shared context for ingesting entries from one feed payload.
@@ -38,12 +38,11 @@ pub struct ParsedFeedDocument {
     pub body: Vec<u8>,
 }
 
-/// Counts and guid hashes collected while ingesting a parsed feed payload.
+/// Counts collected while ingesting a parsed feed payload.
 #[derive(Debug, Default)]
 pub struct FeedIngestionStats {
     pub processed: usize,
     pub inserted: usize,
-    pub current_feed_guid_hashes: Vec<String>,
 }
 
 /// Feed fetch/parse errors that API handlers can map to public error responses.
@@ -131,61 +130,39 @@ pub async fn fetch_and_parse_feed_document_checked(
     })
 }
 
-/// Ingests the bounded entry set from one parsed feed payload.
+/// Ingests bounded entries and atomically records all identities seen in a successful payload.
 pub async fn ingest_feed_entries(
     context: &FeedEntryIngestionContext<'_>,
     entries: &[Entry],
 ) -> Result<FeedIngestionStats> {
+    let observed_at = article_store::unix_now();
     let mut stats = FeedIngestionStats::default();
 
     for entry in entries.iter().take(MAX_FEED_ENTRIES) {
         stats.processed += 1;
-        if insert_article_from_entry(context, entry, &mut stats.current_feed_guid_hashes).await? {
+        if insert_article_from_entry(context, entry).await? {
             stats.inserted += 1;
         }
     }
 
-    Ok(stats)
-}
-
-/// Removes stale feed articles that are absent from the latest payload.
-///
-/// Articles are only eligible when they are old, read, and unstarred, so refreshes do not delete
-/// recent unread content or user-saved items.
-pub async fn cleanup_stale_feed_articles(
-    pool: &SqlitePool,
-    feed_id: i64,
-    current_feed_guid_hashes: &[String],
-) -> Result<u64> {
-    let stale_before = article_store::unix_now() - NINETY_DAYS;
-
-    let result = if current_feed_guid_hashes.is_empty() {
-        sqlx::query(
-            "DELETE FROM article WHERE feed_id = ? AND last_modified < ? AND unread = 0 AND starred = 0",
-        )
-        .bind(feed_id)
-        .bind(stale_before)
-        .execute(pool)
-        .await
-        .context("failed stale article cleanup query")?
-    } else {
-        let placeholders = vec!["?"; current_feed_guid_hashes.len()].join(", ");
-        let query = format!(
-            "DELETE FROM article WHERE feed_id = ? AND last_modified < ? AND unread = 0 AND starred = 0 AND guid_hash NOT IN ({placeholders})"
-        );
-
-        let mut cleanup_query = sqlx::query(&query).bind(feed_id).bind(stale_before);
-        for guid_hash in current_feed_guid_hashes {
-            cleanup_query = cleanup_query.bind(guid_hash);
-        }
-
-        cleanup_query
-            .execute(pool)
-            .await
-            .context("failed stale article cleanup query")?
+    let entry_hash = |entry: &Entry| {
+        article_store::guid_from_feed_entry(entry).map(|guid| article_store::guid_hash(&guid))
     };
-
-    Ok(result.rows_affected())
+    let seen_hashes: Vec<String> = entries.iter().filter_map(entry_hash).collect();
+    let processed_hashes: Vec<String> = entries
+        .iter()
+        .take(MAX_FEED_ENTRIES)
+        .filter_map(entry_hash)
+        .collect();
+    crate::repo::record_successful_feed_refresh(
+        context.pool,
+        context.feed_id,
+        &seen_hashes,
+        &processed_hashes,
+        observed_at,
+    )
+    .await?;
+    Ok(stats)
 }
 
 /// Calculates the next refresh timestamp from the last 7 days of observed article output.
@@ -235,7 +212,6 @@ pub fn compute_next_update_interval(avg_articles_per_day: f64, jitter_seconds: i
 async fn insert_article_from_entry(
     entry_context: &FeedEntryIngestionContext<'_>,
     entry: &Entry,
-    current_feed_guid_hashes: &mut Vec<String>,
 ) -> Result<bool> {
     let Some(article) = article_store::article_record_from_feed_entry(entry_context.feed_id, entry)
     else {
@@ -245,8 +221,6 @@ async fn insert_article_from_entry(
         );
         return Ok(false);
     };
-
-    current_feed_guid_hashes.push(article.guid_hash.clone());
 
     let ingestion_context = article_store::ArticleIngestionContext {
         pool: entry_context.pool,
@@ -261,6 +235,7 @@ async fn insert_article_from_entry(
         .context("failed to insert article")?
     {
         InsertArticleOutcome::Inserted { .. } => Ok(true),
+        InsertArticleOutcome::FeedDeleted { .. } => Ok(false),
         InsertArticleOutcome::Duplicate { guid_hash } => {
             tracing::debug!(
                 feed_id = entry_context.feed_id,

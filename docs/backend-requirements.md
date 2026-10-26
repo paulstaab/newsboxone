@@ -42,6 +42,7 @@ The same requirements apply to all implementations.
 - `SRV-002`: On startup, the service shall execute a feed refresh cycle.
 - `SRV-003`: Startup refresh shall process all non-mailing-list feeds regardless of previous schedule.
 - `SRV-004`: The service shall execute periodic feed refresh cycles based on `FEED_UPDATE_FREQUENCY_MIN`.
+- `SRV-005`: Database maintenance shall run independently at startup and hourly, and before explicit CLI updates; ordinary scheduled feed batches shall not run additional sweeps. Each sweep shall remove at most 5000 eligible articles and 5000 eligible identities in transactions of at most 500 rows, and remove expired browser tokens without remote I/O.
 
 ### API Behavior
 
@@ -70,7 +71,7 @@ The same requirements apply to all implementations.
   - cap active-feed interval to at most 12 hours.
 - `FEED-010`: Refresh failures shall increment `update_error_count` and persist `last_update_error`.
 - `FEED-011`: Successful refresh shall clear persisted refresh error state.
-- `FEED-012`: Stale feed articles not present in the latest payload shall be eligible for cleanup only when older than 90 days, read, and unstarred.
+- `FEED-012`: Read, unstarred feed articles shall expire 30 days after their last actual change (`last_modified`) by default, configurable with `ARTICLE_READ_RETENTION_DAYS`. Presence in a current feed payload shall not prevent expiry; compact identities shall prevent re-ingestion.
 - `FEED-013`: The feeds API shall expose a discovery endpoint that fetches a website URL through SSRF-safe remote fetching, extracts embedded RSS and Atom `<link rel="alternate">` metadata, resolves relative feed URLs, deduplicates discovered feed URLs, and ignores unsupported feed formats.
 - `FEED-014`: Feed recommendations shall:
   - require configured OpenAI-compatible LLM support,
@@ -115,7 +116,7 @@ The same requirements apply to all implementations.
 - `ITEM-005`: Item retrieval shall support `last_modified` filtering.
 - `ITEM-006`: Single and bulk read/unread operations shall be supported.
 - `ITEM-007`: Single and bulk star/unstar operations shall be supported.
-- `ITEM-008`: Read/star state changes shall update `last_modified`.
+- `ITEM-008`: Actual read/star state changes shall update `last_modified`. Repeating the current flag value shall leave the row and `last_modified` unchanged for single, bulk, feed, folder, and global mutations.
 - `ITEM-009`: Mark-as-read operations shall support boundary behavior using newest item ID for feed, folder, and global scopes.
 
 ### Content Extraction And Summarization
@@ -186,7 +187,7 @@ The same requirements apply to all implementations.
   - In `multi` mode, the parser should return an list of articles linked in the newsletter, so that they can be shown as separate entries in the generated feed.
   - LLM-based multi-item parsing shall create at most 10 articles from a single newsletter email.
 - `EML-008`: If LLM-based parsing is disabled, fails, returns invalid JSON, or produces no usable multi-item entries, newsletter ingestion shall fall back to creating a single article from the cleaned email content.
-- `EML-009`: Stale newsletter entries shall be eligible for cleanup only when older than 90 days, read, and unstarred.
+- `EML-009`: Newsletter payloads shall use the same configurable retention and independent cleanup as regular articles; expired identities shall still prevent duplicate ingestion.
 - `EML-010`: Successful newsletter ingestion shall clear persisted refresh error state on the corresponding mailing-list feed.
 
 
@@ -207,7 +208,7 @@ The same requirements apply to all implementations.
 - `SEC-003`: Localhost access may be allowed only in testing mode.
 - `SEC-004`: The same URL validation policy shall be applied consistently in all remote-fetch paths, including each HTTP redirect target before it is fetched, and hostname resolution failures shall be rejected rather than bypassing IP-based checks.
 - `SEC-005`: Protected public API routes shall require backend-issued bearer tokens, and token issuance shall validate the configured `USERNAME` and `PASSWORD` credentials when auth is enabled.
-- `SEC-005a`: Issued browser tokens shall expire after 1 day by default or after 30 days when the remember-device flow is requested.
+- `SEC-005a`: Issued browser tokens shall expire after 1 day by default or after 30 days when the remember-device flow is requested. Token validation shall filter expiry without deleting rows; independent maintenance shall sweep expired tokens.
 - `SEC-005b`: Token issuance shall rate-limit repeated invalid username/password submissions per username and client key, returning `429` with `Retry-After` after the configured burst is exceeded.
 - `SEC-005c`: Production CORS shall allow only origins configured through `CORS_ALLOWED_ORIGINS`; permissive wildcard CORS is limited to testing/local mode.
 - `SEC-006`: The system shall not log user-provided content, including titles, feed content, mailbox identities, or externally generated content derived from user input unless explicitly required by an `OBS` requirement.
@@ -216,7 +217,8 @@ The same requirements apply to all implementations.
 
 - `CFG-001`: Runtime configuration shall be sourced from environment variables.
 - `CFG-002`: Supported variables shall include authentication settings, feed update frequency, service version, CORS allowed origins, and provider-specific LLM configuration including request timeout.
-- `CFG-003`: Defaults shall include `VERSION=dev`, `FEED_UPDATE_FREQUENCY_MIN=15`, `OPENAI_TIMEOUT_SECONDS=60`, and a default LLM model identifier.
+- `CFG-003`: Defaults shall include `VERSION=dev`, `FEED_UPDATE_FREQUENCY_MIN=15`, `OPENAI_TIMEOUT_SECONDS=60`, `ARTICLE_READ_RETENTION_DAYS=30`, disabled unread expiry, and a default LLM model identifier.
+- `CFG-004`: `ARTICLE_READ_RETENTION_DAYS` shall accept positive day counts; invalid, zero, or overflowing values shall fall back to 30. `ARTICLE_UNREAD_RETENTION_DAYS` shall opt into unread/unstarred expiry after the last actual change; unset, zero, invalid, or overflowing values shall disable unread expiry. Starred articles shall never expire automatically.
 
 ### CLI
 
@@ -228,7 +230,15 @@ The same requirements apply to all implementations.
 
 ### Data Model And Constraints
 
-- `DAT-001`: Persistence shall include `Feed`, `Folder`, `Article`, `EmailCredential`, and `AuthToken` entities.
+- `DAT-001`: Persistence shall include `Feed`, `Folder`, `Article`, `EmailCredential`, `AuthToken`, and compact `ArticleIdentity` entities.
 - `DAT-002`: Feed URL uniqueness shall be enforced.
 - `DAT-003`: Folder name uniqueness shall be enforced.
 - `DAT-004`: Feed persistence shall store nullable per-attribute manual quality-override fields for `use_extracted_fulltext` and `use_llm_summary`, plus a timestamp for the most recent manual override.
+
+- `DAT-005`: Global article GUID-hash uniqueness shall be enforced by SQLite; conflicting concurrent inserts shall be skipped. Migration shall retain the earliest duplicate ID and merge starred/unread flags and the latest modification timestamp.
+- `DAT-006`: Feed/folder deletion shall be transactional, and article insertion shall atomically require an active feed so concurrent ingestion cannot repopulate a deleted newsletter feed.
+- `DAT-007`: Article identity, feed timeline, publishing-frequency, and retention queries shall have supporting indexes. Timeline queries shall project only the preferred summary-or-content body.
+- `DAT-008`: Article identities shall contain globally unique GUID hashes, owning feed IDs, and `last_seen_at` timestamps, initialized at insertion or migration time. Identity creation shall be atomic with article insertion and duplicates checked before enrichment. Identities shall survive payload expiry and be removed on explicit feed/folder deletion. The existing article-health migration shall add these fields and nullable `feed.last_successful_refresh_at`, with no separate identity creation timestamp.
+- `DAT-009`: Article IDs shall increase without reuse after payload expiry so client cursors and cached article references cannot target unrelated new articles. Expiry shall remove the full article row and retain only its compact identity; expired items shall disappear from listings and return 404 for content requests.
+- `DAT-010`: A successful regular-feed ingestion shall atomically observe identities before advancing `last_successful_refresh_at`. It shall touch every existing identity in the full payload, including entries beyond the 50-article insertion cap, without marking unprocessed new entries as already ingested. Failed fetches, parses, or ingestions shall not advance the success clock. Older overlapping refreshes shall not move timestamps backwards.
+- `DAT-011`: Identity cleanup shall require `identity.last_seen_at < feed.last_successful_refresh_at - 90 days` and no retained article with that GUID hash. Newsletter feeds, deleted feeds, and feeds without successful observations shall be excluded. Observation updates and success-clock advancement shall share a transaction so cleanup cannot see an advanced clock before current entries are protected.

@@ -48,12 +48,13 @@ pub struct FeedQualityOverrideUpdate {
     pub use_llm_summary: Option<Option<bool>>,
 }
 
-/// Runs one foreground update cycle for the CLI `update` command.
+/// Runs local database maintenance before the foreground CLI feed-update cycle.
 pub async fn update_all(config: &Config) -> Result<()> {
     tracing::info!("starting rust feed update cycle");
     let pool = db::create_pool(&config.db_path)
         .await
         .with_context(|| format!("failed to connect to sqlite db at {}", config.db_path))?;
+    crate::maintenance::run(&pool, &config.article_retention).await?;
     let updated = update_due_feeds(&pool, config, config.testing_mode).await?;
     tracing::info!(updated, "finished rust feed update cycle");
     Ok(())
@@ -162,7 +163,7 @@ pub async fn update_all_regular_feeds(
     update_feed_batch(pool, config, testing_mode, feeds, "all").await
 }
 
-/// Updates a selected batch of feeds and then runs newsletter ingestion/cleanup.
+/// Refreshes a selected feed batch and ingests newsletters without scheduling maintenance.
 async fn update_feed_batch(
     pool: &SqlitePool,
     config: &Config,
@@ -255,10 +256,6 @@ async fn update_single_feed(
 
     let stats = feed_ingestion::ingest_feed_entries(&entry_context, &parsed.entries).await?;
 
-    let removed =
-        feed_ingestion::cleanup_stale_feed_articles(pool, feed_id, &stats.current_feed_guid_hashes)
-            .await?;
-
     let now_ts = article_store::unix_now();
     let next_update_time =
         feed_ingestion::calculate_next_update_time(pool, feed_id, now_ts).await?;
@@ -276,7 +273,6 @@ async fn update_single_feed(
         processed = stats.processed,
         inserted = stats.inserted,
         skipped = stats.skipped(),
-        removed,
         "feed update completed"
     );
     Ok(())
@@ -460,26 +456,13 @@ mod tests {
         NINETY_DAYS, ONE_DAY, THIRTY_MINUTES, TWELVE_HOURS, compute_next_update_interval,
     };
 
+    /// Builds updater fixtures with the production schema and the historical root id.
     async fn setup_pool() -> SqlitePool {
-        let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-        sqlx::query(
-            "CREATE TABLE feed (id INTEGER PRIMARY KEY NOT NULL, url VARCHAR NOT NULL UNIQUE, title VARCHAR, favicon_link VARCHAR, added INTEGER NOT NULL, last_article_date INTEGER, next_update_time INTEGER, folder_id INTEGER NOT NULL, ordering INTEGER NOT NULL, link VARCHAR, pinned BOOLEAN NOT NULL, update_error_count INTEGER NOT NULL, last_update_error VARCHAR, is_mailing_list BOOLEAN NOT NULL DEFAULT 0, last_quality_check INTEGER, use_extracted_fulltext BOOLEAN NOT NULL DEFAULT 0, use_llm_summary BOOLEAN NOT NULL DEFAULT 0, manual_use_extracted_fulltext BOOLEAN, manual_use_llm_summary BOOLEAN, last_manual_quality_override INTEGER, deleted_at INTEGER)",
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
-        sqlx::query(
-            "CREATE TABLE article (id INTEGER PRIMARY KEY NOT NULL, title VARCHAR, content VARCHAR, author VARCHAR, content_hash VARCHAR, enclosure_link VARCHAR, enclosure_mime VARCHAR, feed_id INTEGER NOT NULL, fingerprint VARCHAR, guid VARCHAR NOT NULL, guid_hash VARCHAR NOT NULL, last_modified INTEGER NOT NULL, media_description VARCHAR, media_thumbnail VARCHAR, pub_date INTEGER, rtl BOOLEAN NOT NULL, starred BOOLEAN NOT NULL, unread BOOLEAN NOT NULL, updated_date INTEGER, url VARCHAR, summary VARCHAR)",
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
-        sqlx::query(
-            "CREATE TABLE email_credentials (id INTEGER PRIMARY KEY AUTOINCREMENT, protocol VARCHAR NOT NULL, server VARCHAR NOT NULL, port INTEGER NOT NULL, username VARCHAR NOT NULL, password VARCHAR NOT NULL)",
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
+        let pool = crate::db::create_memory_pool().await.unwrap();
+        sqlx::query("UPDATE folder SET id = 1 WHERE id = 0")
+            .execute(&pool)
+            .await
+            .unwrap();
         pool
     }
 
@@ -490,6 +473,7 @@ mod tests {
             version: "dev".to_string(),
             db_path: ":memory:".to_string(),
             feed_update_frequency_min: 15,
+            article_retention: crate::config::ArticleRetention::default(),
             openai_api_key: None,
             openai_base_url: "https://api.openai.com/v1".to_string(),
             openai_model: "gpt-5.6-luna".to_string(),
@@ -834,6 +818,9 @@ mod tests {
         insert_test_article_with_hash(&pool, 7, in_payload_guid, &in_payload_hash, stale, 0, 0)
             .await;
 
+        crate::maintenance::run(&pool, &test_config().article_retention)
+            .await
+            .unwrap();
         let updated = update_due_feeds(&pool, &test_config(), true).await.unwrap();
         assert_eq!(updated, 1);
 
@@ -872,7 +859,7 @@ mod tests {
                 .fetch_optional(&pool)
                 .await
                 .unwrap();
-        assert!(in_payload_exists.is_some());
+        assert!(in_payload_exists.is_none());
     }
 
     #[tokio::test]
@@ -888,6 +875,9 @@ mod tests {
         let stale = unix_now() - (NINETY_DAYS + ONE_DAY);
         insert_test_article(&pool, 17, "stale-delete", stale, 0, 0).await;
 
+        crate::maintenance::run(&pool, &test_config().article_retention)
+            .await
+            .unwrap();
         let updated = update_due_feeds(&pool, &test_config(), true).await.unwrap();
         assert_eq!(updated, 1);
 

@@ -1056,6 +1056,7 @@ mod tests {
             version: "test".to_string(),
             db_path: ":memory:".to_string(),
             feed_update_frequency_min: 15,
+            article_retention: crate::config::ArticleRetention::default(),
             openai_api_key: None,
             openai_base_url: "https://api.openai.com/v1".to_string(),
             openai_model: "gpt-5.6-luna".to_string(),
