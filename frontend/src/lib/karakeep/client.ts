@@ -1,7 +1,11 @@
 /** Browser-only client for the Karakeep REST API. */
 
 export type KarakeepErrorCode =
-  'invalid-url' | 'mixed-content' | 'authentication' | 'network-or-cors' | 'server';
+  | 'invalid-url'
+  | 'mixed-content'
+  | 'authentication'
+  | 'network-or-cors'
+  | 'server';
 
 export class KarakeepError extends Error {
   constructor(
