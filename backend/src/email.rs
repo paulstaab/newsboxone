@@ -2,7 +2,7 @@
 //!
 //! This module is responsible for loading unread mailbox messages, filtering them to
 //! mailing-list/newsletter traffic, converting those messages into article rows, and
-//! applying newsletter-specific cleanup behavior.
+//! leaving payload expiry to the shared retention sweep.
 
 use std::collections::HashSet;
 use std::sync::OnceLock;
@@ -25,7 +25,6 @@ use crate::llm;
 use crate::llm::LlmRequestContext;
 use crate::repo;
 
-const NINETY_DAYS: i64 = 90 * 24 * 60 * 60;
 const NEWSLETTER_MAX_CHARS: usize = 100_000;
 const NEWSLETTER_MAX_ITEMS: usize = 10;
 const NEWSLETTER_SINGLE_SUMMARY_MAX_CHARS: usize = 320;
@@ -94,7 +93,6 @@ where
 
     if credentials.is_empty() {
         tracing::info!("no email credentials configured; skipping mailbox fetch");
-        clean_up_old_newsletters(pool, None).await?;
         return Ok(());
     }
 
@@ -122,22 +120,7 @@ where
         }
     }
 
-    clean_up_old_newsletters(pool, None).await?;
     Ok(())
-}
-
-/// Remove stale newsletter entries that are older than 90 days, read, and unstarred.
-pub async fn clean_up_old_newsletters(pool: &SqlitePool, now_ts: Option<i64>) -> Result<u64> {
-    let cutoff = now_ts.unwrap_or_else(article_store::unix_now) - NINETY_DAYS;
-    let result = sqlx::query(
-        "DELETE FROM article WHERE feed_id IN (SELECT id FROM feed WHERE is_mailing_list = 1) AND last_modified < ? AND unread = 0 AND starred = 0",
-    )
-    .bind(cutoff)
-    .execute(pool)
-    .await
-    .context("failed to clean up stale newsletter articles")?;
-
-    Ok(result.rows_affected())
 }
 
 /// Parses one raw email, discards non-newsletters, and inserts any resulting article drafts.
@@ -208,7 +191,7 @@ async fn process_email_message(
             .context("failed to insert newsletter article")?
         {
             InsertArticleOutcome::Inserted { .. } => inserted += 1,
-            InsertArticleOutcome::Duplicate { .. } => {}
+            InsertArticleOutcome::Duplicate { .. } | InsertArticleOutcome::FeedDeleted { .. } => {}
         }
     }
 
@@ -853,9 +836,8 @@ mod tests {
         EmailCredentialRow, NEWSLETTER_MAX_CHARS, NEWSLETTER_MAX_ITEMS,
         NEWSLETTER_SINGLE_SUMMARY_MAX_CHARS, NewsletterItem, NewsletterLlmResult,
         build_articles_from_email, build_openai_newsletter_payload, clean_newsletter_html,
-        clean_up_old_newsletters, fetch_emails_from_all_mailboxes_with_fetcher,
-        load_mock_messages_from_env, normalize_llm_result, parse_newsletter_llm_json_response,
-        process_email_message,
+        fetch_emails_from_all_mailboxes_with_fetcher, load_mock_messages_from_env,
+        normalize_llm_result, parse_newsletter_llm_json_response, process_email_message,
     };
 
     #[derive(Clone)]
@@ -900,37 +882,9 @@ mod tests {
         (format!("http://{addr}"), state)
     }
 
+    /// Builds newsletter fixtures on the production schema.
     async fn setup_pool() -> SqlitePool {
-        let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-        sqlx::query(
-            "CREATE TABLE folder (id INTEGER PRIMARY KEY NOT NULL, name VARCHAR NOT NULL UNIQUE, is_root BOOLEAN NOT NULL DEFAULT 0)",
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
-        sqlx::query(
-            "CREATE TABLE feed (id INTEGER PRIMARY KEY NOT NULL, url VARCHAR NOT NULL UNIQUE, title VARCHAR, favicon_link VARCHAR, added INTEGER NOT NULL, last_article_date INTEGER, next_update_time INTEGER, folder_id INTEGER NOT NULL, ordering INTEGER NOT NULL DEFAULT 0, link VARCHAR, pinned BOOLEAN NOT NULL DEFAULT 0, update_error_count INTEGER NOT NULL DEFAULT 0, last_update_error VARCHAR, is_mailing_list BOOLEAN NOT NULL DEFAULT 0, last_quality_check INTEGER, use_extracted_fulltext BOOLEAN NOT NULL DEFAULT 0, use_llm_summary BOOLEAN NOT NULL DEFAULT 0, manual_use_extracted_fulltext BOOLEAN, manual_use_llm_summary BOOLEAN, last_manual_quality_override INTEGER, deleted_at INTEGER)",
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
-        sqlx::query(
-            "CREATE TABLE article (id INTEGER PRIMARY KEY NOT NULL, title VARCHAR, content VARCHAR, author VARCHAR, summary VARCHAR, content_hash VARCHAR, enclosure_link VARCHAR, enclosure_mime VARCHAR, feed_id INTEGER NOT NULL, fingerprint VARCHAR, guid VARCHAR NOT NULL, guid_hash VARCHAR NOT NULL, last_modified INTEGER NOT NULL, media_description VARCHAR, media_thumbnail VARCHAR, pub_date INTEGER, rtl BOOLEAN NOT NULL DEFAULT 0, starred BOOLEAN NOT NULL DEFAULT 0, unread BOOLEAN NOT NULL DEFAULT 1, updated_date INTEGER, url VARCHAR)",
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
-        sqlx::query(
-            "CREATE TABLE email_credentials (id INTEGER PRIMARY KEY AUTOINCREMENT, protocol VARCHAR NOT NULL, server VARCHAR NOT NULL, port INTEGER NOT NULL, username VARCHAR NOT NULL, password VARCHAR NOT NULL)",
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
-        sqlx::query("INSERT INTO folder (id, name, is_root) VALUES (0, '', 1)")
-            .execute(&pool)
-            .await
-            .unwrap();
-        pool
+        crate::db::create_memory_pool().await.unwrap()
     }
 
     fn config() -> Config {
@@ -940,6 +894,7 @@ mod tests {
             version: "dev".to_string(),
             db_path: ":memory:".to_string(),
             feed_update_frequency_min: 15,
+            article_retention: crate::config::ArticleRetention::default(),
             openai_api_key: None,
             openai_base_url: "https://api.openai.com/v1".to_string(),
             openai_model: "gpt-5.6-luna".to_string(),
@@ -950,7 +905,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn mailbox_ingestion_creates_mailing_list_feeds_and_deduplicates_articles() {
+    async fn tc_pipe_028_mailbox_ingestion_deduplicates_before_and_after_payload_expiry() {
         let pool = setup_pool().await;
         sqlx::query(
             "INSERT INTO email_credentials (protocol, server, port, username, password) VALUES ('imap', 'imap.example.com', 993, 'user@example.com', 'secret')",
@@ -998,6 +953,32 @@ mod tests {
         .unwrap();
         assert_eq!(list1_count, 2);
         assert_eq!(list2_count, 1);
+        sqlx::query("UPDATE article SET unread=0,last_modified=1")
+            .execute(&pool)
+            .await
+            .unwrap();
+        crate::maintenance::run(&pool, &config().article_retention)
+            .await
+            .unwrap();
+        fetch_emails_from_all_mailboxes_with_fetcher(&pool, &config(), |_credential| {
+            Ok(messages.clone())
+        })
+        .await
+        .unwrap();
+        assert_eq!(
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM article")
+                .fetch_one(&pool)
+                .await
+                .unwrap(),
+            0
+        );
+        assert_eq!(
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM article_identity")
+                .fetch_one(&pool)
+                .await
+                .unwrap(),
+            3
+        );
     }
 
     #[tokio::test]
@@ -1248,80 +1229,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn cleanup_only_removes_stale_read_unstarred_newsletters() {
-        let pool = setup_pool().await;
-        sqlx::query(
-            "INSERT INTO feed (id, url, title, added, folder_id, ordering, pinned, update_error_count, is_mailing_list, use_extracted_fulltext, use_llm_summary) VALUES (1, 'list@example.com', 'Example List', 1, 0, 0, 0, 0, 1, 0, 0), (2, 'https://example.com/rss', 'Regular Feed', 1, 0, 0, 0, 0, 0, 0, 0)",
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
-        let base_time = 1_000_000_i64;
-        let old = base_time - (91 * 24 * 60 * 60);
-        sqlx::query(
-            "INSERT INTO article (id, title, feed_id, guid, guid_hash, last_modified, pub_date, unread, starred, updated_date, content) VALUES (1, 'old-read', 1, 'old-read', 'hash-1', ?, ?, 0, 0, ?, 'content')",
-        )
-        .bind(old)
-        .bind(old)
-        .bind(old)
-        .execute(&pool)
-        .await
-        .unwrap();
-        sqlx::query(
-            "INSERT INTO article (id, title, feed_id, guid, guid_hash, last_modified, pub_date, unread, starred, updated_date, content) VALUES (2, 'old-unread', 1, 'old-unread', 'hash-2', ?, ?, 1, 0, ?, 'content')",
-        )
-        .bind(old)
-        .bind(old)
-        .bind(old)
-        .execute(&pool)
-        .await
-        .unwrap();
-        sqlx::query(
-            "INSERT INTO article (id, title, feed_id, guid, guid_hash, last_modified, pub_date, unread, starred, updated_date, content) VALUES (3, 'old-starred', 1, 'old-starred', 'hash-3', ?, ?, 0, 1, ?, 'content')",
-        )
-        .bind(old)
-        .bind(old)
-        .bind(old)
-        .execute(&pool)
-        .await
-        .unwrap();
-        sqlx::query(
-            "INSERT INTO article (id, title, feed_id, guid, guid_hash, last_modified, pub_date, unread, starred, updated_date, content) VALUES (4, 'recent', 1, 'recent', 'hash-4', ?, ?, 0, 0, ?, 'content')",
-        )
-        .bind(base_time)
-        .bind(base_time)
-        .bind(base_time)
-        .execute(&pool)
-        .await
-        .unwrap();
-        sqlx::query(
-            "INSERT INTO article (id, title, feed_id, guid, guid_hash, last_modified, pub_date, unread, starred, updated_date, content) VALUES (5, 'regular-old', 2, 'regular-old', 'hash-5', ?, ?, 0, 0, ?, 'content')",
-        )
-        .bind(old)
-        .bind(old)
-        .bind(old)
-        .execute(&pool)
-        .await
-        .unwrap();
-
-        let removed = clean_up_old_newsletters(&pool, Some(base_time))
-            .await
-            .unwrap();
-        assert_eq!(removed, 1);
-
-        let remaining: Vec<String> = sqlx::query_scalar("SELECT guid FROM article ORDER BY id")
-            .fetch_all(&pool)
-            .await
-            .unwrap();
-        assert!(!remaining.contains(&"old-read".to_string()));
-        assert!(remaining.contains(&"old-unread".to_string()));
-        assert!(remaining.contains(&"old-starred".to_string()));
-        assert!(remaining.contains(&"recent".to_string()));
-        assert!(remaining.contains(&"regular-old".to_string()));
-    }
-
-    #[tokio::test]
-    async fn no_credentials_still_runs_cleanup_successfully() {
+    async fn no_credentials_skips_mailbox_fetch() {
         let pool = setup_pool().await;
         sqlx::query(
             "INSERT INTO feed (id, url, title, added, folder_id, ordering, pinned, update_error_count, is_mailing_list, use_extracted_fulltext, use_llm_summary) VALUES (1, 'list@example.com', 'Example List', 1, 0, 0, 0, 0, 1, 0, 0)",
@@ -1350,7 +1258,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(count, 0);
+        assert_eq!(count, 1);
     }
 
     #[test]

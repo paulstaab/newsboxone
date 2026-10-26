@@ -110,23 +110,30 @@ pub async fn rename_folder(
     Ok(())
 }
 
-/// Deletes a folder together with all feeds and articles stored under it.
+/// Atomically deletes folder payloads and identities, retaining newsletter sender blocklists.
 pub async fn delete_folder_cascade(
     pool: &SqlitePool,
     folder_id: i64,
 ) -> Result<FolderDeleteCounts, sqlx::Error> {
     let root_folder_id = get_root_folder_id(pool).await?;
+    let mut tx = pool.begin_with("BEGIN IMMEDIATE").await?;
     let deleted_articles = sqlx::query(
         "DELETE FROM article WHERE feed_id IN (SELECT id FROM feed WHERE folder_id = ?)",
     )
     .bind(folder_id)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?
     .rows_affected();
+    sqlx::query(
+        "DELETE FROM article_identity WHERE feed_id IN (SELECT id FROM feed WHERE folder_id = ?)",
+    )
+    .bind(folder_id)
+    .execute(&mut *tx)
+    .await?;
     let deleted_regular_feeds =
         sqlx::query("DELETE FROM feed WHERE folder_id = ? AND is_mailing_list = 0")
             .bind(folder_id)
-            .execute(pool)
+            .execute(&mut *tx)
             .await?
             .rows_affected();
     let deleted_mailing_list_feeds = sqlx::query(
@@ -140,14 +147,16 @@ pub async fn delete_folder_cascade(
     )
     .bind(root_folder_id)
     .bind(folder_id)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?
     .rows_affected();
     let deleted_folders = sqlx::query("DELETE FROM folder WHERE id = ?")
         .bind(folder_id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?
         .rows_affected();
+
+    tx.commit().await?;
 
     Ok(FolderDeleteCounts {
         deleted_articles,
@@ -156,7 +165,7 @@ pub async fn delete_folder_cascade(
     })
 }
 
-/// Marks all items in a folder as read up to the provided newest item boundary.
+/// Marks unread folder items as read up to the boundary, leaving read items unchanged.
 pub async fn mark_folder_items_read(
     pool: &SqlitePool,
     folder_id: i64,
@@ -164,7 +173,7 @@ pub async fn mark_folder_items_read(
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         "UPDATE article SET unread = 0, last_modified = CAST(strftime('%s','now') AS INTEGER) \
-         WHERE feed_id IN (SELECT id FROM feed WHERE folder_id = ?) AND id <= ?",
+         WHERE feed_id IN (SELECT id FROM feed WHERE folder_id = ?) AND id <= ? AND unread = 1",
     )
     .bind(folder_id)
     .bind(newest_item_id)
@@ -242,23 +251,28 @@ pub async fn rename_feed(pool: &SqlitePool, feed_id: i64, title: &str) -> Result
     Ok(result.rows_affected())
 }
 
-/// Deletes a feed and its articles, retaining deleted newsletter senders as an ingest blocklist.
+/// Atomically deletes feed payloads and identities, retaining newsletter sender blocklists.
 pub async fn delete_feed_cascade(
     pool: &SqlitePool,
     feed_id: i64,
 ) -> Result<FeedDeleteCounts, sqlx::Error> {
+    let root_folder_id = get_root_folder_id(pool).await?;
+    let mut tx = pool.begin_with("BEGIN IMMEDIATE").await?;
     let is_mailing_list: bool =
         sqlx::query_scalar("SELECT is_mailing_list FROM feed WHERE id = ? AND deleted_at IS NULL")
             .bind(feed_id)
-            .fetch_one(pool)
+            .fetch_one(&mut *tx)
             .await?;
     let deleted_articles = sqlx::query("DELETE FROM article WHERE feed_id = ?")
         .bind(feed_id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?
         .rows_affected();
+    sqlx::query("DELETE FROM article_identity WHERE feed_id = ?")
+        .bind(feed_id)
+        .execute(&mut *tx)
+        .await?;
     let deleted_feeds = if is_mailing_list {
-        let root_folder_id = get_root_folder_id(pool).await?;
         sqlx::query(
             "UPDATE feed
              SET deleted_at = CAST(strftime('%s','now') AS INTEGER),
@@ -270,16 +284,18 @@ pub async fn delete_feed_cascade(
         )
         .bind(root_folder_id)
         .bind(feed_id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?
         .rows_affected()
     } else {
         sqlx::query("DELETE FROM feed WHERE id = ?")
             .bind(feed_id)
-            .execute(pool)
+            .execute(&mut *tx)
             .await?
             .rows_affected()
     };
+
+    tx.commit().await?;
 
     Ok(FeedDeleteCounts {
         deleted_articles,
@@ -302,7 +318,7 @@ pub async fn mailing_list_sender_is_deleted(
     Ok(matches!(deleted_at, Some(Some(_))))
 }
 
-/// Marks all items in a feed as read up to the provided newest item boundary.
+/// Marks unread feed items as read up to the boundary, leaving read items unchanged.
 pub async fn mark_feed_items_read(
     pool: &SqlitePool,
     feed_id: i64,
@@ -310,7 +326,7 @@ pub async fn mark_feed_items_read(
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         "UPDATE article SET unread = 0, last_modified = CAST(strftime('%s','now') AS INTEGER) \
-         WHERE feed_id = ? AND id <= ?",
+         WHERE feed_id = ? AND id <= ? AND unread = 1",
     )
     .bind(feed_id)
     .bind(newest_item_id)
@@ -337,7 +353,7 @@ pub async fn existing_article_count(
     qb.build_query_scalar().fetch_one(pool).await
 }
 
-/// Updates one boolean article flag and bumps `last_modified` for the provided ids.
+/// Updates changed article flags only, preserving `last_modified` for no-op requests.
 pub async fn update_article_flags(
     pool: &SqlitePool,
     item_ids: &[i64],
@@ -355,19 +371,22 @@ pub async fn update_article_flags(
             separated.push_bind(*id);
         }
     }
-    qb.push(")");
+    qb.push(") AND ");
+    qb.push(flag.column_name());
+    qb.push(" != ");
+    qb.push_bind(value);
 
     qb.build().execute(pool).await?;
     Ok(())
 }
 
-/// Marks all items as read up to the provided newest item boundary.
+/// Marks unread items as read up to the boundary, leaving read items unchanged.
 pub async fn mark_all_items_read(
     pool: &SqlitePool,
     newest_item_id: i64,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
-        "UPDATE article SET unread = 0, last_modified = CAST(strftime('%s','now') AS INTEGER) WHERE id <= ?",
+        "UPDATE article SET unread = 0, last_modified = CAST(strftime('%s','now') AS INTEGER) WHERE id <= ? AND unread = 1",
     )
     .bind(newest_item_id)
     .execute(pool)
@@ -421,16 +440,16 @@ where
     Ok(())
 }
 
-/// Persists a fully prepared article record.
+/// Inserts an article only for an active feed; concurrent GUID conflicts are no-ops.
 pub async fn insert_article_record<'e, E>(
     executor: E,
     article: ArticleRecord,
-) -> Result<(), sqlx::Error>
+) -> Result<bool, sqlx::Error>
 where
     E: Executor<'e, Database = Sqlite>,
 {
-    sqlx::query(
-        "INSERT INTO article (title, content, author, content_hash, enclosure_link, enclosure_mime, feed_id, fingerprint, guid, guid_hash, last_modified, media_description, media_thumbnail, pub_date, rtl, starred, unread, updated_date, url, summary) VALUES (?, ?, ?, ?, NULL, NULL, ?, NULL, ?, ?, ?, NULL, ?, ?, 0, ?, ?, ?, ?, ?)",
+    let result = sqlx::query(
+        "INSERT INTO article (title, content, author, content_hash, enclosure_link, enclosure_mime, feed_id, fingerprint, guid, guid_hash, last_modified, media_description, media_thumbnail, pub_date, rtl, starred, unread, updated_date, url, summary) SELECT ?, ?, ?, ?, NULL, NULL, ?, NULL, ?, ?, ?, NULL, ?, ?, 0, ?, ?, ?, ?, ? FROM feed WHERE id = ? AND deleted_at IS NULL ON CONFLICT(guid_hash) DO NOTHING",
     )
     .bind(article.title)
     .bind(article.content)
@@ -447,7 +466,62 @@ where
     .bind(article.updated_date)
     .bind(article.url)
     .bind(article.summary)
+    .bind(article.feed_id)
     .execute(executor)
     .await?;
+    Ok(result.rows_affected() == 1)
+}
+
+/// Atomically refreshes observed identities before advancing a regular feed's success clock.
+///
+/// All payload identities are touched, including those beyond the article-ingestion cap.
+/// Only processed hashes may recreate an identity removed by concurrent maintenance; unseen
+/// articles beyond the cap remain eligible for future ingestion. Older overlapping refreshes
+/// cannot move either timestamp backwards. Newsletter streams have no complete feed snapshot.
+pub async fn record_successful_feed_refresh(
+    pool: &SqlitePool,
+    feed_id: i64,
+    seen_hashes: &[String],
+    processed_hashes: &[String],
+    observed_at: i64,
+) -> Result<(), sqlx::Error> {
+    let mut tx = pool.begin_with("BEGIN IMMEDIATE").await?;
+    let active: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM feed WHERE id = ? AND deleted_at IS NULL AND is_mailing_list = 0)",
+    ).bind(feed_id).fetch_one(tx.as_mut()).await?;
+    if !active {
+        tx.commit().await?;
+        return Ok(());
+    }
+    for hashes in processed_hashes.chunks(200) {
+        let mut query: QueryBuilder<'_, Sqlite> =
+            QueryBuilder::new("INSERT INTO article_identity(guid_hash, feed_id, last_seen_at) ");
+        query.push_values(hashes, |mut values, hash| {
+            values
+                .push_bind(hash)
+                .push_bind(feed_id)
+                .push_bind(observed_at);
+        });
+        query.push(" ON CONFLICT(guid_hash) DO UPDATE SET last_seen_at = excluded.last_seen_at WHERE article_identity.last_seen_at < excluded.last_seen_at");
+        query.build().execute(tx.as_mut()).await?;
+    }
+    for hashes in seen_hashes.chunks(500) {
+        let mut query: QueryBuilder<'_, Sqlite> =
+            QueryBuilder::new("UPDATE article_identity SET last_seen_at = ");
+        query
+            .push_bind(observed_at)
+            .push(" WHERE last_seen_at < ")
+            .push_bind(observed_at)
+            .push(" AND guid_hash IN (");
+        let mut values = query.separated(", ");
+        for hash in hashes {
+            values.push_bind(hash);
+        }
+        query.push(")");
+        query.build().execute(tx.as_mut()).await?;
+    }
+    sqlx::query("UPDATE feed SET last_successful_refresh_at = ? WHERE id = ? AND (last_successful_refresh_at IS NULL OR last_successful_refresh_at < ?)")
+        .bind(observed_at).bind(feed_id).bind(observed_at).execute(tx.as_mut()).await?;
+    tx.commit().await?;
     Ok(())
 }

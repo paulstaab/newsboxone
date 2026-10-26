@@ -4,11 +4,14 @@ mod auth_tokens;
 mod config;
 mod content;
 mod db;
+#[cfg(test)]
+mod db_health_tests;
 mod email;
 mod email_credentials;
 mod feed_ingestion;
 mod http_client;
 mod llm;
+mod maintenance;
 mod repo;
 mod ssrf;
 mod updater;
@@ -204,12 +207,24 @@ fn init_tracing() {
         .init();
 }
 
+/// Serves the API with independent refresh and database-maintenance schedules.
 async fn serve(config: Arc<Config>, host: String, port: u16) -> anyhow::Result<()> {
     let pool = db::create_pool(&config.db_path)
         .await
         .with_context(|| format!("failed to connect to sqlite db at {}", config.db_path))?;
     let feed_http_client = http_client::build_feed_http_client()?;
     let article_http_client = http_client::build_article_http_client()?;
+
+    let maintenance_pool = pool.clone();
+    let article_retention = config.article_retention.clone();
+    tokio::spawn(async move {
+        loop {
+            if let Err(error) = maintenance::run(&maintenance_pool, &article_retention).await {
+                tracing::warn!(%error, "database maintenance failed");
+            }
+            sleep(Duration::from_secs(60 * 60)).await;
+        }
+    });
 
     let scheduler_pool = pool.clone();
     let scheduler_config = config.clone();

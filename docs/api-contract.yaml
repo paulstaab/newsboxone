@@ -9,6 +9,17 @@ info:
     endpoint at `/api/status`. It replaces the previous
     Nextcloud-compatibility-driven documentation model. Backward compatibility
     with Nextcloud News v1.2 or v1.3 is not a product requirement.
+    Read/unread and star/unstar mutations are idempotent: setting an existing flag
+    value leaves the article and lastModified unchanged, including feed, folder,
+    global, and bulk mark-read operations.
+    Read, unstarred articles expire 30 days after their last actual change by
+    default (ARTICLE_READ_RETENTION_DAYS). Unread expiry requires an explicit
+    ARTICLE_UNREAD_RETENTION_DAYS setting; starred articles never expire.
+    Expired articles are omitted from item listings and their content returns
+    404. Compact identities prevent re-ingestion even while entries remain in
+    their source feed. Identities without a retained article may expire only
+    after being absent for over 90 days relative to the owning feed’s last
+    successful refresh. Failed refreshes do not advance this reference time.
 servers:
   - url: http://localhost:8000
     description: Local development server
@@ -911,6 +922,7 @@ components:
         pubDate:
           type: integer
         lastModified:
+          description: Unix timestamp of the last actual article state change; unchanged by no-op mutations.
           type: integer
         enclosureLink:
           type:

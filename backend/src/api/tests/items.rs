@@ -690,3 +690,40 @@ async fn bulk_item_mutation_rejects_oversized_payload() {
     let parsed: Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(parsed["detail"], "itemIds must contain 1000 or fewer items");
 }
+
+#[tokio::test]
+async fn tc_api_019_timeline_body_projection_preserves_fallback_semantics() {
+    for (summary, content, expected) in [
+        (
+            Some("summary"),
+            Some("full text"),
+            serde_json::json!("summary"),
+        ),
+        (None, Some("full text"), serde_json::json!("full text")),
+        (Some(""), Some("full text"), serde_json::json!("")),
+        (None, None, Value::Null),
+    ] {
+        let pool = setup_pool().await;
+        sqlx::query("UPDATE article SET summary=?,content=? WHERE id=100")
+            .bind(summary)
+            .bind(content)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let response = app(state(pool))
+            .oneshot(
+                Request::builder()
+                    .uri("/api/items?type=3")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 200);
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let parsed: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(parsed["items"][0]["body"], expected);
+    }
+}
