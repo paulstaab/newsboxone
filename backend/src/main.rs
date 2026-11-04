@@ -9,6 +9,8 @@ mod db_health_tests;
 mod email;
 mod email_credentials;
 mod feed_ingestion;
+mod feed_quality;
+mod feed_refresh;
 mod http_client;
 mod llm;
 mod maintenance;
@@ -100,7 +102,7 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::ReevaluateFeedQuality { feed_id } => {
             tracing::debug!(feed_id, "cli command invoked: reevaluate-feed-quality");
-            let result = updater::reevaluate_feed_quality(&config, feed_id).await?;
+            let result = feed_quality::reevaluate_feed_quality(&config, feed_id).await?;
             println!("Feed quality re-evaluation completed.");
             println!("Feed ID: {}", result.feed_id);
             println!(
@@ -139,7 +141,7 @@ async fn main() -> anyhow::Result<()> {
             use_llm_summary,
         } => {
             tracing::debug!(feed_id, "cli command invoked: set-feed-quality");
-            let result = updater::set_feed_quality_overrides(
+            let result = feed_quality::set_feed_quality_overrides(
                 &config,
                 feed_id,
                 use_extracted_fulltext,

@@ -24,6 +24,8 @@ It should cover behavior that exercises multiple backend components together, su
 The public API is specified in `docs/api-contract.yaml`.
 Integration tests in this document should be based on the backend behavior tracked here.
 
+Repository integration cases TC-PIPE-040 and TC-PIPE-041 run in `src/repo/feeds.rs` against migrated SQLite storage; journey tests remain in `tests/`.
+
 Rust backend integration tests should seed fixture data on top of the production SQL migrations so schema coverage stays aligned with runtime behavior.
 
 ## Exclusions
@@ -148,6 +150,8 @@ Rust backend integration tests should seed fixture data on top of the production
 | TC-PIPE-037 | Feed API exposes quality metadata                          | Relevant fixtures, mocks, or seeded state required by this case are prepared. | Call the feeds API for a regular feed with no manual feed-quality overrides.                                                                        | Each feed payload includes the effective quality flags, nullable manual override fields, and nullable quality-check or manual-override timestamps.                                                          |
 | TC-PIPE-038 | Feed API clears one manual quality override to automatic   | Relevant fixtures, mocks, or seeded state required by this case are prepared. | Seed a regular feed with manual overrides, then call the feed-quality API with one attribute set to `null`.                                        | The selected manual override is cleared, the other manual override remains stored, and the current effective quality flags stay unchanged until a later quality evaluation.                                   |
 | TC-PIPE-039 | Feed API re-evaluates quality and clears manual overrides  | Relevant fixtures, mocks, or seeded state required by this case are prepared. | Seed a regular feed with manual overrides, then call the feed-quality API in reevaluate mode.                                                      | Manual override fields are cleared, quality flags are recomputed from current feed content, and `next_update_time` remains unchanged.                                                                      |
+| TC-PIPE-040 | Shared feed selection respects schedule and lifecycle | Production migrations seed unscheduled, exactly due, future, newsletter, and soft-deleted feeds. | Exercise active listing, due/all regular selection, and regular-feed lookup through the shared feed repository. | Active listing includes newsletters but excludes deleted feeds; due selection includes unscheduled/exactly due regular feeds; regular lookup rejects newsletter, deleted, and missing IDs. |
+| TC-PIPE-041 | Quality and refresh persistence remain independent | Migrated storage contains two regular feeds, a manual quality lock, and a scheduled refresh. | Apply quality overrides, record a refresh error, persist automatic quality, complete refresh, and clear overrides. | Quality writes preserve schedule/errors; refresh completion clears errors while retaining quality/locks; clearing locks retains effective flags and quality-check time; the other feed is unchanged. |
 
 ### Database Lifecycle Test Cases
 

@@ -263,14 +263,13 @@ pub async fn maybe_refresh_feed_content_state(
         manual_use_llm_summary: current_state.manual_use_llm_summary,
     };
 
-    sqlx::query(
-        "UPDATE feed SET last_quality_check = ?, use_extracted_fulltext = ?, use_llm_summary = ? WHERE id = ?",
+    crate::repo::feeds::save_evaluated_quality(
+        pool,
+        feed_id,
+        next_state.last_quality_check,
+        next_state.use_extracted_fulltext,
+        next_state.use_llm_summary,
     )
-    .bind(next_state.last_quality_check)
-    .bind(next_state.use_extracted_fulltext)
-    .bind(next_state.use_llm_summary)
-    .bind(feed_id)
-    .execute(pool)
     .await
     .context("failed to persist feed content quality flags")?;
 
