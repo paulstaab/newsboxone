@@ -7,14 +7,14 @@ use crate::article_store;
 use crate::config::Config;
 use crate::content::{self, FeedContentState};
 use crate::feed_ingestion::{self, FeedEntryIngestionContext};
-use crate::repo::feeds::{self, FeedRecord};
+use crate::repo::feeds::{self, RefreshFeedRecord};
 
 /// Refreshes one feed, ingests up to 25 entries, updates dynamic cadence, and clears error state.
 pub async fn update_single_feed(
     pool: &SqlitePool,
     article_http_client: &reqwest::Client,
     config: &Config,
-    feed: &FeedRecord,
+    feed: &RefreshFeedRecord,
     testing_mode: bool,
 ) -> Result<()> {
     let feed_id = feed.id;

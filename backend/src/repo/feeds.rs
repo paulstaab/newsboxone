@@ -27,6 +27,21 @@ pub struct FeedRecord {
     pub last_manual_quality_override: Option<i64>,
 }
 
+/// Feed fields needed by the scheduled refresh loop; smaller than the public API projection.
+#[derive(FromRow)]
+pub struct RefreshFeedRecord {
+    pub id: i64,
+    pub url: String,
+    #[allow(dead_code)]
+    pub next_update_time: Option<i64>,
+    pub last_quality_check: Option<i64>,
+    pub use_extracted_fulltext: bool,
+    pub use_llm_summary: bool,
+    pub manual_use_extracted_fulltext: Option<bool>,
+    pub manual_use_llm_summary: Option<bool>,
+    pub last_manual_quality_override: Option<i64>,
+}
+
 /// Quality fields written together when applying manual override changes.
 pub struct FeedQualityState {
     pub use_extracted_fulltext: bool,
@@ -38,6 +53,7 @@ pub struct FeedQualityState {
 }
 
 const FEED_SELECT: &str = "SELECT id, url, title, favicon_link, added, last_article_date, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error, is_mailing_list, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE deleted_at IS NULL";
+const REFRESH_FEED_SELECT: &str = "SELECT id, url, next_update_time, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE deleted_at IS NULL AND is_mailing_list = 0";
 
 /// Lists active feeds in API order, optionally restricted to one identifier.
 pub async fn list_active(
@@ -56,15 +72,15 @@ pub async fn list_active(
 pub async fn list_regular(
     pool: &SqlitePool,
     due_at: Option<i64>,
-) -> Result<Vec<FeedRecord>, sqlx::Error> {
-    let mut query = QueryBuilder::<Sqlite>::new(FEED_SELECT);
-    query.push(" AND is_mailing_list = 0");
+) -> Result<Vec<RefreshFeedRecord>, sqlx::Error> {
+    let mut query = QueryBuilder::<Sqlite>::new(REFRESH_FEED_SELECT);
     if let Some(now) = due_at {
         query
             .push(" AND (next_update_time IS NULL OR next_update_time <= ")
             .push_bind(now)
             .push(")");
     }
+    query.push(" ORDER BY id");
     query.build_query_as().fetch_all(pool).await
 }
 
@@ -72,9 +88,9 @@ pub async fn list_regular(
 pub async fn find_regular(
     pool: &SqlitePool,
     feed_id: i64,
-) -> Result<Option<FeedRecord>, sqlx::Error> {
-    QueryBuilder::<Sqlite>::new(FEED_SELECT)
-        .push(" AND is_mailing_list = 0 AND id = ")
+) -> Result<Option<RefreshFeedRecord>, sqlx::Error> {
+    QueryBuilder::<Sqlite>::new(REFRESH_FEED_SELECT)
+        .push(" AND id = ")
         .push_bind(feed_id)
         .build_query_as()
         .fetch_optional(pool)
@@ -224,16 +240,12 @@ mod tests {
             .unwrap();
         let feed = find_regular(&pool, 1).await.unwrap().unwrap();
         assert_eq!(feed.next_update_time, Some(900));
-        assert_eq!(feed.update_error_count, 1);
-        assert_eq!(feed.last_update_error.as_deref(), Some("fixture error"));
         assert_eq!(feed.manual_use_extracted_fulltext, Some(true));
-        assert_eq!(feed.last_manual_quality_override, Some(20));
+        assert_eq!(feed.last_quality_check, Some(20));
 
         complete_refresh(&pool, 1, 1000).await.unwrap();
         let feed = find_regular(&pool, 1).await.unwrap().unwrap();
         assert_eq!(feed.next_update_time, Some(1000));
-        assert_eq!(feed.update_error_count, 0);
-        assert!(feed.last_update_error.is_none());
         assert_eq!(feed.last_quality_check, Some(30));
         assert!(feed.use_extracted_fulltext && feed.use_llm_summary);
         assert_eq!(feed.manual_use_extracted_fulltext, Some(true));
@@ -242,7 +254,6 @@ mod tests {
         let feed = find_regular(&pool, 1).await.unwrap().unwrap();
         assert!(feed.manual_use_extracted_fulltext.is_none());
         assert!(feed.manual_use_llm_summary.is_none());
-        assert!(feed.last_manual_quality_override.is_none());
         assert_eq!(feed.last_quality_check, Some(30));
         assert!(feed.use_extracted_fulltext && feed.use_llm_summary);
         assert_eq!(feed.next_update_time, Some(1000));

@@ -145,7 +145,7 @@ pub(crate) async fn reevaluate_single_feed_quality(
     );
     Ok(FeedQualityReevaluationResult {
         feed_id,
-        feed_title: feed.title,
+        feed_title: None,
         use_extracted_fulltext: next_state.use_extracted_fulltext,
         use_llm_summary: next_state.use_llm_summary,
         manual_use_extracted_fulltext: next_state.manual_use_extracted_fulltext,
@@ -228,7 +228,7 @@ pub(crate) async fn update_single_feed_quality_overrides(
 
     Ok(FeedQualityReevaluationResult {
         feed_id,
-        feed_title: feed.title,
+        feed_title: None,
         use_extracted_fulltext: effective_use_extracted_fulltext,
         use_llm_summary: effective_use_llm_summary,
         manual_use_extracted_fulltext,

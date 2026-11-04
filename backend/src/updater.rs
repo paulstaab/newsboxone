@@ -6,7 +6,7 @@ use sqlx::SqlitePool;
 use crate::article_store;
 use crate::config::Config;
 use crate::feed_refresh::update_single_feed;
-use crate::repo::feeds::{self, FeedRecord};
+use crate::repo::feeds::{self, RefreshFeedRecord};
 use crate::{db, email, http_client};
 
 /// Runs local database maintenance before the foreground CLI feed-update cycle.
@@ -53,7 +53,7 @@ async fn update_feed_batch(
     pool: &SqlitePool,
     config: &Config,
     testing_mode: bool,
-    feeds: Vec<FeedRecord>,
+    feeds: Vec<RefreshFeedRecord>,
     batch_kind: &str,
 ) -> Result<usize> {
     let article_http_client = http_client::build_article_http_client()?;
