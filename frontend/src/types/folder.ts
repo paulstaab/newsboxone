@@ -65,6 +65,7 @@ export interface FolderQueuePill {
 }
 
 export interface TimelineCacheEnvelope {
+  pendingReadArticles?: ArticlePreview[];
   version: number;
   lastSynced: number;
   activeFolderId: number | null;

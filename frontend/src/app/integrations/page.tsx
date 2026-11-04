@@ -1,7 +1,12 @@
+'use client';
+
+import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { KarakeepSettings } from '@/components/ui/KarakeepSettings';
 
 /** Renders browser-local third-party integration settings. */
 export default function IntegrationsPage() {
+  const { isReady } = useAuthGuard();
+  if (!isReady) return null;
   return (
     <div className="integrations-page">
       <header className="timeline-header">

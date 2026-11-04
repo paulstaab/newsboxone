@@ -1249,3 +1249,37 @@
     }
   }
 }
+
+/* Keep long publisher URLs and connection feedback within narrow viewports. */
+.storage-warning {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 1rem;
+  color: #422006;
+  background: #fef3c7;
+}
+.app-menu__help,
+.article-card__status {
+  padding: 0.5rem;
+  overflow-wrap: anywhere;
+  font-size: 0.875rem;
+}
+.article-card__title-row {
+  flex-wrap: wrap;
+}
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

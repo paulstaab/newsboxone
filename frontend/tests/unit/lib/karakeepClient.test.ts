@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  checkKarakeepBookmark,
   deleteKarakeepBookmark,
   KarakeepError,
   normalizeKarakeepBaseUrl,
@@ -112,5 +113,26 @@ describe('Karakeep browser client', () => {
         },
       ),
     ).rejects.toMatchObject({ code: 'authentication' });
+  });
+  it.each([null, 'saved-bookmark'])('checks existing bookmark state (%s)', async (bookmarkId) => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ bookmarkId }), { status: 200 }));
+    await expect(
+      checkKarakeepBookmark(
+        { baseUrl: 'https://karakeep.example', apiToken: 'token' },
+        'https://example.com/story',
+      ),
+    ).resolves.toBe(bookmarkId);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      'https://karakeep.example/api/v1/bookmarks/check-url?url=https%3A%2F%2Fexample.com%2Fstory',
+    );
+  });
+  it('rejects malformed bookmark status instead of treating it as unsaved', async () => {
+    fetchMock.mockResolvedValue(new Response('{}', { status: 200 }));
+    await expect(
+      checkKarakeepBookmark(
+        { baseUrl: 'https://karakeep.example', apiToken: 'token' },
+        'https://example.com',
+      ),
+    ).rejects.toThrow('invalid bookmark status');
   });
 });

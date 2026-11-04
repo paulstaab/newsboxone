@@ -53,7 +53,7 @@ test.describe('Accessibility integration coverage', () => {
   test('[TC-APP-002] login page has no axe violations', async ({ page, makeAxeBuilder }) => {
     await page.goto('/login');
     const results = await makeAxeBuilder()
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
       .analyze();
 
     expect(results.violations).toEqual([]);
@@ -68,7 +68,7 @@ test.describe('Accessibility integration coverage', () => {
     await expect(page.getByRole('heading', { name: 'All caught up!' })).toBeVisible();
 
     const results = await makeAxeBuilder()
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
       .analyze();
 
     expect(results.violations).toEqual([]);
@@ -89,5 +89,21 @@ test.describe('Accessibility integration coverage', () => {
     await page.goto('/timeline');
     const iconRules = await makeAxeBuilder().withRules(['image-alt', 'svg-img-alt']).analyze();
     expect(iconRules.violations).toEqual([]);
+  });
+  test('[TC-APP-015] pages reflow at 320 CSS pixels in both color schemes', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 740 });
+    await seedRememberedSession(page);
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme });
+      for (const route of ['/timeline', '/feeds', '/about', '/integrations']) {
+        await page.goto(route);
+        await expect(page.locator('h1')).toBeVisible();
+        await expect
+          .poll(async () =>
+            page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+          )
+          .toBe(true);
+      }
+    }
   });
 });

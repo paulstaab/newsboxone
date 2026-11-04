@@ -29,7 +29,13 @@ import {
 } from '@/lib/metrics/metricsClient';
 import { FullscreenStatus } from '@/components/ui/FullscreenStatus';
 import { useKarakeepPreferences } from '@/hooks/useKarakeepPreferences';
-import { deleteKarakeepBookmark, KarakeepError, saveKarakeepBookmark } from '@/lib/karakeep/client';
+import { useOnlineStatus } from '@/components/ui/OfflineBanner';
+import {
+  checkKarakeepBookmark,
+  deleteKarakeepBookmark,
+  KarakeepError,
+  saveKarakeepBookmark,
+} from '@/lib/karakeep/client';
 
 /**
  * Timeline page content component
@@ -49,8 +55,8 @@ function TimelineContent() {
     queue,
     activeFolder,
     activeArticles,
-    progress,
     totalUnread,
+    hasCompletedPass,
     isHydrated,
     isUpdating,
     isRefreshing,
@@ -100,15 +106,79 @@ function TimelineContent() {
 
   const { toasts, showToast, dismissToast } = useToast();
   const { preferences } = useKarakeepPreferences();
+  const online = useOnlineStatus();
+  const pageGenerationRef = useRef(0);
+  useEffect(
+    () => () => {
+      pageGenerationRef.current += 1;
+    },
+    [],
+  );
+  const [checkedKarakeepIds, setCheckedKarakeepIds] = useState<Set<number>>(() => new Set());
+  const [isCheckingKarakeep, setIsCheckingKarakeep] = useState(false);
+  const [karakeepRetry, setKarakeepRetry] = useState(0);
   const [savingToKarakeepIds, setSavingToKarakeepIds] = useState<Set<number>>(() => new Set());
   const [karakeepBookmarkIds, setKarakeepBookmarkIds] = useState<Map<number, string>>(
     () => new Map(),
   );
   const savingToKarakeepIdsRef = useRef<Set<number>>(new Set());
   const karakeepAvailable =
+    isAuthenticated &&
     preferences.karakeepEnabled &&
     preferences.karakeepConnectionVerified &&
     Boolean(preferences.karakeepBaseUrl && preferences.karakeepApiToken);
+
+  const articleStatusKey = JSON.stringify(activeArticles.map(({ id, url }) => ({ id, url })));
+  useEffect(() => {
+    let cancelled = false;
+    const isCancelled = () => cancelled;
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setIsCheckingKarakeep(karakeepAvailable && online);
+        setCheckedKarakeepIds(new Set());
+        setKarakeepBookmarkIds(new Map());
+      }
+    });
+    if (karakeepAvailable && online) {
+      const config = {
+        baseUrl: preferences.karakeepBaseUrl,
+        apiToken: preferences.karakeepApiToken,
+      };
+      // Bound concurrency for folders with many unread articles.
+      const articles = JSON.parse(articleStatusKey) as { id: number; url: string }[];
+      const worker = async () => {
+        while (articles.length && !cancelled) {
+          const article = articles.shift();
+          if (!article) return;
+          try {
+            const bookmarkId = await checkKarakeepBookmark(config, article.url);
+            if (isCancelled()) return;
+            setKarakeepBookmarkIds((current) => {
+              const next = new Map(current);
+              if (bookmarkId) next.set(article.id, bookmarkId);
+              return next;
+            });
+            setCheckedKarakeepIds((current) => new Set(current).add(article.id));
+          } catch {
+            /* Unknown status stays disabled until Retry. */
+          }
+        }
+      };
+      void Promise.all([worker(), worker(), worker(), worker()]).finally(() => {
+        if (!isCancelled()) setIsCheckingKarakeep(false);
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    articleStatusKey,
+    karakeepAvailable,
+    online,
+    preferences.karakeepBaseUrl,
+    preferences.karakeepApiToken,
+    karakeepRetry,
+  ]);
 
   const handleOpenArticle = useCallback(
     (article: ArticlePreview, opener: HTMLElement) => {
@@ -124,7 +194,13 @@ function TimelineContent() {
 
   const handleSaveToKarakeep = useCallback(
     async (article: ArticlePreview) => {
-      if (savingToKarakeepIdsRef.current.has(article.id)) return;
+      if (
+        !navigator.onLine ||
+        !checkedKarakeepIds.has(article.id) ||
+        savingToKarakeepIdsRef.current.has(article.id)
+      )
+        return;
+      const generation = pageGenerationRef.current;
 
       const isRemoving = karakeepBookmarkIds.has(article.id);
       savingToKarakeepIdsRef.current.add(article.id);
@@ -137,6 +213,7 @@ function TimelineContent() {
         const savedBookmarkId = karakeepBookmarkIds.get(article.id);
         if (savedBookmarkId) {
           await deleteKarakeepBookmark(config, savedBookmarkId);
+          if (generation !== pageGenerationRef.current) return;
           setKarakeepBookmarkIds((current) => {
             const next = new Map(current);
             next.delete(article.id);
@@ -161,6 +238,7 @@ function TimelineContent() {
             summary: article.summary,
           },
         );
+        if (generation !== pageGenerationRef.current) return;
         setKarakeepBookmarkIds((current) => new Map(current).set(article.id, bookmarkId));
         showToast({
           title: 'Saved to Karakeep',
@@ -191,6 +269,7 @@ function TimelineContent() {
       }
     },
     [
+      checkedKarakeepIds,
       karakeepBookmarkIds,
       markItemRead,
       preferences.karakeepApiToken,
@@ -222,6 +301,7 @@ function TimelineContent() {
             setSelectedArticleElement(opener);
           }
           openPopout({ id: article.id, feedId: article.feedId }, opener ?? undefined);
+          if (article.unread) void markItemRead(article.id);
         },
         onMarkRead: (id) => {
           if (!unreadIdSet.has(id)) return;
@@ -301,7 +381,7 @@ function TimelineContent() {
     return null; // Will redirect
   }
 
-  const hasUnread = !progress.allViewed;
+  const hasUnread = Boolean(activeFolder);
 
   const showEmptyState = !activeFolder;
   const activeFolderUnread =
@@ -315,8 +395,10 @@ function TimelineContent() {
     : null;
 
   let emptyStateType: 'no-unread' | 'no-items' | 'offline' | 'error' | 'all-viewed' = 'no-unread';
-  if (error) {
+  if (error || lastUpdateError) {
     emptyStateType = 'error';
+  } else if (hasCompletedPass) {
+    emptyStateType = 'all-viewed';
   } else if (totalUnread === 0) {
     emptyStateType = 'no-unread';
   } else {
@@ -332,6 +414,7 @@ function TimelineContent() {
       <div
         className={`timeline-page${isPopoutOpen ? ' timeline-page--disabled' : ''}`}
         aria-hidden={isPopoutOpen}
+        inert={isPopoutOpen}
       >
         <header className="timeline-header">
           <div className="timeline-shell timeline-header__inner">
@@ -414,7 +497,7 @@ function TimelineContent() {
                     ? {
                         label: 'Retry',
                         onClick: () => {
-                          void refresh({ forceSync: true });
+                          void refresh({ forceSync: true }).catch(() => undefined);
                         },
                       }
                     : emptyStateType === 'all-viewed'
@@ -439,9 +522,26 @@ function TimelineContent() {
                   isLoading={isUpdating && activeArticles.length === 0}
                   emptyMessage={`No unread articles left in ${activeFolder.name}.`}
                   onOpenArticle={handleOpenArticle}
+                  onSourceOpen={(article) => {
+                    if (article.unread) void markItemRead(article.id);
+                  }}
                   onSaveToKarakeep={karakeepAvailable ? handleSaveToKarakeep : undefined}
                   savingToKarakeepIds={savingToKarakeepIds}
                   savedToKarakeepIds={new Set(karakeepBookmarkIds.keys())}
+                  unknownKarakeepIds={
+                    karakeepAvailable
+                      ? new Set(
+                          activeArticles
+                            .filter((article) => !checkedKarakeepIds.has(article.id))
+                            .map((article) => article.id),
+                        )
+                      : undefined
+                  }
+                  karakeepOffline={!online}
+                  isCheckingKarakeep={isCheckingKarakeep}
+                  onRetryKarakeep={() => {
+                    setKarakeepRetry((value) => value + 1);
+                  }}
                   registerArticle={registerArticle}
                   selectedArticleId={selectedArticleId}
                   isUpdating={isUpdating}

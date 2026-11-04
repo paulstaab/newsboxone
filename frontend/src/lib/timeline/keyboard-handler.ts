@@ -1,7 +1,14 @@
 import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from 'react';
 import { getNextSelectionId, getPreviousSelectionId } from './selection';
 
-const DEFAULT_EXCLUDE_SELECTORS = ['input', 'textarea', 'select', '[contenteditable="true"]'];
+const DEFAULT_EXCLUDE_SELECTORS = [
+  'input',
+  'textarea',
+  'select',
+  '[contenteditable]:not([contenteditable="false"])',
+  'a[href]',
+  'button',
+];
 
 export interface TimelineKeydownOptions {
   timelineRef: RefObject<HTMLElement | null>;
@@ -54,7 +61,9 @@ export function handleTimelineKeyDown(
   }: TimelineKeydownOptions,
 ): void {
   const container = timelineRef.current;
-  if (!container) return;
+  if (!container || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey)
+    return;
+  if (document.querySelector('[role="dialog"], dialog[open], [role="menu"]')) return;
 
   const activeElement = document.activeElement;
   const isBodyFocus =

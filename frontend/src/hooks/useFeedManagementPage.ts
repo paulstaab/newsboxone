@@ -1,6 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLiveState } from '@/hooks/useLiveState';
+
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { api } from '@/lib/api';
 import { isLikelyDirectFeedUrl } from '@/lib/feeds/feedDiscovery';
 import type { DiscoveredFeed, RecommendedFeed } from '@/lib/api/types';
@@ -77,22 +79,25 @@ export function useFeedManagementPage() {
     setStatusMessage,
     runMutation,
   } = useFeedManagementMutationRunner(refreshPageData, handleRequestError);
-  const [newFeedUrl, setNewFeedUrlState] = useState('');
-  const [newFeedDialogError, setNewFeedDialogError] = useState<string | null>(null);
-  const [discoveredFeeds, setDiscoveredFeeds] = useState<DiscoveredFeed[]>([]);
-  const [selectedDiscoveredFeedUrl, setSelectedDiscoveredFeedUrl] = useState('');
-  const [newFeedFolderId, setNewFeedFolderId] = useState('');
-  const [recommendationSubscribeUrl, setRecommendationSubscribeUrl] = useState<string | null>(null);
-  const [recommendedFeeds, setRecommendedFeeds] = useState<RecommendedFeed[]>([]);
-  const [recommendationReason, setRecommendationReason] = useState<string | null>(null);
-  const [recommendationError, setRecommendationError] = useState<string | null>(null);
-  const [isGeneratingRecommendations, setIsGeneratingRecommendations] = useState(false);
-  const [recommendationProgress, setRecommendationProgress] = useState('');
+  const [newFeedUrl, setNewFeedUrlState] = useLiveState('');
+  const [newFeedDialogError, setNewFeedDialogError] = useLiveState<string | null>(null);
+  const [duplicateFeed, setDuplicateFeed] = useLiveState<Feed | null>(null);
+  const [discoveredFeeds, setDiscoveredFeeds] = useLiveState<DiscoveredFeed[]>([]);
+  const [selectedDiscoveredFeedUrl, setSelectedDiscoveredFeedUrl] = useLiveState('');
+  const [newFeedFolderId, setNewFeedFolderId] = useLiveState('');
+  const [recommendationSubscribeUrl, setRecommendationSubscribeUrl] = useLiveState<string | null>(
+    null,
+  );
+  const [recommendedFeeds, setRecommendedFeeds] = useLiveState<RecommendedFeed[]>([]);
+  const [recommendationReason, setRecommendationReason] = useLiveState<string | null>(null);
+  const [recommendationError, setRecommendationError] = useLiveState<string | null>(null);
+  const [isGeneratingRecommendations, setIsGeneratingRecommendations] = useLiveState(false);
+  const [recommendationProgress, setRecommendationProgress] = useLiveState('');
   const recommendationAbortRef = useRef<AbortController | null>(null);
   const recommendationProgressTimersRef = useRef<number[]>([]);
-  const [newFolderName, setNewFolderName] = useState('');
-  const [editingFolderId, setEditingFolderId] = useState<number | null>(null);
-  const [editingFolderName, setEditingFolderName] = useState('');
+  const [newFolderName, setNewFolderName] = useLiveState('');
+  const [editingFolderId, setEditingFolderId] = useLiveState<number | null>(null);
+  const [editingFolderName, setEditingFolderName] = useLiveState('');
 
   const sortedFolders = useMemo(
     () => [...data.folders].sort((left, right) => compareLabels(left.name, right.name)),
@@ -109,30 +114,31 @@ export function useFeedManagementPage() {
   );
 
   const resetFeedDiscovery = useCallback(() => {
+    setDuplicateFeed(null);
     setNewFeedDialogError(null);
     setDiscoveredFeeds([]);
     setSelectedDiscoveredFeedUrl('');
-  }, []);
+  }, [setDuplicateFeed, setDiscoveredFeeds, setSelectedDiscoveredFeedUrl, setNewFeedDialogError]);
 
   const setNewFeedUrl = useCallback(
     (value: string) => {
       setNewFeedUrlState(value);
       resetFeedDiscovery();
     },
-    [resetFeedDiscovery],
+    [resetFeedDiscovery, setNewFeedUrlState],
   );
 
   const openNewFeedDialog = useCallback(() => {
     resetFeedDiscovery();
     setRecommendationSubscribeUrl(null);
     openCreateFeedDialog();
-  }, [openCreateFeedDialog, resetFeedDiscovery]);
+  }, [openCreateFeedDialog, resetFeedDiscovery, setRecommendationSubscribeUrl]);
 
   const closeNewFeedDialog = useCallback(() => {
     closeCreateFeedDialog();
     resetFeedDiscovery();
     setRecommendationSubscribeUrl(null);
-  }, [closeCreateFeedDialog, resetFeedDiscovery]);
+  }, [closeCreateFeedDialog, resetFeedDiscovery, setRecommendationSubscribeUrl]);
 
   const clearRecommendationProgressTimers = useCallback(() => {
     for (const timer of recommendationProgressTimersRef.current) {
@@ -149,13 +155,13 @@ export function useFeedManagementPage() {
     if (discoveryDialogRef.current?.open) {
       discoveryDialogRef.current.close();
     }
-  }, [clearRecommendationProgressTimers, discoveryDialogRef]);
+  }, [clearRecommendationProgressTimers, discoveryDialogRef, setIsGeneratingRecommendations]);
 
   const openDiscoveryDialog = useCallback(() => {
     setRecommendationError(null);
     setRecommendationReason(null);
     discoveryDialogRef.current?.showModal();
-  }, [discoveryDialogRef]);
+  }, [discoveryDialogRef, setRecommendationError, setRecommendationReason]);
 
   const openRecommendationSubscribeDialog = useCallback(
     (feed: RecommendedFeed) => {
@@ -165,7 +171,13 @@ export function useFeedManagementPage() {
       discoveryDialogRef.current?.close();
       openCreateFeedDialog();
     },
-    [discoveryDialogRef, openCreateFeedDialog, resetFeedDiscovery],
+    [
+      discoveryDialogRef,
+      openCreateFeedDialog,
+      resetFeedDiscovery,
+      setNewFeedUrlState,
+      setRecommendationSubscribeUrl,
+    ],
   );
 
   const handleGenerateRecommendations = useCallback(async () => {
@@ -207,7 +219,15 @@ export function useFeedManagementPage() {
         recommendationAbortRef.current = null;
       }
     }
-  }, [clearRecommendationProgressTimers, handleRequestError]);
+  }, [
+    clearRecommendationProgressTimers,
+    handleRequestError,
+    setRecommendationError,
+    setRecommendationProgress,
+    setRecommendationReason,
+    setIsGeneratingRecommendations,
+    setRecommendedFeeds,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -253,12 +273,18 @@ export function useFeedManagementPage() {
 
     const subscribeToFeedUrl = async (feedUrl: string) => {
       const folderId = newFeedFolderId ? Number(newFeedFolderId) : null;
+      const duplicate = data.feeds.find((feed) => feed.url === feedUrl);
+      if (duplicate) {
+        setDuplicateFeed(duplicate);
+        throw new Error('This feed is already subscribed. Open its settings below.');
+      }
       const result = await api.feeds.create(feedUrl, folderId);
 
       setData((current) => ({
         ...current,
         feeds: [...current.feeds, result.feed],
       }));
+      if (!createFeedDialogRef.current?.open) return;
       setNewFeedUrlState('');
       setNewFeedFolderId('');
       resetFeedDiscovery();
@@ -292,8 +318,9 @@ export function useFeedManagementPage() {
         }
 
         const feeds = await api.feeds.discover(trimmedUrl);
+        if (!createFeedDialogRef.current?.open) return;
         if (feeds.length === 0) {
-          throw new Error('No RSS or Atom feeds were found for this website.');
+          throw new Error('No feeds found. Edit the URL and try again.');
         }
 
         if (feeds.length === 1) {
@@ -305,12 +332,17 @@ export function useFeedManagementPage() {
         setSelectedDiscoveredFeedUrl('');
       },
       {
-        onError: setNewFeedDialogError,
+        onError: (message) => {
+          if (createFeedDialogRef.current?.open) setNewFeedDialogError(message);
+        },
         suppressGlobalError: true,
       },
     );
   }, [
     closeCreateFeedDialog,
+    createFeedDialogRef,
+    data.feeds,
+    setDuplicateFeed,
     discoveredFeeds,
     discoveryDialogRef,
     newFeedFolderId,
@@ -321,6 +353,13 @@ export function useFeedManagementPage() {
     selectedDiscoveredFeedUrl,
     setData,
     setStatusMessage,
+    setDiscoveredFeeds,
+    setSelectedDiscoveredFeedUrl,
+    setNewFeedUrlState,
+    setRecommendationSubscribeUrl,
+    setRecommendedFeeds,
+    setNewFeedDialogError,
+    setNewFeedFolderId,
   ]);
 
   const handleCreateFolder = useCallback(async () => {
@@ -330,23 +369,34 @@ export function useFeedManagementPage() {
       return;
     }
 
+    if (
+      data.folders.some(
+        (folder) => folder.name.trim().toLocaleLowerCase() === trimmedName.toLocaleLowerCase(),
+      )
+    ) {
+      setMutationError('A folder with this name already exists.');
+      return;
+    }
     await runMutation('Create folder', async () => {
       const createdFolder = await api.folders.create(trimmedName);
       setData((current) => ({
         ...current,
         folders: [...current.folders, createdFolder],
       }));
+      if (!createFolderDialogRef.current?.open) return;
       setNewFolderName('');
-      createFolderDialogRef.current?.close();
+      createFolderDialogRef.current.close();
       setStatusMessage(`Created folder ${createdFolder.name}.`);
     });
   }, [
     createFolderDialogRef,
+    data.folders,
     newFolderName,
     runMutation,
     setData,
     setMutationError,
     setStatusMessage,
+    setNewFolderName,
   ]);
 
   const handleRenameFolder = useCallback(
@@ -357,6 +407,16 @@ export function useFeedManagementPage() {
         return;
       }
 
+      if (
+        data.folders.some(
+          (folder) =>
+            folder.id !== folderId &&
+            folder.name.trim().toLocaleLowerCase() === trimmedName.toLocaleLowerCase(),
+        )
+      ) {
+        setMutationError('A folder with this name already exists.');
+        return;
+      }
       await runMutation('Rename folder', async () => {
         await api.folders.rename(folderId, trimmedName);
         setData((current) => ({
@@ -370,7 +430,16 @@ export function useFeedManagementPage() {
         setStatusMessage(`Renamed folder to ${trimmedName}.`);
       });
     },
-    [editingFolderName, runMutation, setData, setMutationError, setStatusMessage],
+    [
+      data.folders,
+      editingFolderName,
+      runMutation,
+      setData,
+      setMutationError,
+      setStatusMessage,
+      setEditingFolderId,
+      setEditingFolderName,
+    ],
   );
 
   const handleDeleteFolder = useCallback(
@@ -404,7 +473,12 @@ export function useFeedManagementPage() {
               feeds: current.feeds.filter((feed) => !deletedFeedIds.includes(feed.id)),
             }));
             throw new Error(
-              `Unable to unsubscribe ${String(failedCount)} feed${failedCount === 1 ? '' : 's'} from "${folder.name}". The folder was not deleted.`,
+              `Unable to unsubscribe: ${assignedFeeds
+                .filter((_, index) => results[index].status === 'rejected')
+                .map((feed) => feed.title)
+                .join(
+                  ', ',
+                )}. The folder was not deleted. Retry to unsubscribe the remaining feeds.`,
             );
           }
         }
@@ -479,7 +553,8 @@ export function useFeedManagementPage() {
         ...current,
         feeds: current.feeds.map((entry) => (entry.id === updatedFeed.id ? updatedFeed : entry)),
       }));
-      qualityDialogRef.current?.close();
+      if (!qualityDialogRef.current?.open) return;
+      qualityDialogRef.current.close();
       resetQualityDialog();
       setStatusMessage(`Updated settings for ${trimmedTitle}.`);
     });
@@ -519,6 +594,7 @@ export function useFeedManagementPage() {
     setNewFeedUrl,
     recommendationSubscribeUrl,
     newFeedDialogError,
+    duplicateFeed,
     discoveredFeeds,
     selectedDiscoveredFeedUrl,
     setSelectedDiscoveredFeedUrl,

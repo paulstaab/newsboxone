@@ -6,7 +6,7 @@
  * Respects user dismissals with 7-day cooldown.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useLayoutEffect, useState } from 'react';
 import {
   setupInstallPromptListeners,
   shouldShowPrompt,
@@ -57,7 +57,7 @@ export function InstallPrompt({ delayMs = 3000, showDuringActivity = false }: In
     };
   }, [showDuringActivity]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Setup event listeners
     const cleanup = setupInstallPromptListeners();
     const handleInstalled = () => {

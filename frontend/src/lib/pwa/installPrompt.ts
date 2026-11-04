@@ -1,5 +1,7 @@
 'use client';
 
+import { localStore } from '@/lib/storage/browserStorage';
+
 /**
  * PWA Install Prompt State Management.
  * Handles beforeinstallprompt event detection, dismissal tracking,
@@ -43,7 +45,7 @@ export function recordDismissal(): void {
   if (typeof window === 'undefined') return;
 
   const now = Date.now();
-  localStorage.setItem(DISMISSAL_KEY, now.toString());
+  localStore.setItem(DISMISSAL_KEY, now.toString());
 }
 
 /**
@@ -52,14 +54,14 @@ export function recordDismissal(): void {
 export function isDismissed(): boolean {
   if (typeof window === 'undefined') return false;
 
-  const dismissedAt = localStorage.getItem(DISMISSAL_KEY);
+  const dismissedAt = localStore.getItem(DISMISSAL_KEY);
   if (!dismissedAt) return false;
 
   const dismissalTime = parseInt(dismissedAt, 10);
   const now = Date.now();
 
   if (!Number.isFinite(dismissalTime) || dismissalTime > now) {
-    localStorage.removeItem(DISMISSAL_KEY);
+    localStore.removeItem(DISMISSAL_KEY);
     return false;
   }
 
@@ -67,7 +69,7 @@ export function isDismissed(): boolean {
 
   // If cooldown has expired, clear the dismissal
   if (timeSinceDismissal >= COOLDOWN_MS) {
-    localStorage.removeItem(DISMISSAL_KEY);
+    localStore.removeItem(DISMISSAL_KEY);
     return false;
   }
 
@@ -125,7 +127,7 @@ export function markAppInstalled(): void {
 
   // Clear any dismissal tracking
   if (typeof window !== 'undefined') {
-    localStorage.removeItem(DISMISSAL_KEY);
+    localStore.removeItem(DISMISSAL_KEY);
   }
 }
 
@@ -136,7 +138,7 @@ export function markAppInstalled(): void {
 export function getCooldownRemaining(): number {
   if (!isDismissed()) return 0;
 
-  const dismissedAt = localStorage.getItem(DISMISSAL_KEY);
+  const dismissedAt = localStore.getItem(DISMISSAL_KEY);
   if (!dismissedAt) return 0;
 
   const dismissalTime = parseInt(dismissedAt, 10);
@@ -156,6 +158,13 @@ export function setupInstallPromptListeners(): () => void {
     return () => {
       // No-op for server-side rendering
     };
+  }
+
+  if (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone
+  ) {
+    markAppInstalled();
   }
 
   const handleBeforeInstallPrompt = (event: Event) => {

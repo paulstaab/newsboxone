@@ -42,6 +42,18 @@ It describes the shared runtime, major technologies, development workflow, and p
 - Playwright frontend server mode: `next dev --webpack` for stable browser test runs under Next.js 16
 - Frontend dependency resolution: npm lockfile with an override that keeps transitive `postcss` consumers on the patched 8.5.x line
 
+### Frontend Implementation Guidance
+
+- Wrap page content in a shared authentication context and SWR data layer. The product behavior is tracked by `APP-003` in `docs/frontend-requirements.md`; SWR is an architecture choice rather than a product acceptance criterion.
+- Scope SWR caches to the active browser session. Logout and expiry clear timeline storage and pending reads while retaining browser-local integration credentials.
+- Browser storage helpers fall back to in-memory values when storage access or quota fails and notify the shell to show a persistence warning.
+- Persist optimistic read IDs and article snapshots with the versioned timeline envelope. Retry connectivity failures on reconnect; roll back definitive server rejections. Apply retention caps when persisting offline data, not when merging online articles.
+- Restore Karakeep saved state with its browser-only `GET /api/v1/bookmarks/check-url` endpoint before allowing save/delete actions; failed checks remain unknown until Retry. See the [Karakeep API contract](https://docs.karakeep.app/api/check-bookmark-url/).
+- Timeline effects shall declare their React hook dependencies directly and use stable refs or callbacks for intentionally one-shot behavior. This contributor rule was moved from the retired `TIMELINE-040` requirement.
+- Sanitize fetched and fallback article HTML at the frontend API boundary before rendering. The resulting content safety behavior is tracked by `TIMELINE-012a`.
+- Use a scroll sentinel to determine when the folder queue docks and its measured dock height to offset timeline content, supporting `TIMELINE-016` and `TIMELINE-017`.
+- Product requirements describe the agreed target behavior; this stack overview describes architecture and implementation guidance and does not certify that every target requirement is already implemented.
+
 ## API And Auth
 
 - Public API namespace: `/api`

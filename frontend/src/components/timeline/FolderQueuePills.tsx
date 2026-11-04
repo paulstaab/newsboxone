@@ -90,6 +90,7 @@ export function FolderQueuePills({
               ref={(node) => {
                 pillRefs.current[entry.id] = node;
               }}
+              disabled={isSkipped}
               role="tab"
               aria-selected={isActive}
               aria-label={label}

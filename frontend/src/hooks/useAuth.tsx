@@ -1,7 +1,15 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { loadSession, storeSession, clearSession } from '@/lib/storage';
+import {
+  loadSession,
+  storeSession,
+  clearSession,
+  SESSION_ENDED_EVENT,
+  SESSION_LOGOUT_KEY,
+  sessionIdentity,
+} from '@/lib/storage';
 import { getApiClient } from '@/lib/api/apiClient';
 import type { UserSessionConfig } from '@/types';
 import { toStoredSession, toUserSessionConfig } from '@/lib/auth/session';
@@ -57,10 +65,50 @@ function normalizeExpiry(rawExpiresAt: string | number): string {
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const apiClient = getApiClient();
+  const router = useRouter();
   const [session, setSession] = useState<UserSessionConfig | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const ended = (event: Event) => {
+      const expired = (event as CustomEvent<string>).detail === 'expired';
+      setSession(null);
+      setError(expired ? 'Session expired' : null);
+      if (expired) router.replace('/login');
+    };
+    const otherTab = (event: StorageEvent) => {
+      if (event.key !== SESSION_LOGOUT_KEY || !event.newValue) return;
+      try {
+        const notice = JSON.parse(event.newValue) as {
+          identity: string;
+          reason: 'logout' | 'expired';
+        };
+        if (session && sessionIdentity(session.token) === notice.identity) {
+          clearSession(notice.reason, false);
+          router.replace('/login');
+        }
+      } catch {
+        /* Ignore malformed cross-tab notices. */
+      }
+    };
+    window.addEventListener(SESSION_ENDED_EVENT, ended);
+    window.addEventListener('storage', otherTab);
+    const checkExpiry = () => {
+      if (session && Date.parse(session.expiresAt) <= Date.now()) clearSession('expired');
+    };
+    const remaining = session ? Date.parse(session.expiresAt) - Date.now() : Infinity;
+    const expiry =
+      remaining <= 2147483647 ? window.setTimeout(checkExpiry, Math.max(0, remaining)) : undefined;
+    const interval = session ? window.setInterval(checkExpiry, 30000) : undefined;
+    return () => {
+      window.removeEventListener(SESSION_ENDED_EVENT, ended);
+      window.removeEventListener('storage', otherTab);
+      window.clearTimeout(expiry);
+      window.clearInterval(interval);
+    };
+  }, [router, session]);
 
   // Load session from storage on mount
   useEffect(() => {
@@ -132,7 +180,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      await apiClient.auth.logout();
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          apiClient.auth.logout(),
+          new Promise<void>((resolve) => {
+            timeout = setTimeout(resolve, 5000);
+          }),
+        ]);
+      } finally {
+        clearTimeout(timeout);
+      }
     } catch {
       // Local sign-out should still succeed even when the server-side token is already invalid.
     }

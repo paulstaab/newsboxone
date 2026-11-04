@@ -2,8 +2,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { Article, Folder, Feed, ArticlePreview, FolderQueueEntry } from '@/types';
 import { useTimeline } from '@/hooks/useTimeline';
+import { fetchUnreadItemsForSync } from '@/lib/api/itemsSync';
+import { ApiError } from '@/lib/api/client';
 import { CONFIG } from '@/lib/config/env';
-import { createEmptyTimelineCache } from '@/lib/storage';
+import { createEmptyTimelineCache, loadTimelineCache } from '@/lib/storage';
 
 // Mock SWR immutable hook to return deterministic folder/feed payloads
 const mocks = vi.hoisted(() => ({
@@ -295,7 +297,7 @@ describe('useTimeline', () => {
       expect(result.current.activeArticles).toHaveLength(1);
     });
 
-    expect(apiMocks.markMultipleRead).toHaveBeenCalledWith([1, 2]);
+    expect(apiMocks.markMultipleRead).toHaveBeenCalledWith([2, 1]);
     expect(result.current.totalUnread).toBe(1);
     expect(result.current.queue).toHaveLength(1);
   });
@@ -347,7 +349,7 @@ describe('useTimeline', () => {
   });
 
   it('restores folder articles and clears pendingReadIds when mark-folder-read fails', async () => {
-    apiMocks.markMultipleRead.mockRejectedValueOnce(new Error('offline'));
+    apiMocks.markMultipleRead.mockRejectedValueOnce(new ApiError(400, 'rejected'));
     mocks.foldersData.value = [{ id: 10, name: 'Dev Updates', unreadCount: 0, feedIds: [] }];
     mocks.feedsData.value = [buildFeed({ id: 1, folderId: 10 })];
     const cachedAt = Date.now();
@@ -373,11 +375,11 @@ describe('useTimeline', () => {
       expect(result.current.activeFolder?.id).toBe(10);
     });
 
-    await expect(result.current.markFolderRead(10)).rejects.toThrow('offline');
+    await expect(result.current.markFolderRead(10)).rejects.toThrow('rejected');
 
     await waitFor(() => {
       expect(result.current.activeFolder?.id).toBe(10);
-      expect(result.current.activeArticles.map((article) => article.id)).toEqual([1, 2]);
+      expect(result.current.activeArticles.map((article) => article.id)).toEqual([2, 1]);
       expect(result.current.activeArticles.every((article) => article.unread)).toBe(true);
     });
 
@@ -489,7 +491,7 @@ describe('useTimeline', () => {
       expect(result.current.activeFolder?.id).toBe(30);
     });
 
-    expect(result.current.queue.map((entry) => entry.id)).toEqual([30, 10, 20]);
+    expect(result.current.queue.map((entry) => entry.id)).toEqual([30, 20, 10]);
   });
 
   it('marks the current folder after an immediate active-folder switch', async () => {
@@ -570,7 +572,7 @@ describe('useTimeline', () => {
 
     await waitFor(() => {
       expect(result.current.activeArticles).toHaveLength(2);
-      expect(result.current.activeArticles[0].unread).toBe(false);
+      expect(result.current.activeArticles.find((article) => article.id === 1)?.unread).toBe(false);
     });
 
     await act(async () => {
@@ -585,7 +587,7 @@ describe('useTimeline', () => {
   });
 
   it('restores item unread state and clears pendingReadIds when mark-item-read fails', async () => {
-    apiMocks.markRead.mockRejectedValueOnce(new Error('offline'));
+    apiMocks.markRead.mockRejectedValueOnce(new ApiError(400, 'rejected'));
     mocks.foldersData.value = [{ id: 10, name: 'Dev Updates', unreadCount: 0, feedIds: [] }];
     mocks.feedsData.value = [buildFeed({ id: 1, folderId: 10 })];
 
@@ -662,5 +664,121 @@ describe('useTimeline', () => {
       expect(result.current.activeFolder?.id).toBe(10);
       expect(result.current.queue[0].status).toBe('queued');
     });
+  });
+  it('persists offline reads across reload and retries on reconnect', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    setCache([buildEntry({ id: 10, articles: [buildPreview({ id: 1, folderId: 10 })] })], 10);
+    const first = renderHook(() => useTimeline());
+    await waitFor(() => {
+      expect(first.result.current.isHydrated).toBe(true);
+    });
+    await act(async () => {
+      await first.result.current.markItemRead(1);
+    });
+    expect(apiMocks.markRead).not.toHaveBeenCalled();
+    expect(first.result.current.activeArticles[0].unread).toBe(false);
+    first.unmount();
+    const second = renderHook(() => useTimeline());
+    await waitFor(() => {
+      expect(second.result.current.isHydrated).toBe(true);
+    });
+    expect(second.result.current.activeArticles[0].unread).toBe(false);
+    expect(loadTimelineCache().pendingReadIds).toEqual([1]);
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+    act(() => {
+      window.dispatchEvent(new Event('online'));
+    });
+    await waitFor(() => {
+      expect(apiMocks.markMultipleRead).toHaveBeenCalledWith([1]);
+    });
+    expect(loadTimelineCache().pendingReadIds).toEqual([]);
+    vi.restoreAllMocks();
+  });
+
+  it('keeps connectivity failures pending instead of rolling reads back', async () => {
+    apiMocks.markRead.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    setCache([buildEntry({ id: 10, articles: [buildPreview({ id: 1, folderId: 10 })] })], 10);
+    const { result } = renderHook(() => useTimeline());
+    await waitFor(() => {
+      expect(result.current.isHydrated).toBe(true);
+    });
+    await act(async () => {
+      await result.current.markItemRead(1);
+    });
+    expect(result.current.activeArticles[0].unread).toBe(false);
+    expect(loadTimelineCache().pendingReadIds).toEqual([1]);
+  });
+
+  it('retains read cards during automatic sync and removes them on explicit refresh', async () => {
+    setCache([buildEntry({ id: 10, articles: [buildPreview({ id: 1, folderId: 10 })] })], 10);
+    const { result } = renderHook(() => useTimeline());
+    await waitFor(() => {
+      expect(result.current.isHydrated).toBe(true);
+    });
+    await act(async () => {
+      await result.current.markItemRead(1);
+    });
+    await act(async () => {
+      await result.current.refresh();
+    });
+    expect(result.current.activeArticles.map((article) => article.id)).toEqual([1]);
+    await act(async () => {
+      await result.current.refresh({ forceSync: true });
+    });
+    expect(result.current.activeArticles).toEqual([]);
+  });
+
+  it('does not reactivate skipped folders until Restart', async () => {
+    setCache([buildEntry({ id: 10, articles: [buildPreview({ id: 1, folderId: 10 })] })], 10);
+    const { result } = renderHook(() => useTimeline());
+    await waitFor(() => {
+      expect(result.current.isHydrated).toBe(true);
+    });
+    await act(async () => {
+      await result.current.skipFolder(10);
+    });
+    act(() => {
+      result.current.setActiveFolder(10);
+    });
+    expect(result.current.activeFolder).toBeNull();
+    await act(async () => {
+      await result.current.restart();
+    });
+    expect(result.current.activeFolder?.id).toBe(10);
+  });
+  it('ignores unread sync results captured before a folder was marked read', async () => {
+    mocks.foldersData.value = [{ id: 10, name: 'Engineering', unreadCount: 0, feedIds: [] }];
+    mocks.feedsData.value = [buildFeed({ id: 1, folderId: 10 })];
+    setCache([buildEntry({ id: 10, articles: [buildPreview({ id: 1, folderId: 10 })] })], 10);
+    const { result } = renderHook(() => useTimeline());
+    await waitFor(() => {
+      expect(result.current.isHydrated).toBe(true);
+    });
+    let finishSync: (value: Awaited<ReturnType<typeof fetchUnreadItemsForSync>>) => void = () =>
+      undefined;
+    vi.mocked(fetchUnreadItemsForSync).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishSync = resolve;
+        }),
+    );
+    let refreshing: Promise<void> = Promise.resolve();
+    act(() => {
+      refreshing = result.current.refresh();
+    });
+    await waitFor(() => {
+      expect(fetchUnreadItemsForSync).toHaveBeenCalled();
+    });
+    await act(async () => {
+      await result.current.markFolderRead(10);
+    });
+    await act(async () => {
+      finishSync({
+        items: [buildArticle({ id: 1, feedId: 1, folderId: 10 })],
+        serverUnreadIds: new Set([1]),
+      });
+      await refreshing;
+    });
+    expect(result.current.queue).toHaveLength(0);
   });
 });

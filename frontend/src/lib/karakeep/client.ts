@@ -163,3 +163,31 @@ export async function deleteKarakeepBookmark(
     );
   }
 }
+
+/** Looks up an existing bookmark by URL without creating or changing it.
+ * API contract: https://docs.karakeep.app/api/check-bookmark-url/
+ */
+export async function checkKarakeepBookmark(
+  config: KarakeepConfig,
+  url: string,
+): Promise<string | null> {
+  const response = await karakeepFetch(
+    config,
+    `/bookmarks/check-url?url=${encodeURIComponent(url)}`,
+  );
+  if (!response.ok)
+    throw new KarakeepError(
+      'server',
+      `Could not check bookmark status (HTTP ${String(response.status)}).`,
+    );
+  const data: unknown = await response.json();
+  if (
+    !data ||
+    typeof data !== 'object' ||
+    !('bookmarkId' in data) ||
+    (data.bookmarkId !== null && (typeof data.bookmarkId !== 'string' || !data.bookmarkId))
+  ) {
+    throw new KarakeepError('server', 'Karakeep returned an invalid bookmark status.');
+  }
+  return data.bookmarkId;
+}

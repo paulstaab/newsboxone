@@ -41,7 +41,6 @@ test.describe('PWA install integration coverage', () => {
     await page.evaluate((timestamp) => {
       localStorage.setItem('pwa-install-dismissed', timestamp.toString());
     }, eightDaysAgo);
-    await page.reload();
     await dispatchInstallPrompt(page);
     await expectInstallPromptVisible(page);
   });
@@ -63,5 +62,14 @@ test.describe('PWA install integration coverage', () => {
       window.dispatchEvent(new Event('appinstalled'));
     });
     await expectInstallPromptHidden(page);
+  });
+  test('[TC-APP-016] manual install explains browser installation when no native prompt exists', async ({
+    page,
+  }) => {
+    await page.getByRole('button', { name: /burger menu/i }).click();
+    await page.getByRole('menuitem', { name: 'Install App', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText(
+      /browser menu|Add to Home Screen|unavailable/i,
+    );
   });
 });

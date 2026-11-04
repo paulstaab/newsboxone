@@ -48,6 +48,7 @@ function FeedManagementContent() {
     setNewFeedUrl,
     recommendationSubscribeUrl,
     newFeedDialogError,
+    duplicateFeed,
     discoveredFeeds,
     selectedDiscoveredFeedUrl,
     setSelectedDiscoveredFeedUrl,
@@ -135,20 +136,23 @@ function FeedManagementContent() {
 
       <div className="feed-management-shell">
         <div className="feed-management-content">
+          {busyLabel === 'Offline' && (
+            <p role="status">Feed changes are unavailable while offline.</p>
+          )}
           {pageError ? (
-            <section className="feed-management-alert feed-management-alert--error">
+            <section role="alert" className="feed-management-alert feed-management-alert--error">
               <p>{pageError}</p>
             </section>
           ) : null}
 
           {mutationError ? (
-            <section className="feed-management-alert feed-management-alert--error">
+            <section role="alert" className="feed-management-alert feed-management-alert--error">
               <p>{mutationError}</p>
             </section>
           ) : null}
 
           {statusMessage ? (
-            <section className="feed-management-alert feed-management-alert--success">
+            <section role="status" className="feed-management-alert feed-management-alert--success">
               <p>{statusMessage}</p>
             </section>
           ) : null}
@@ -248,6 +252,7 @@ function FeedManagementContent() {
                                   {group.id !== null ? (
                                     <div className="feed-management-row-actions">
                                       <FeedActionButton
+                                        disabled={busyLabel !== null}
                                         label={`Rename folder ${group.name}`}
                                         onClick={() => {
                                           setEditingFolderId(group.id);
@@ -261,6 +266,7 @@ function FeedManagementContent() {
                                         />
                                       </FeedActionButton>
                                       <FeedActionButton
+                                        disabled={busyLabel !== null}
                                         label={`Delete folder ${group.name}`}
                                         onClick={() => {
                                           const folder = data.folders.find(
@@ -310,27 +316,33 @@ function FeedManagementContent() {
                                   </div>
                                 </td>
                                 <td>
-                                  <p
-                                    className="feed-management-date"
-                                    title={formatExactLocalDateTime(lastArticleDate)}
-                                  >
-                                    {formatRelativeDateTime(lastArticleDate)}
-                                  </p>
+                                  <details className="feed-management-date">
+                                    <summary title={formatExactLocalDateTime(lastArticleDate)}>
+                                      {lastArticleDate
+                                        ? formatRelativeDateTime(lastArticleDate)
+                                        : 'No articles yet'}
+                                    </summary>
+                                    {lastArticleDate
+                                      ? formatExactLocalDateTime(lastArticleDate)
+                                      : 'No articles yet'}
+                                  </details>
                                 </td>
                                 <td className="text-center">
                                   <div className="flex items-center justify-center">
                                     {feed.lastUpdateError ? (
-                                      <span
-                                        aria-label={`Update error: ${feed.lastUpdateError}`}
-                                        className="feed-management-status feed-management-status--warning"
-                                        title={feed.lastUpdateError}
-                                      >
-                                        <FontAwesomeIcon
-                                          icon={faCircleExclamation}
-                                          className="h-5 w-5"
-                                          aria-hidden="true"
-                                        />
-                                      </span>
+                                      <details className="feed-management-status feed-management-status--warning">
+                                        <summary
+                                          title={feed.lastUpdateError}
+                                          aria-label={`Update error: ${feed.lastUpdateError}`}
+                                        >
+                                          <FontAwesomeIcon
+                                            icon={faCircleExclamation}
+                                            className="h-5 w-5"
+                                            aria-hidden="true"
+                                          />
+                                        </summary>
+                                        {feed.lastUpdateError}
+                                      </details>
                                     ) : (
                                       <span
                                         aria-label="Feed healthy"
@@ -349,6 +361,7 @@ function FeedManagementContent() {
                                 <td>
                                   <div className="feed-management-row-actions">
                                     <FeedActionButton
+                                      disabled={busyLabel !== null}
                                       label={`Adjust feed quality for ${feed.title}`}
                                       onClick={() => {
                                         openQualityDialog(feed);
@@ -361,6 +374,7 @@ function FeedManagementContent() {
                                       />
                                     </FeedActionButton>
                                     <FeedActionButton
+                                      disabled={busyLabel !== null}
                                       label={`Delete feed ${feed.title}`}
                                       variant="danger"
                                       onClick={() => {
@@ -437,7 +451,7 @@ function FeedManagementContent() {
               ) : null}
 
               {recommendationError ? (
-                <div className="feed-management-alert feed-management-alert--error" role="alert">
+                <div role="alert" className="feed-management-alert feed-management-alert--error">
                   <p>{recommendationError}</p>
                 </div>
               ) : null}
@@ -592,13 +606,27 @@ function FeedManagementContent() {
               </div>
 
               {newFeedDialogError ? (
-                <div className="feed-management-alert feed-management-alert--error" role="alert">
+                <div role="alert" className="feed-management-alert feed-management-alert--error">
                   <p>{newFeedDialogError}</p>
+                  {duplicateFeed && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        closeCreateFeedDialog();
+                        openQualityDialog(duplicateFeed);
+                      }}
+                    >
+                      Open existing feed settings
+                    </button>
+                  )}
                 </div>
               ) : null}
 
               {discoveredFeeds.length > 1 ? (
-                <fieldset className="space-y-3 rounded-2xl border border-white/10 bg-black/10 p-4">
+                <fieldset
+                  disabled={busyLabel !== null}
+                  className="space-y-3 rounded-2xl border border-white/10 bg-black/10 p-4"
+                >
                   <legend className="px-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[hsl(var(--color-text-muted))]">
                     Choose a discovered feed
                   </legend>
@@ -784,9 +812,15 @@ function FeedManagementContent() {
                   </div>
                   <div
                     className="bg-[hsl(var(--color-surface))]/92 px-5 py-4 text-sm text-[hsl(var(--color-text))]"
-                    title={formatExactLocalDateTime(selectedQualityFeed?.lastArticleDate ?? null)}
+                    title={
+                      selectedQualityFeed?.lastArticleDate
+                        ? formatExactLocalDateTime(selectedQualityFeed.lastArticleDate)
+                        : 'No articles yet'
+                    }
                   >
-                    {formatExactLocalDateTime(selectedQualityFeed?.lastArticleDate ?? null)}
+                    {selectedQualityFeed?.lastArticleDate
+                      ? formatExactLocalDateTime(selectedQualityFeed.lastArticleDate)
+                      : 'No articles yet'}
                   </div>
 
                   <div className="flex items-center bg-[hsl(var(--color-surface-muted))]/92 px-5 py-4 text-sm font-semibold text-[hsl(var(--color-text))]">
@@ -794,9 +828,15 @@ function FeedManagementContent() {
                   </div>
                   <div
                     className="bg-[hsl(var(--color-surface))]/92 px-5 py-4 text-sm text-[hsl(var(--color-text))]"
-                    title={formatExactLocalDateTime(selectedQualityFeed?.nextUpdateTime ?? null)}
+                    title={
+                      selectedQualityFeed?.nextUpdateTime
+                        ? formatExactLocalDateTime(selectedQualityFeed.nextUpdateTime)
+                        : 'Not scheduled'
+                    }
                   >
-                    {formatExactLocalDateTime(selectedQualityFeed?.nextUpdateTime ?? null)}
+                    {selectedQualityFeed?.nextUpdateTime
+                      ? formatExactLocalDateTime(selectedQualityFeed.nextUpdateTime)
+                      : 'Not scheduled'}
                   </div>
 
                   <div className="flex items-center bg-[hsl(var(--color-surface-muted))]/92 px-5 py-4 text-sm font-semibold text-[hsl(var(--color-text))]">
@@ -804,9 +844,15 @@ function FeedManagementContent() {
                   </div>
                   <div
                     className="bg-[hsl(var(--color-surface))]/92 px-5 py-4 text-sm text-[hsl(var(--color-text))]"
-                    title={formatExactLocalDateTime(selectedQualityFeed?.lastQualityCheck ?? null)}
+                    title={
+                      selectedQualityFeed?.lastQualityCheck
+                        ? formatExactLocalDateTime(selectedQualityFeed.lastQualityCheck)
+                        : 'Never'
+                    }
                   >
-                    {formatExactLocalDateTime(selectedQualityFeed?.lastQualityCheck ?? null)}
+                    {selectedQualityFeed?.lastQualityCheck
+                      ? formatExactLocalDateTime(selectedQualityFeed.lastQualityCheck)
+                      : 'Never'}
                   </div>
                 </div>
               </div>

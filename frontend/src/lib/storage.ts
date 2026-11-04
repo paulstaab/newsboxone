@@ -1,3 +1,4 @@
+import { localStore, sessionStore } from '@/lib/storage/browserStorage';
 /**
  * Browser storage helpers for auth session state and preferences.
  * Supports session vs. local storage based on remember-device setting.
@@ -5,6 +6,19 @@
 
 import { CONFIG, getConfiguredKarakeepUrl } from './config/env';
 import { type StoredSession, type UserPreferences, DEFAULT_PREFERENCES } from '@/types';
+
+export const SESSION_ENDED_EVENT = 'newsboxone:session-ended';
+/** Produces a non-credential identifier for matching cross-tab session notices. */
+export function sessionIdentity(token: string): string {
+  let first = 2166136261;
+  let second = 5381;
+  for (const char of token) {
+    first = Math.imul(first ^ char.charCodeAt(0), 16777619);
+    second = Math.imul(second, 33) ^ char.charCodeAt(0);
+  }
+  return `${String(first >>> 0)}:${String(second >>> 0)}`;
+}
+export const SESSION_LOGOUT_KEY = 'newsboxone:logout';
 
 export const PREFERENCES_CHANGED_EVENT = 'newsboxone:preferences-changed';
 
@@ -37,34 +51,35 @@ function parseStoredSession(value: string): StoredSession | null {
  * Stores session data in the appropriate storage based on rememberDevice flag.
  */
 export function storeSession(session: StoredSession): void {
-  const storage = session.rememberDevice ? localStorage : sessionStorage;
+  const storage = session.rememberDevice ? localStore : sessionStore;
   storage.setItem(CONFIG.SESSION_KEY, JSON.stringify(session));
 
-  const staleStorage = session.rememberDevice ? sessionStorage : localStorage;
+  const staleStorage = session.rememberDevice ? sessionStore : localStore;
   staleStorage.removeItem(CONFIG.SESSION_KEY);
 }
 
 /**
  * Loads session data from storage.
- * Tries localStorage first (persistent), then sessionStorage.
+ * Tries localStorage first (persistent), then sessionStore.
  */
 export function loadSession(): StoredSession | null {
   if (typeof window === 'undefined') return null;
 
   // Try localStorage first (remember-device was enabled)
-  const localStored = localStorage.getItem(CONFIG.SESSION_KEY);
+  const localStored = localStore.getItem(CONFIG.SESSION_KEY);
   if (localStored) {
     const session = parseStoredSession(localStored);
     if (session) return session;
-    localStorage.removeItem(CONFIG.SESSION_KEY);
+    localStore.removeItem(CONFIG.SESSION_KEY);
+    if (!sessionStore.getItem(CONFIG.SESSION_KEY)) clearSession('expired');
   }
 
   // Fall back to sessionStorage
-  const sessionStored = sessionStorage.getItem(CONFIG.SESSION_KEY);
+  const sessionStored = sessionStore.getItem(CONFIG.SESSION_KEY);
   if (sessionStored) {
     const session = parseStoredSession(sessionStored);
     if (session) return session;
-    sessionStorage.removeItem(CONFIG.SESSION_KEY);
+    clearSession('expired');
   }
 
   return null;
@@ -73,10 +88,25 @@ export function loadSession(): StoredSession | null {
 /**
  * Clears session data from both storages.
  */
-export function clearSession(): void {
+export function clearSession(reason: 'logout' | 'expired' = 'logout', broadcast = true): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(CONFIG.SESSION_KEY);
-  sessionStorage.removeItem(CONFIG.SESSION_KEY);
+  const raw = localStore.getItem(CONFIG.SESSION_KEY) ?? sessionStore.getItem(CONFIG.SESSION_KEY);
+  let token: string | undefined;
+  try {
+    token = raw ? (JSON.parse(raw) as StoredSession).token : undefined;
+  } catch {
+    /* Invalid session. */
+  }
+  localStore.removeItem(CONFIG.SESSION_KEY);
+  sessionStore.removeItem(CONFIG.SESSION_KEY);
+  localStore.removeItem(CONFIG.TIMELINE_CACHE_KEY);
+  if (broadcast && token) {
+    localStore.setItem(
+      SESSION_LOGOUT_KEY,
+      JSON.stringify({ identity: sessionIdentity(token), reason, at: Date.now() }),
+    );
+  }
+  window.dispatchEvent(new CustomEvent(SESSION_ENDED_EVENT, { detail: reason }));
 }
 
 /**
@@ -88,12 +118,12 @@ export function storePreferences(preferences: UserPreferences): void {
   const nextPreferences = configuredKarakeepUrl
     ? { ...preferences, karakeepBaseUrl: configuredKarakeepUrl }
     : preferences;
-  localStorage.setItem(CONFIG.PREFERENCES_KEY, JSON.stringify(nextPreferences));
+  localStore.setItem(CONFIG.PREFERENCES_KEY, JSON.stringify(nextPreferences));
   window.dispatchEvent(new Event(PREFERENCES_CHANGED_EVENT));
 }
 
 /**
- * Loads user preferences from localStorage.
+ * Loads user preferences from localStore.
  * Returns defaults if none stored.
  */
 export function loadPreferences(): UserPreferences {
@@ -101,7 +131,7 @@ export function loadPreferences(): UserPreferences {
 
   const configuredKarakeepUrl = getConfiguredKarakeepUrl();
 
-  const stored = localStorage.getItem(CONFIG.PREFERENCES_KEY);
+  const stored = localStore.getItem(CONFIG.PREFERENCES_KEY);
   if (stored) {
     try {
       const parsed = JSON.parse(stored) as Partial<UserPreferences>;
@@ -117,11 +147,11 @@ export function loadPreferences(): UserPreferences {
           : {}),
       };
       if (configuredUrlChanged) {
-        localStorage.setItem(CONFIG.PREFERENCES_KEY, JSON.stringify(preferences));
+        localStore.setItem(CONFIG.PREFERENCES_KEY, JSON.stringify(preferences));
       }
       return preferences;
     } catch {
-      localStorage.removeItem(CONFIG.PREFERENCES_KEY);
+      localStore.removeItem(CONFIG.PREFERENCES_KEY);
     }
   }
 
@@ -146,7 +176,7 @@ export function updatePreference<K extends keyof UserPreferences>(
  */
 export function clearPreferences(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(CONFIG.PREFERENCES_KEY);
+  localStore.removeItem(CONFIG.PREFERENCES_KEY);
 }
 
 /**
@@ -156,7 +186,7 @@ export function clearAllData(): void {
   clearSession();
   clearPreferences();
   if (typeof window !== 'undefined') {
-    localStorage.removeItem(CONFIG.METRICS_KEY);
+    localStore.removeItem(CONFIG.METRICS_KEY);
   }
 }
 

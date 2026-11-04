@@ -1,5 +1,7 @@
 'use client';
 
+import { localStore } from '@/lib/storage/browserStorage';
+
 /**
  * Metrics and instrumentation client.
  * Tracks last-sync timestamps, diagnostics, and performance metrics.
@@ -8,7 +10,7 @@
 import { CONFIG } from '@/lib/config/env';
 
 /**
- * Metrics data structure stored in localStorage.
+ * Metrics data structure stored in localStore.
  */
 export interface MetricsData {
   /** ISO 8601 timestamp of last successful sync */
@@ -65,7 +67,7 @@ export function loadMetrics(): MetricsData {
   }
 
   try {
-    const stored = localStorage.getItem(CONFIG.METRICS_KEY);
+    const stored = localStore.getItem(CONFIG.METRICS_KEY);
     if (!stored) {
       return DEFAULT_METRICS;
     }
@@ -88,7 +90,7 @@ export function saveMetrics(metrics: MetricsData): void {
   }
 
   try {
-    localStorage.setItem(CONFIG.METRICS_KEY, JSON.stringify(metrics));
+    localStore.setItem(CONFIG.METRICS_KEY, JSON.stringify(metrics));
   } catch (error) {
     console.warn('Failed to save metrics:', error);
   }
@@ -151,7 +153,7 @@ export function resetMetrics(): void {
   if (typeof window === 'undefined') {
     return;
   }
-  localStorage.removeItem(CONFIG.METRICS_KEY);
+  localStore.removeItem(CONFIG.METRICS_KEY);
 }
 
 /**

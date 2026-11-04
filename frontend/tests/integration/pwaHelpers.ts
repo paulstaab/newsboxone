@@ -4,19 +4,25 @@ export async function dispatchInstallPrompt(
   page: Page,
   outcome: 'accepted' | 'dismissed' = 'accepted',
 ) {
+  await page.waitForLoadState('networkidle');
   await page.getByRole('button', { name: /burger menu/i }).waitFor({ state: 'visible' });
-  await page.evaluate((choice) => {
-    const event = new Event('beforeinstallprompt', { cancelable: true });
-    Object.defineProperties(event, {
-      prompt: {
-        value: () => Promise.resolve(),
-      },
-      userChoice: {
-        value: Promise.resolve({ outcome: choice }),
-      },
-    });
-    window.dispatchEvent(event);
-  }, outcome);
+  await expect
+    .poll(() =>
+      page.evaluate((choice) => {
+        const event = new Event('beforeinstallprompt', { cancelable: true });
+        Object.defineProperties(event, {
+          prompt: {
+            value: () => Promise.resolve(),
+          },
+          userChoice: {
+            value: Promise.resolve({ outcome: choice }),
+          },
+        });
+        window.dispatchEvent(event);
+        return event.defaultPrevented;
+      }, outcome),
+    )
+    .toBe(true);
 }
 
 export async function expectInstallPromptVisible(page: Page) {

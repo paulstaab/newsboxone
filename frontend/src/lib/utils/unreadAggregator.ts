@@ -182,6 +182,11 @@ export function filterStarredArticles(articles: Article[]): Article[] {
   return articles.filter((a) => a.starred);
 }
 
+/** Orders online and cached articles by publication date, then article ID. */
+export function sortArticlePreviews(articles: ArticlePreview[]): ArticlePreview[] {
+  return [...articles].sort((a, b) => b.pubDate - a.pubDate || b.id - a.id);
+}
+
 export interface ArticlePruneOptions {
   now?: number;
   maxItems?: number;
@@ -207,7 +212,7 @@ export function pruneArticlePreviews(
   const maxAgeMs = options.maxAgeMs ?? DEFAULT_MAX_AGE_MS;
   const cutoff = now - maxAgeMs;
 
-  const sorted = [...articles].sort((a, b) => getPreviewTimestamp(b) - getPreviewTimestamp(a));
+  const sorted = sortArticlePreviews(articles);
   const filteredByAge = sorted.filter((article) => getPreviewTimestamp(article) >= cutoff);
 
   return filteredByAge.slice(0, maxItems).map((article) => ({
@@ -259,9 +264,8 @@ export function sortFolderQueueEntries(
       return b.unreadCount - a.unreadCount;
     }
 
-    if (a.sortOrder !== b.sortOrder) {
-      return a.sortOrder - b.sortOrder;
-    }
+    const nameOrder = a.name.localeCompare(b.name);
+    if (nameOrder !== 0) return nameOrder;
 
     return a.id - b.id;
   });

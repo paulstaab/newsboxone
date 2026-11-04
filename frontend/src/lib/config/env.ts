@@ -1,3 +1,4 @@
+import { localStore } from '@/lib/storage/browserStorage';
 // Runtime environment guards and configuration.
 
 /** Storage key for debug mode preference */
@@ -39,7 +40,7 @@ export interface FeatureFlags {
  * Returns current feature flags based on environment and localStorage overrides.
  */
 export function getFeatureFlags(): FeatureFlags {
-  const isDebugStored = typeof window !== 'undefined' && localStorage.getItem(DEBUG_KEY) === 'true';
+  const isDebugStored = typeof window !== 'undefined' && localStore.getItem(DEBUG_KEY) === 'true';
   const isDev = process.env.NODE_ENV === 'development';
 
   return {
@@ -55,9 +56,9 @@ export function getFeatureFlags(): FeatureFlags {
 export function setDebugMode(enabled: boolean): void {
   if (typeof window !== 'undefined') {
     if (enabled) {
-      localStorage.setItem(DEBUG_KEY, 'true');
+      localStore.setItem(DEBUG_KEY, 'true');
     } else {
-      localStorage.removeItem(DEBUG_KEY);
+      localStore.removeItem(DEBUG_KEY);
     }
   }
 }

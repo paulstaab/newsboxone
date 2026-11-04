@@ -93,11 +93,11 @@ describe('ArticleCard', () => {
     expect(onOpen).not.toHaveBeenCalled();
   });
 
-  it('opens on Enter key press', () => {
+  it('opens on Space key press', () => {
     const onOpen = vi.fn();
     render(<ArticleCard article={mockArticle} onOpen={onOpen} />);
 
-    fireEvent.keyDown(screen.getByRole('option'), { key: 'Enter' });
+    fireEvent.keyDown(screen.getByRole('option'), { key: ' ' });
 
     expect(onOpen).toHaveBeenCalledWith(mockArticle, expect.any(HTMLElement));
   });

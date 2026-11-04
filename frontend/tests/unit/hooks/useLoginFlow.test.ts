@@ -110,4 +110,27 @@ describe('useLoginFlow', () => {
     expect(result.current.validationError).toBe('Password is required');
     expect(mockLogin).not.toHaveBeenCalled();
   });
+  it('ignores duplicate submissions and does not navigate after unmount', async () => {
+    mockedValidateLoginCredentials.mockReturnValue(undefined);
+    let complete: () => void = () => undefined;
+    mockLogin.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          complete = resolve;
+        }),
+    );
+    const { result, unmount } = renderHook(() => useLoginFlow());
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = result.current.handleCredentialsSubmit();
+      void result.current.handleCredentialsSubmit();
+    });
+    expect(mockLogin).toHaveBeenCalledTimes(1);
+    unmount();
+    await act(async () => {
+      complete();
+      await pending;
+    });
+    expect(mockPush).not.toHaveBeenCalled();
+  });
 });
