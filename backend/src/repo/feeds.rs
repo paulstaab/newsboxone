@@ -241,7 +241,7 @@ mod tests {
         let feed = find_regular(&pool, 1).await.unwrap().unwrap();
         assert_eq!(feed.next_update_time, Some(900));
         assert_eq!(feed.manual_use_extracted_fulltext, Some(true));
-        assert_eq!(feed.last_quality_check, Some(20));
+        assert_eq!(feed.last_quality_check, Some(30));
 
         complete_refresh(&pool, 1, 1000).await.unwrap();
         let feed = find_regular(&pool, 1).await.unwrap().unwrap();
