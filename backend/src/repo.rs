@@ -1,5 +1,7 @@
 //! Shared persistence helpers for folders, feeds, and articles.
 
+pub mod feeds;
+
 use sqlx::{Executor, QueryBuilder, Sqlite, SqlitePool};
 
 use crate::article_store::ArticleRecord;

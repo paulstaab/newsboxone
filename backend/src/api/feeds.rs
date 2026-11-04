@@ -8,14 +8,15 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::SqlitePool;
 
 use crate::article_store;
 use crate::config::Config;
 use crate::content::FeedContentState;
 use crate::feed_ingestion::{self, FeedEntryIngestionContext};
+use crate::feed_quality::{self, FeedQualityOverrideUpdate};
 use crate::repo;
-use crate::updater::{self, FeedQualityOverrideUpdate};
+use crate::repo::feeds::FeedRecord as FeedRow;
 
 use super::AppState;
 use super::errors::{
@@ -23,30 +24,6 @@ use super::errors::{
     feed_not_found_with_id, feed_parse_error, internal_error, ssrf_error,
 };
 use super::folders::resolve_folder_id;
-
-#[derive(FromRow)]
-pub(super) struct FeedRow {
-    pub(super) id: i64,
-    pub(super) url: String,
-    pub(super) title: Option<String>,
-    pub(super) favicon_link: Option<String>,
-    pub(super) added: i64,
-    pub(super) last_article_date: Option<i64>,
-    pub(super) next_update_time: Option<i64>,
-    pub(super) folder_id: i64,
-    pub(super) ordering: i64,
-    pub(super) link: Option<String>,
-    pub(super) pinned: bool,
-    pub(super) update_error_count: i64,
-    pub(super) last_update_error: Option<String>,
-    pub(super) is_mailing_list: bool,
-    pub(super) last_quality_check: Option<i64>,
-    pub(super) use_extracted_fulltext: bool,
-    pub(super) use_llm_summary: bool,
-    pub(super) manual_use_extracted_fulltext: Option<bool>,
-    pub(super) manual_use_llm_summary: Option<bool>,
-    pub(super) last_manual_quality_override: Option<i64>,
-}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -240,7 +217,7 @@ pub(super) async fn update_feed_quality(
             ));
         }
 
-        updater::reevaluate_feed_quality_with_pool(
+        feed_quality::reevaluate_feed_quality_with_pool(
             &state.pool,
             &state.config,
             feed_id,
@@ -249,7 +226,7 @@ pub(super) async fn update_feed_quality(
         .await
         .map_err(map_feed_quality_error)?;
     } else {
-        updater::update_feed_quality_overrides_with_pool(
+        feed_quality::update_feed_quality_overrides_with_pool(
             &state.pool,
             feed_id,
             FeedQualityOverrideUpdate {
@@ -622,23 +599,9 @@ pub(super) async fn load_feed_rows(
     pool: &SqlitePool,
     feed_id: Option<i64>,
 ) -> ApiResult<Vec<FeedRow>> {
-    let rows = if let Some(feed_id) = feed_id {
-        sqlx::query_as::<_, FeedRow>(
-            "SELECT id, url, title, favicon_link, added, last_article_date, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error, is_mailing_list, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE id = ? AND deleted_at IS NULL ORDER BY id",
-        )
-        .bind(feed_id)
-        .fetch_all(pool)
+    repo::feeds::list_active(pool, feed_id)
         .await
-    } else {
-        sqlx::query_as::<_, FeedRow>(
-            "SELECT id, url, title, favicon_link, added, last_article_date, next_update_time, folder_id, ordering, link, pinned, update_error_count, last_update_error, is_mailing_list, last_quality_check, use_extracted_fulltext, use_llm_summary, manual_use_extracted_fulltext, manual_use_llm_summary, last_manual_quality_override FROM feed WHERE deleted_at IS NULL ORDER BY id",
-        )
-        .fetch_all(pool)
-        .await
-    }
-    .map_err(internal_error)?;
-
-    Ok(rows)
+        .map_err(internal_error)
 }
 
 /// Maps a database feed row into the public API shape.
@@ -674,7 +637,7 @@ fn map_feed_row(feed: FeedRow, root_folder_id: Option<i64>) -> FeedOut {
     }
 }
 
-/// Maps updater-side feed-quality errors into public API errors.
+/// Maps feed-quality service errors into public API errors.
 fn map_feed_quality_error(error: anyhow::Error) -> super::errors::ApiError {
     let detail = error.to_string();
 
