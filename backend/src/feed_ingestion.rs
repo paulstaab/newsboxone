@@ -250,7 +250,7 @@ async fn insert_article_from_entry(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::io::AsyncWriteExt;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::TcpListener;
 
     async fn spawn_one_shot_server(response: &'static [u8]) -> String {
@@ -258,6 +258,8 @@ mod tests {
         let addr = listener.local_addr().unwrap();
         tokio::spawn(async move {
             let (mut stream, _) = listener.accept().await.unwrap();
+            let mut buf = [0_u8; 1024];
+            let _ = stream.read(&mut buf).await;
             stream.write_all(response).await.unwrap();
             let _ = stream.shutdown().await;
         });
