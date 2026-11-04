@@ -1,6 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useLiveState } from '@/hooks/useLiveState';
+
+import { useRef, useEffect } from 'react';
+import { loadPreferences } from '@/lib/storage';
 import { useKarakeepPreferences } from '@/hooks/useKarakeepPreferences';
 import { KarakeepError, testKarakeepConnection } from '@/lib/karakeep/client';
 import { getConfiguredKarakeepUrl } from '@/lib/config/env';
@@ -8,10 +11,18 @@ import { getConfiguredKarakeepUrl } from '@/lib/config/env';
 /** Renders the browser-local Karakeep integration configuration. */
 export function KarakeepSettings() {
   const { preferences, updatePreferences } = useKarakeepPreferences();
+  const mounted = useRef(true);
+  const testing = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const isKarakeepUrlConfigured = Boolean(getConfiguredKarakeepUrl());
-  const [isTesting, setIsTesting] = useState(false);
-  const [connectionMessage, setConnectionMessage] = useState<string | null>(null);
-  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [isTesting, setIsTesting] = useLiveState(false);
+  const [connectionMessage, setConnectionMessage] = useLiveState<string | null>(null);
+  const [connectionError, setConnectionError] = useLiveState<string | null>(null);
 
   const updateConnectionField = (field: 'karakeepBaseUrl' | 'karakeepApiToken', value: string) => {
     updatePreferences({
@@ -25,6 +36,16 @@ export function KarakeepSettings() {
   };
 
   const handleTestConnection = async () => {
+    if (testing.current) return;
+    testing.current = true;
+    const isCurrent = () => {
+      const latest = loadPreferences();
+      return (
+        mounted.current &&
+        latest.karakeepBaseUrl === preferences.karakeepBaseUrl &&
+        latest.karakeepApiToken === preferences.karakeepApiToken
+      );
+    };
     setIsTesting(true);
     setConnectionMessage(null);
     setConnectionError(null);
@@ -33,6 +54,7 @@ export function KarakeepSettings() {
         baseUrl: preferences.karakeepBaseUrl,
         apiToken: preferences.karakeepApiToken,
       });
+      if (!isCurrent()) return;
       updatePreferences({
         ...preferences,
         karakeepBaseUrl: normalizedBaseUrl,
@@ -40,6 +62,7 @@ export function KarakeepSettings() {
       });
       setConnectionMessage('Connection verified');
     } catch (error) {
+      if (!isCurrent()) return;
       updatePreferences({
         ...preferences,
         karakeepEnabled: false,
@@ -51,6 +74,7 @@ export function KarakeepSettings() {
           : 'Could not verify the Karakeep connection.',
       );
     } finally {
+      testing.current = false;
       setIsTesting(false);
     }
   };

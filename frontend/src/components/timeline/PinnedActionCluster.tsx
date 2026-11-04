@@ -34,7 +34,16 @@ export function PinnedActionCluster({
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
+      if (
+        event.defaultPrevented ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        document.querySelector('[role="dialog"], dialog[open], [role="menu"]') ||
+        target?.closest(
+          'input, textarea, select, [contenteditable]:not([contenteditable="false"]), a[href], button',
+        )
+      ) {
         return;
       }
 
@@ -49,19 +58,30 @@ export function PinnedActionCluster({
         event.preventDefault();
         if (!disableSkip && !isSkipping) {
           setIsSkipping(true);
-          void onSkip().finally(() => {
-            setIsSkipping(false);
-          });
+          void onSkip()
+            .catch(() => undefined)
+            .finally(() => {
+              setIsSkipping(false);
+            });
         }
       }
 
       if (event.key === 'Enter') {
+        if (
+          target &&
+          target !== document.body &&
+          target !== document.documentElement &&
+          !target.closest('[aria-label="Timeline"], [data-article-id]')
+        )
+          return;
         event.preventDefault();
         if (!disableMarkAllRead && !isMarkingRead) {
           setIsMarkingRead(true);
-          void onMarkAllRead().finally(() => {
-            setIsMarkingRead(false);
-          });
+          void onMarkAllRead()
+            .catch(() => undefined)
+            .finally(() => {
+              setIsMarkingRead(false);
+            });
         }
       }
     };
@@ -99,9 +119,11 @@ export function PinnedActionCluster({
         onClick={() => {
           if (disableSkip || isSkipping) return;
           setIsSkipping(true);
-          void onSkip().finally(() => {
-            setIsSkipping(false);
-          });
+          void onSkip()
+            .catch(() => undefined)
+            .finally(() => {
+              setIsSkipping(false);
+            });
         }}
       />
       <TimelineActionButton
@@ -113,9 +135,11 @@ export function PinnedActionCluster({
         onClick={() => {
           if (disableMarkAllRead || isMarkingRead) return;
           setIsMarkingRead(true);
-          void onMarkAllRead().finally(() => {
-            setIsMarkingRead(false);
-          });
+          void onMarkAllRead()
+            .catch(() => undefined)
+            .finally(() => {
+              setIsMarkingRead(false);
+            });
         }}
       />
     </div>

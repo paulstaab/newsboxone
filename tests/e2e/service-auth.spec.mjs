@@ -131,4 +131,55 @@ test.describe('Service startup and authentication e2e scenarios', () => {
     await page.goto('/timeline');
     await expect(page).toHaveURL(/\/login/);
   });
+  test("[TS-LOGIN-007] rejected browser tokens expire the session and retain integration settings", async ({
+    page,
+    request,
+  }) => {
+    await loginViaUi(page);
+    await page.goto("/integrations");
+    await page.getByLabel("API key", { exact: true }).fill("retained-karakeep-key");
+    await page.goto("/timeline", { waitUntil: "networkidle" });
+    await expect(page.getByRole("button", { name: /refresh/i })).toBeEnabled();
+    const token = await page.evaluate(
+      () => JSON.parse(sessionStorage.getItem("newsboxone:session")).token,
+    );
+    const revoked = await request.post("/api/auth/logout", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(revoked.ok()).toBeTruthy();
+    await page.getByRole("button", { name: /refresh/i }).click();
+    await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByText("Session expired", { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => localStorage.getItem("newsboxone.timeline.v1"))).toBeNull();
+    await loginViaUi(page);
+    await page.goto("/integrations");
+    await expect(page.getByLabel("API key", { exact: true })).toHaveValue("retained-karakeep-key");
+  });
+
+  test("[TS-LOGIN-008] logout signs out another tab sharing a tab session", async ({
+    page,
+    context,
+  }) => {
+    await loginViaUi(page);
+    const otherPagePromise = context.waitForEvent("page");
+    await page.evaluate(() => {
+      window.open("/timeline", "_blank");
+    });
+    const otherPage = await otherPagePromise;
+    await expect(otherPage).toHaveURL(/\/timeline/);
+    await expect(otherPage.getByRole("button", { name: /burger menu/i })).toBeVisible();
+    await page.getByRole("button", { name: /burger menu/i }).click();
+    await page.getByRole("menuitem", { name: /logout/i }).click();
+    await expect(page).toHaveURL(/\/login/);
+    await expect(otherPage).toHaveURL(/\/login/);
+    expect(await otherPage.evaluate(() => sessionStorage.getItem("newsboxone:session"))).toBeNull();
+  });
+
+  test("[TS-LOGIN-009] About remains public while integrations require login", async ({ page }) => {
+    await page.goto("/about");
+    await expect(page).toHaveURL(/\/about/);
+    await page.goto("/integrations");
+    await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByLabel(/^username$/i)).toBeVisible();
+  });
 });

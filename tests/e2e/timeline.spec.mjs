@@ -125,4 +125,29 @@ test.describe('Timeline and reading workflow e2e scenarios', () => {
     await expect(page.getByRole('link', { name: /open engineering launch brief/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /refresh/i })).toBeEnabled();
   });
+  test("[TS-TIMELINE-009] offline folder reads advance locally and persist after reconnect", async ({
+    page,
+    context,
+    request,
+  }) => {
+    await seedTimelineFeeds(request);
+    await loginViaUi(page);
+    await expect(page.getByTestId("active-folder-name")).toHaveText(/engineering/i);
+    await context.setOffline(true);
+    await page.getByRole("button", { name: /mark all read/i }).click();
+    await expect(page.getByTestId("active-folder-name")).toHaveText(/design/i);
+    const pending = () =>
+      page.evaluate(() => {
+        const key = Object.keys(localStorage).find((name) =>
+          name.startsWith("newsboxone.timeline."),
+        );
+        return key ? JSON.parse(localStorage.getItem(key)).pendingReadIds : [];
+      });
+    await expect.poll(async () => (await pending()).length).toBeGreaterThan(0);
+    await context.setOffline(false);
+    await expect.poll(async () => (await pending()).length).toBe(0);
+    await page.getByRole("button", { name: /refresh/i }).click();
+    await expect(page.getByTestId("active-folder-name")).toHaveText(/design/i);
+    await expect(page.getByRole("link", { name: /open engineering launch brief/i })).toHaveCount(0);
+  });
 });

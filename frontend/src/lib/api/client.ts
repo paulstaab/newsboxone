@@ -140,7 +140,7 @@ export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions
       // Handle authentication errors
       if (response.status === 401) {
         if (sentStoredAuth) {
-          clearSession();
+          if (loadSession()?.token === session?.token) clearSession('expired');
         }
         throw new AuthenticationError(ERROR_MESSAGES.SESSION_EXPIRED);
       }

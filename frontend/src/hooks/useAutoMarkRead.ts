@@ -27,6 +27,7 @@ export function useAutoMarkRead({
   const observerRef = useRef<IntersectionObserver | null>(null);
   const elementsRef = useRef(new Map<number, HTMLElement>());
   const seenRef = useRef(new Set<number>());
+  const visibleRef = useRef(new Set<number>());
   const batcherRef = useRef<ReturnType<typeof createReadBatcher> | null>(null);
   const unreadMapRef = useRef(new Map<number, boolean>());
   const observerDisabledRef = useRef(false);
@@ -63,7 +64,12 @@ export function useAutoMarkRead({
           const id = Number(target.dataset.articleId);
           if (!Number.isFinite(id)) return;
 
-          if (!entry.isIntersecting && entry.boundingClientRect.bottom <= 0) {
+          if (entry.isIntersecting) visibleRef.current.add(id);
+          if (
+            !entry.isIntersecting &&
+            visibleRef.current.has(id) &&
+            entry.boundingClientRect.bottom <= (entry.rootBounds?.top ?? topOffset)
+          ) {
             if (seenRef.current.has(id)) return;
             if (unreadMapRef.current.get(id) === false) return;
             seenRef.current.add(id);

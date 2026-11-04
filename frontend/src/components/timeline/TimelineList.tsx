@@ -11,6 +11,11 @@ interface TimelineListProps {
   items: ArticlePreview[];
   isLoading?: boolean;
   emptyMessage?: string;
+  isCheckingKarakeep?: boolean;
+  karakeepOffline?: boolean;
+  onRetryKarakeep?: () => void;
+  unknownKarakeepIds?: Set<number>;
+  onSourceOpen?: (article: ArticlePreview) => void;
   onOpenArticle?: (article: ArticlePreview, opener: HTMLElement) => void;
   onSaveToKarakeep?: (article: ArticlePreview) => Promise<void>;
   savingToKarakeepIds?: ReadonlySet<number>;
@@ -31,6 +36,11 @@ export function TimelineList({
   isLoading,
   emptyMessage,
   onOpenArticle,
+  onSourceOpen,
+  isCheckingKarakeep,
+  karakeepOffline,
+  onRetryKarakeep,
+  unknownKarakeepIds,
   onSaveToKarakeep,
   savingToKarakeepIds,
   savedToKarakeepIds,
@@ -109,6 +119,11 @@ export function TimelineList({
             key={`${String(article.id)}-${String(article.feedId)}`}
             article={article}
             onOpen={onOpenArticle}
+            onSourceOpen={onSourceOpen}
+            karakeepOffline={karakeepOffline}
+            isCheckingKarakeep={isCheckingKarakeep}
+            onRetryKarakeep={onRetryKarakeep}
+            isKarakeepUnknown={unknownKarakeepIds?.has(article.id)}
             onSaveToKarakeep={onSaveToKarakeep}
             isSavingToKarakeep={savingToKarakeepIds?.has(article.id)}
             isSavedToKarakeep={savedToKarakeepIds?.has(article.id)}

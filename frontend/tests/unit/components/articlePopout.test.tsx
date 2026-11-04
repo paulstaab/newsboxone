@@ -165,7 +165,7 @@ describe('ArticlePopout', () => {
     });
   });
 
-  it('ignores Escape when focus is inside editable content', async () => {
+  it('ignores Space when focus is inside editable content', async () => {
     mockContentResponse.data = '<label>Editable field <input /></label>';
     mockContentResponse.error = null;
     mockContentResponse.isLoading = false;
@@ -201,12 +201,12 @@ describe('ArticlePopout', () => {
     });
 
     screen.getByLabelText('Editable field').focus();
-    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.keyDown(document, { key: ' ' });
 
     expect(screen.getByText('Popout Article Title')).toBeDefined();
   });
 
-  it('does not close when Space is pressed on an article link', async () => {
+  it('closes when Space is pressed on an article link', async () => {
     mockContentResponse.data = '<a href="https://example.com/details">Read details</a>';
     mockContentResponse.error = null;
     mockContentResponse.isLoading = false;
@@ -235,6 +235,6 @@ describe('ArticlePopout', () => {
     link.focus();
     fireEvent.keyDown(document, { key: ' ' });
 
-    expect(screen.getByText('Popout Article Title')).toBeDefined();
+    expect(screen.queryByText('Popout Article Title')).toBeNull();
   });
 });

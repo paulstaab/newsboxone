@@ -49,7 +49,11 @@ test.describe('Feed onboarding and management e2e scenarios', () => {
     await page.getByLabel(/^(website or )?feed url$/i).fill(FEED_URLS.engineering);
     await page.getByRole('button', { name: /^subscribe$/i }).click();
 
-    await expect(page.getByText(/api error 409: conflict/i)).toBeVisible();
+    await expect(page.getByText(/this feed is already subscribed/i)).toBeVisible();
+    await page.getByRole('button', { name: /open existing feed settings/i }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByLabel('Feed title setting', { exact: true })).toHaveValue('Engineering Daily');
+    await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Engineering Daily' })).toHaveCount(1);
   });
 

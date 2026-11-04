@@ -2,8 +2,13 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
-const EDITABLE_SELECTORS = ['input', 'textarea', 'select', '[contenteditable="true"]'];
-const SPACE_EXCLUDED_SELECTORS = ['a[href]', 'button', ...EDITABLE_SELECTORS];
+const EDITABLE_SELECTORS = [
+  'input',
+  'textarea',
+  'select',
+  '[contenteditable]:not([contenteditable="false"])',
+];
+const SPACE_EXCLUDED_SELECTORS = EDITABLE_SELECTORS;
 
 function getFocusableElements(container: HTMLElement | null): HTMLElement[] {
   if (!container) return [];
@@ -68,8 +73,9 @@ export function useArticlePopout(): UseArticlePopoutResult {
     }
 
     const focusTarget = closeButtonRef.current ?? dialogRef.current;
+    let focusTimer: number | undefined;
     if (focusTarget) {
-      window.setTimeout(() => {
+      focusTimer = window.setTimeout(() => {
         focusTarget.focus();
       }, 0);
     }
@@ -78,7 +84,6 @@ export function useArticlePopout(): UseArticlePopoutResult {
       const activeElement = document.activeElement as HTMLElement | null;
 
       if (event.key === 'Escape') {
-        if (matchesTarget(activeElement, EDITABLE_SELECTORS)) return;
         event.preventDefault();
         closePopout();
         return;
@@ -118,6 +123,7 @@ export function useArticlePopout(): UseArticlePopoutResult {
     document.addEventListener('keydown', handleKeyDown, { capture: true });
 
     return () => {
+      window.clearTimeout(focusTimer);
       document.removeEventListener('keydown', handleKeyDown, { capture: true });
       document.body.style.overflow = previousOverflow;
       document.body.style.paddingRight = previousPaddingRight;

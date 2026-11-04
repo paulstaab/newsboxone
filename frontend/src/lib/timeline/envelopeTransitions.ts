@@ -3,7 +3,7 @@ import type { TimelineCacheEnvelope } from '@/types';
 import { buildFolderMap, findNextActiveId } from './envelope';
 
 /**
- * Selects an active folder and re-queues it when it had been skipped.
+ * Selects an eligible folder. Skipped folders remain excluded until Restart.
  */
 export function activateTimelineFolder(
   current: TimelineCacheEnvelope,
@@ -14,13 +14,8 @@ export function activateTimelineFolder(
   }
 
   const target = current.folders[folderId];
+  if (target.status === 'skipped') return current;
   const updatedFolders = { ...current.folders };
-  if (target.status === 'skipped') {
-    updatedFolders[folderId] = {
-      ...target,
-      status: 'queued',
-    };
-  }
 
   return {
     ...current,
@@ -54,7 +49,8 @@ export function markTimelineFolderRead(
       ...current,
       folders: buildFolderMap(remainingQueue),
       activeFolderId: nextActiveId,
-      pendingReadIds: [...current.pendingReadIds, ...itemIds],
+      pendingReadIds: [...new Set([...current.pendingReadIds, ...itemIds])],
+      pendingReadArticles: [...(current.pendingReadArticles ?? []), ...folder.articles],
     },
     itemIds,
   };
@@ -71,6 +67,7 @@ export function clearPendingReadIds(
   return {
     ...current,
     pendingReadIds: current.pendingReadIds.filter((id) => !pending.has(id)),
+    pendingReadArticles: current.pendingReadArticles?.filter((article) => !pending.has(article.id)),
   };
 }
 
@@ -163,6 +160,10 @@ export function markTimelineItemRead(
     ...current,
     folders: buildFolderMap(remainingQueue),
     activeFolderId: nextActiveId,
-    pendingReadIds: [...current.pendingReadIds, itemId],
+    pendingReadIds: [...new Set([...current.pendingReadIds, itemId])],
+    pendingReadArticles: [
+      ...(current.pendingReadArticles ?? []).filter((article) => article.id !== itemId),
+      ...folder.articles.filter((article) => article.id === itemId),
+    ],
   };
 }

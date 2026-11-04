@@ -31,6 +31,7 @@ export function SettingsMenu({ position = 'top-right', className = '' }: Setting
   const router = useRouter();
   const { isAuthenticated, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [installHelp, setInstallHelp] = useState<string | null>(null);
   const [isInstalling, setIsInstalling] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showInstallOption, setShowInstallOption] = useState(canPromptInstall);
@@ -87,6 +88,21 @@ export function SettingsMenu({ position = 'top-right', className = '' }: Setting
   }, [isOpen]);
 
   const handleInstall = async () => {
+    if (!canPromptInstall()) {
+      const ios =
+        /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      setInstallHelp(
+        ios
+          ? 'Open Share, then choose Add to Home Screen.'
+          : /Android|Chrome|Edg/.test(navigator.userAgent)
+            ? 'Open your browser menu and choose Install app or Add to Home Screen if available.'
+            : navigator.userAgent.includes('Safari')
+              ? 'In Safari, choose File, then Add to Dock, if available.'
+              : 'App installation is unavailable in this browser. Try Safari on iOS or Chrome or Edge.',
+      );
+      return;
+    }
     setIsInstalling(true);
     await triggerInstallPrompt();
     setIsInstalling(false);
@@ -257,10 +273,10 @@ export function SettingsMenu({ position = 'top-right', className = '' }: Setting
               onClick={() => {
                 void handleInstall();
               }}
-              disabled={!showInstallOption || isInstalling}
+              disabled={isInstalling}
               className="app-menu__item"
               role="menuitem"
-              aria-label={showInstallOption ? 'Install App' : 'Install not available'}
+              aria-label="Install App"
               title={
                 showInstallOption
                   ? 'Install NewsBoxOne as an app'
@@ -283,6 +299,12 @@ export function SettingsMenu({ position = 'top-right', className = '' }: Setting
               </svg>
               <span>{isInstalling ? 'Installing...' : 'Install App'}</span>
             </button>
+
+            {installHelp && (
+              <p role="status" className="app-menu__help">
+                {installHelp}
+              </p>
+            )}
 
             {isAuthenticated ? (
               <button

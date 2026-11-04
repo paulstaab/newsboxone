@@ -52,11 +52,24 @@ test.describe('Login integration coverage', () => {
   });
 
   test('[TC-LOGIN-003] authentication progress is visible', async ({ page }) => {
+    let releaseAuthentication!: () => void;
+    const authenticationPending = new Promise<void>((resolve) => {
+      releaseAuthentication = resolve;
+    });
+    // Keep the request pending until the progress state has been observed.
+    await page.route('**/api/auth/token', async (route) => {
+      await authenticationPending;
+      await route.fallback();
+    });
     await page.getByLabel(/^username$/i).fill(TEST_USERNAME);
     await page.getByLabel(/^password$/i).fill(TEST_PASSWORD);
     await page.getByRole('button', { name: /sign in/i }).click();
 
-    await expect(page.getByText(/authenticating with the newsboxone api/i)).toBeVisible();
+    try {
+      await expect(page.getByText(/authenticating with the newsboxone api/i)).toBeVisible();
+    } finally {
+      releaseAuthentication();
+    }
     await page.waitForURL(/\/timeline/);
   });
 

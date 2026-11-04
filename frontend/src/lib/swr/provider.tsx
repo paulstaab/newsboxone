@@ -7,6 +7,8 @@
  */
 
 import { SWRConfig, type SWRConfiguration } from 'swr';
+import { useMemo } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import type { ReactNode } from 'react';
 import { CONFIG } from '@/lib/config/env';
 import { AuthenticationError } from '@/lib/api';
@@ -88,11 +90,21 @@ interface SWRProviderProps {
  * Provides global caching and configuration for all SWR hooks.
  */
 export function SWRProvider({ children, config }: SWRProviderProps) {
+  const { session } = useAuth();
+  const token = session?.token;
+  const cache = useMemo(() => {
+    void token;
+    return new Map();
+  }, [token]);
   // Merge default config with any overrides
 
   const mergedConfig: SWRConfiguration = config ? { ...swrConfig, ...config } : swrConfig;
 
-  return <SWRConfig value={mergedConfig}>{children}</SWRConfig>;
+  return (
+    <SWRConfig key={token ?? 'signed-out'} value={{ ...mergedConfig, provider: () => cache }}>
+      {children}
+    </SWRConfig>
+  );
 }
 
 export default SWRProvider;

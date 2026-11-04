@@ -47,6 +47,18 @@ describe('timeline cache helpers', () => {
     expect(envelope).toEqual(createEmptyTimelineCache());
   });
 
+  it.each([
+    'null',
+    '{"version":999,"folders":{}}',
+    JSON.stringify({
+      version: CONFIG.TIMELINE_CACHE_VERSION,
+      folders: { 1: { id: 1, name: 'Broken', articles: [null] } },
+    }),
+  ])('discards malformed or incompatible caches: %s', (raw) => {
+    localStorage.setItem(CONFIG.TIMELINE_CACHE_KEY, raw);
+    expect(loadTimelineCache()).toEqual(createEmptyTimelineCache());
+    expect(localStorage.getItem(CONFIG.TIMELINE_CACHE_KEY)).toBeNull();
+  });
   it('persists and reloads pruned envelopes', () => {
     const envelope: TimelineCacheEnvelope = {
       version: CONFIG.TIMELINE_CACHE_VERSION,
@@ -72,7 +84,7 @@ describe('timeline cache helpers', () => {
 
     expect(loaded.folders[1].articles).toHaveLength(2);
     expect(loaded.pendingReadIds).toEqual([1, 2]);
-    expect(loaded.pendingSkipFolderIds).toEqual([]);
+    expect(loaded.pendingSkipFolderIds).toEqual([1]);
   });
 
   it('drops stale articles and removes empty folders during pruning', () => {
@@ -149,7 +161,7 @@ describe('mergeItemsIntoCache', () => {
     const merged = mergeItemsIntoCache(existingEnvelope, newArticles, now);
 
     expect(merged.folders[1].articles).toHaveLength(4);
-    expect(merged.folders[1].articles.map((a) => a.id)).toEqual([1, 2, 3, 4]);
+    expect(merged.folders[1].articles.map((a) => a.id)).toEqual([4, 3, 2, 1]);
     expect(merged.folders[1].unreadCount).toBe(4);
     expect(merged.lastSynced).toBe(now);
   });
@@ -186,7 +198,7 @@ describe('mergeItemsIntoCache', () => {
     const merged = mergeItemsIntoCache(existingEnvelope, newArticles, now);
 
     expect(merged.folders[1].articles).toHaveLength(2);
-    expect(merged.folders[1].articles.map((a) => a.id)).toEqual([1, 4]);
+    expect(merged.folders[1].articles.map((a) => a.id)).toEqual([4, 1]);
     expect(merged.pendingReadIds).toEqual([2, 3]); // Tombstones persist
   });
 
@@ -296,7 +308,7 @@ describe('mergeItemsIntoCache', () => {
     expect(merged.folders[1].id).toBe(1);
   });
 
-  it('applies pruning during merge to respect retention limits', async () => {
+  it('keeps older unread articles available online during merge', async () => {
     const { mergeItemsIntoCache } = await import('@/lib/storage/timelineCache');
     const now = Date.now();
     const oldTimestamp = now - (CONFIG.TIMELINE_MAX_ITEM_AGE_DAYS + 1) * DAY_IN_MS;
@@ -324,8 +336,9 @@ describe('mergeItemsIntoCache', () => {
 
     const merged = mergeItemsIntoCache(existingEnvelope, newArticles, now);
 
-    // Old article should be pruned, only new one remains
-    expect(merged.folders[1].articles).toHaveLength(1);
+    // Retention applies only when the online envelope is persisted.
+    expect(merged.folders[1].articles).toHaveLength(2);
+    expect(pruneTimelineCache(merged, now).folders[1].articles).toHaveLength(1);
     expect(merged.folders[1].articles[0].id).toBe(2);
   });
 });

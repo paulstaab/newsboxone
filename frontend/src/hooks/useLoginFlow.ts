@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { validateLoginCredentials } from '@/lib/auth/login';
@@ -15,6 +15,14 @@ export enum LoginStep {
  */
 export function useLoginFlow() {
   const router = useRouter();
+  const mountedRef = useRef(true);
+  const pendingRef = useRef(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   const { login, error } = useAuth();
   const [step, setStep] = useState(LoginStep.CREDENTIALS);
   const [username, setUsername] = useState('');
@@ -23,17 +31,22 @@ export function useLoginFlow() {
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const handleCredentialsSubmit = useCallback(async () => {
+    if (pendingRef.current) return;
+    pendingRef.current = true;
     setValidationError(null);
 
     try {
       validateLoginCredentials(username, password);
       setStep(LoginStep.AUTHENTICATING);
       await login(username, password, rememberDevice);
-      router.push('/timeline');
+      if (mountedRef.current) router.push('/timeline');
     } catch (error) {
+      if (!mountedRef.current) return;
       setStep(LoginStep.CREDENTIALS);
       setPassword('');
       setValidationError(error instanceof Error ? error.message : 'Authentication failed');
+    } finally {
+      pendingRef.current = false;
     }
   }, [login, password, rememberDevice, router, username]);
 

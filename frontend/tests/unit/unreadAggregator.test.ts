@@ -19,14 +19,14 @@ function entry(overrides: Partial<FolderQueueEntry>): FolderQueueEntry {
 }
 
 describe('folder queue ordering', () => {
-  it('sorts by unread count and preserves stable ties by sortOrder', () => {
+  it('sorts by unread count, folder name, then ID', () => {
     const queue = sortFolderQueueEntries([
       entry({ id: 1, unreadCount: 2, sortOrder: 5 }),
       entry({ id: 2, unreadCount: 3, sortOrder: 1 }),
       entry({ id: 3, unreadCount: 2, sortOrder: 2 }),
     ]);
 
-    expect(queue.map((item) => item.id)).toEqual([2, 3, 1]);
+    expect(queue.map((item) => item.id)).toEqual([2, 1, 3]);
   });
 
   it('forces skipped folders to the end and keeps their relative order', () => {

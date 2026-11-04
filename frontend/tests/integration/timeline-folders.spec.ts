@@ -59,7 +59,7 @@ test.describe('Timeline integration coverage', () => {
     await expect(page.getByText('Ship It Saturday: Folder Queue')).toBeVisible();
     await page.getByRole('button', { name: /refresh/i }).click();
     await expect(page.getByText('Ship It Saturday: Folder Queue')).toBeVisible();
-    expect(requestCount).toBeGreaterThanOrEqual(2);
+    await expect.poll(() => requestCount).toBeGreaterThanOrEqual(2);
   });
 
   test('[TC-TIMELINE-015] refresh error preserves cached content', async ({ page }) => {

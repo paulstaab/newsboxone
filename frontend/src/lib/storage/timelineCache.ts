@@ -1,7 +1,12 @@
+import { localStore } from '@/lib/storage/browserStorage';
 import { CONFIG } from '@/lib/config/env';
 import type { ArticlePreview, FolderQueueEntry, TimelineCacheEnvelope } from '@/types';
 import { UNCATEGORIZED_FOLDER_ID } from '@/types';
-import { pruneArticlePreviews, sortFolderQueueEntries } from '@/lib/utils/unreadAggregator';
+import {
+  pruneArticlePreviews,
+  sortArticlePreviews,
+  sortFolderQueueEntries,
+} from '@/lib/utils/unreadAggregator';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const MAX_AGE_MS = CONFIG.TIMELINE_MAX_ITEM_AGE_DAYS * DAY_IN_MS;
@@ -61,13 +66,56 @@ function normalizeEnvelope(
     lastSynced: envelope.lastSynced ?? 0,
     activeFolderId: envelope.activeFolderId ?? null,
     folders: envelope.folders ?? {},
+    pendingReadArticles: envelope.pendingReadArticles ?? [],
     pendingReadIds: ensureArrayOfNumbers(envelope.pendingReadIds),
     pendingSkipFolderIds: ensureArrayOfNumbers(envelope.pendingSkipFolderIds),
   };
 }
 
+/** Validates persisted data before exposing it to rendering and reconciliation. */
+function isValidCache(value: unknown): value is TimelineCacheEnvelope {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    !('version' in value) ||
+    value.version !== CONFIG.TIMELINE_CACHE_VERSION ||
+    !('folders' in value) ||
+    !value.folders ||
+    typeof value.folders !== 'object' ||
+    Array.isArray(value.folders)
+  )
+    return false;
+  const validArticle = (article: unknown): boolean => {
+    if (!article || typeof article !== 'object') return false;
+    const fields = article as Record<string, unknown>;
+    return (
+      ['id', 'feedId', 'folderId', 'pubDate'].every(
+        (key) => typeof fields[key] === 'number' && Number.isFinite(fields[key]),
+      ) &&
+      ['title', 'summary', 'url'].every((key) => typeof fields[key] === 'string') &&
+      typeof fields.unread === 'boolean'
+    );
+  };
+  if (
+    'pendingReadArticles' in value &&
+    (!Array.isArray(value.pendingReadArticles) || !value.pendingReadArticles.every(validArticle))
+  )
+    return false;
+  return Object.values(value.folders).every((folder: unknown) => {
+    if (!folder || typeof folder !== 'object') return false;
+    const fields = folder as Record<string, unknown>;
+    return (
+      typeof fields.id === 'number' &&
+      Number.isFinite(fields.id) &&
+      typeof fields.name === 'string' &&
+      Array.isArray(fields.articles) &&
+      fields.articles.every(validArticle)
+    );
+  });
+}
+
 /**
- * Loads the cached timeline envelope from localStorage.
+ * Loads the cached timeline envelope from localStore.
  * Falls back to an empty envelope if storage is unavailable or corrupted.
  */
 export function loadTimelineCache(): TimelineCacheEnvelope {
@@ -75,17 +123,21 @@ export function loadTimelineCache(): TimelineCacheEnvelope {
     return createEmptyTimelineCache();
   }
 
-  const raw = localStorage.getItem(CONFIG.TIMELINE_CACHE_KEY);
+  const raw = localStore.getItem(CONFIG.TIMELINE_CACHE_KEY);
   if (!raw) {
     return createEmptyTimelineCache();
   }
 
   try {
-    const parsed = JSON.parse(raw) as Partial<TimelineCacheEnvelope>;
+    const parsed: unknown = JSON.parse(raw);
+    if (!isValidCache(parsed)) {
+      localStore.removeItem(CONFIG.TIMELINE_CACHE_KEY);
+      return createEmptyTimelineCache();
+    }
     const normalized = normalizeEnvelope(parsed);
-    return pruneTimelineCache(normalized, Date.now(), { resetSkipped: true });
+    return pruneTimelineCache(normalized);
   } catch {
-    localStorage.removeItem(CONFIG.TIMELINE_CACHE_KEY);
+    localStore.removeItem(CONFIG.TIMELINE_CACHE_KEY);
     return createEmptyTimelineCache();
   }
 }
@@ -96,7 +148,7 @@ export function loadTimelineCache(): TimelineCacheEnvelope {
 export function storeTimelineCache(envelope: TimelineCacheEnvelope): void {
   if (typeof window === 'undefined') return;
   const pruned = pruneTimelineCache(envelope);
-  localStorage.setItem(CONFIG.TIMELINE_CACHE_KEY, JSON.stringify(pruned));
+  localStore.setItem(CONFIG.TIMELINE_CACHE_KEY, JSON.stringify(pruned));
 }
 
 interface TimelineCachePruneOptions {
@@ -180,6 +232,7 @@ export function pruneTimelineCache(
     activeFolderId: deriveActiveFolderId(normalized.activeFolderId, folders),
     folders,
     pendingReadIds,
+    pendingReadArticles: normalized.pendingReadArticles,
     pendingSkipFolderIds,
   };
 }
@@ -196,7 +249,7 @@ interface ReconcileResult {
 export function reconcileTimelineCache(
   envelope: TimelineCacheEnvelope,
   serverUnreadIds: Set<number>,
-  now = Date.now(),
+  _now = Date.now(),
 ): ReconcileResult {
   const normalized = normalizeEnvelope(envelope);
   const pendingReadSet = new Set(normalized.pendingReadIds);
@@ -214,7 +267,7 @@ export function reconcileTimelineCache(
         return true;
       });
 
-      const prunedArticles = pruneArticlePreviews(reconciledArticles, { now });
+      const prunedArticles = sortArticlePreviews(reconciledArticles);
       const unreadCount = prunedArticles.filter((article) => article.unread).length;
       if (unreadCount === 0) {
         return null;
@@ -283,7 +336,7 @@ export function mergeItemsIntoCache(
           sortOrder: 0,
           status: 'queued',
           unreadCount,
-          articles: newFolderArticles,
+          articles: sortArticlePreviews(newFolderArticles),
           lastUpdated: now,
         };
       }
@@ -295,7 +348,7 @@ export function mergeItemsIntoCache(
     const articlesToAdd = newFolderArticles.filter((a) => !existingArticleIds.has(a.id));
 
     const mergedArticles = [...existingFolder.articles, ...articlesToAdd];
-    const prunedArticles = pruneArticlePreviews(mergedArticles, { now });
+    const prunedArticles = sortArticlePreviews(mergedArticles);
     const unreadCount = prunedArticles.filter((a) => a.unread).length;
 
     if (unreadCount === 0 && prunedArticles.length === 0) {

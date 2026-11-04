@@ -10,6 +10,11 @@ import type { ArticlePreview } from '@/types';
 
 interface ArticleCardProps {
   article: ArticlePreview;
+  isCheckingKarakeep?: boolean;
+  karakeepOffline?: boolean;
+  onRetryKarakeep?: () => void;
+  isKarakeepUnknown?: boolean;
+  onSourceOpen?: (article: ArticlePreview) => void;
   onOpen?: (article: ArticlePreview, opener: HTMLElement) => void;
   onSaveToKarakeep?: (article: ArticlePreview) => Promise<void>;
   registerArticle?: (id: number) => (node: HTMLElement | null) => void;
@@ -27,6 +32,11 @@ const LONG_PRESS_MOVE_TOLERANCE_PX = 10;
 export function ArticleCard({
   article,
   onOpen,
+  onSourceOpen,
+  isCheckingKarakeep,
+  karakeepOffline = false,
+  onRetryKarakeep,
+  isKarakeepUnknown = false,
   onSaveToKarakeep,
   registerArticle,
   isSelected = false,
@@ -79,8 +89,9 @@ export function ArticleCard({
     if (target.closest('a, button, input')) {
       return;
     }
-    if (event.key === 'Enter' || event.key === ' ') {
+    if (event.key === ' ') {
       event.preventDefault();
+      event.stopPropagation();
       onOpen?.(article, event.currentTarget);
     }
   };
@@ -92,6 +103,8 @@ export function ArticleCard({
       event.pointerType !== 'touch' ||
       !onSaveToKarakeep ||
       isSavingToKarakeep ||
+      karakeepOffline ||
+      isKarakeepUnknown ||
       target.closest('a, button, input')
     ) {
       return;
@@ -110,7 +123,7 @@ export function ArticleCard({
       if (typeof navigator.vibrate === 'function') {
         navigator.vibrate(30);
       }
-      void onSaveToKarakeep(article);
+      if (!isSavedToKarakeep) void onSaveToKarakeep(article);
     }, LONG_PRESS_MS);
   };
 
@@ -175,6 +188,7 @@ export function ArticleCard({
             <h3 className="article-card__title">
               <a
                 href={article.url}
+                onClick={() => onSourceOpen?.(article)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="article-card__title-link"
@@ -189,8 +203,16 @@ export function ArticleCard({
                 className={`article-card__karakeep-button${
                   isSavedToKarakeep ? ' article-card__karakeep-button--saved' : ''
                 }`}
-                disabled={isSavingToKarakeep}
-                title={isSavedToKarakeep ? 'Remove from Karakeep' : 'Save to Karakeep'}
+                disabled={isSavingToKarakeep || karakeepOffline || isKarakeepUnknown}
+                title={
+                  karakeepOffline
+                    ? 'Karakeep is unavailable while offline'
+                    : isKarakeepUnknown
+                      ? 'Bookmark status unknown'
+                      : isSavedToKarakeep
+                        ? 'Remove from Karakeep'
+                        : 'Save to Karakeep'
+                }
                 aria-pressed={isSavedToKarakeep}
                 aria-label={
                   isSavingToKarakeep
@@ -207,6 +229,16 @@ export function ArticleCard({
                 <FontAwesomeIcon icon={faBookmark} aria-hidden="true" />
               </button>
             ) : null}
+            {onSaveToKarakeep && (isKarakeepUnknown || karakeepOffline) && (
+              <span className="article-card__status" role="status">
+                {karakeepOffline ? 'Karakeep unavailable offline' : 'Bookmark status unknown'}
+                {!karakeepOffline && (
+                  <button type="button" disabled={isCheckingKarakeep} onClick={onRetryKarakeep}>
+                    {isCheckingKarakeep ? 'Checking...' : 'Retry'}
+                  </button>
+                )}
+              </span>
+            )}
           </div>
           <div className="article-card__meta">
             <span className="article-card__source">

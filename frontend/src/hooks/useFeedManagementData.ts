@@ -1,6 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useLiveState } from '@/hooks/useLiveState';
+
+import { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { api, AuthenticationError } from '@/lib/api';
@@ -17,16 +19,15 @@ export interface FeedManagementData {
  */
 export function useFeedManagementData() {
   const router = useRouter();
-  const { isAuthenticated, isInitializing, logout } = useAuthGuard();
-  const [data, setData] = useState<FeedManagementData>({ folders: [], feeds: [] });
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [pageError, setPageError] = useState<string | null>(null);
+  const { isAuthenticated, isInitializing } = useAuthGuard();
+  const [data, setData] = useLiveState<FeedManagementData>({ folders: [], feeds: [] });
+  const [isLoading, setIsLoading] = useLiveState(true);
+  const [isRefreshing, setIsRefreshing] = useLiveState(false);
+  const [pageError, setPageError] = useLiveState<string | null>(null);
 
   const handleRequestError = useCallback(
     (error: unknown, fallbackMessage: string) => {
       if (error instanceof AuthenticationError) {
-        void logout();
         router.push('/login');
         return fallbackMessage;
       }
@@ -34,7 +35,7 @@ export function useFeedManagementData() {
       const formatted = formatError(error);
       return [formatted.message || fallbackMessage, formatted.action].filter(Boolean).join(' ');
     },
-    [logout, router],
+    [router],
   );
 
   const refreshPageData = useCallback(
@@ -63,7 +64,7 @@ export function useFeedManagementData() {
         }
       }
     },
-    [handleRequestError],
+    [handleRequestError, setIsLoading, setIsRefreshing, setData, setPageError],
   );
 
   useEffect(() => {
@@ -94,7 +95,7 @@ export function useFeedManagementData() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, isInitializing, refreshPageData]);
+  }, [isAuthenticated, isInitializing, refreshPageData, setIsLoading, setIsRefreshing]);
 
   return {
     isAuthenticated,
