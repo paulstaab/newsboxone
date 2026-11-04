@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { setupApiMocks } from './mocks';
 import {
   dispatchInstallPrompt,
   expectInstallPromptHidden,
@@ -9,6 +10,7 @@ import {
 test.describe('PWA install integration coverage', () => {
   test.beforeEach(async ({ page, context }) => {
     await context.clearCookies();
+    await setupApiMocks(page);
     await page.goto('/login');
     await page.evaluate(() => {
       sessionStorage.clear();
