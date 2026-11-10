@@ -217,7 +217,7 @@ The same requirements apply to all implementations.
 
 - `CFG-001`: Runtime configuration shall be sourced from environment variables.
 - `CFG-002`: Supported variables shall include authentication settings, feed update frequency, service version, CORS allowed origins, and provider-specific LLM configuration including request timeout.
-- `CFG-003`: Defaults shall include `VERSION=dev`, `FEED_UPDATE_FREQUENCY_MIN=15`, `OPENAI_TIMEOUT_SECONDS=60`, `ARTICLE_READ_RETENTION_DAYS=30`, disabled unread expiry, and a default LLM model identifier.
+- `CFG-003`: Defaults shall include `VERSION=dev`, `FEED_UPDATE_FREQUENCY_MIN=15`, `OPENAI_TIMEOUT_SECONDS=60`, `ARTICLE_READ_RETENTION_DAYS=30`, disabled unread expiry, and `OPENAI_MODEL=gpt-6-luna`.
 - `CFG-004`: `ARTICLE_READ_RETENTION_DAYS` shall accept positive day counts; invalid, zero, or overflowing values shall fall back to 30. `ARTICLE_UNREAD_RETENTION_DAYS` shall opt into unread/unstarred expiry after the last actual change; unset, zero, invalid, or overflowing values shall disable unread expiry. Starred articles shall never expire automatically.
 
 ### CLI
