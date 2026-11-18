@@ -54,12 +54,14 @@ It covers the repository-level infrastructure needed to ship the frontend and ba
 - `DEV-005`: Unit tests shall be added whenever they are practical and useful, but unit-test inventories shall not be tracked in the top-level `docs/` catalogs.
 - `DEV-006`: Frontend unit tests and frontend integration tests shall run standalone and mock the backend API rather than depending on a live backend service.
 - `DEV-007`: Live-backend end-to-end scenario tests shall be preferred over frontend integration tests for cross-stack user journeys, while frontend integration tests shall remain available for focused frontend behavior that needs only minimal mocked API interaction.
+- `DEV-008`: The repository shall pin shared development tools in a root mise configuration used by local development and the dev container.
 
 ### Continuous Integration
 - `CI-001`: The repository shall provide a single root CI workflow that validates backend and frontend changes in one pipeline.
 - `CI-002`: The root CI workflow shall build the combined container image from the repository root.
 - `CI-003`: The root release automation shall publish only the combined container image for the unified project.
 - `CI-004`: The root CI workflow shall publish the combined container image after successful scheduled runs in addition to successful pushes to `main`.
+- `CI-005`: Backend and frontend validation jobs shall install their language toolchains from the root mise configuration.
 
 ### Documentation
 - `DOC-001`: Shared product requirements shall be maintained in this top-level document.

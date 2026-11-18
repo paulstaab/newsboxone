@@ -167,6 +167,23 @@ If you want to build the container yourself:
 docker build -t newsboxone:local .
 ```
 
+## Local Development
+
+Install [mise](https://mise.jdx.dev/getting-started.html) 2026.11.10 or newer. On Debian or Ubuntu, install the native build prerequisites with `sudo apt-get install build-essential libssl-dev pkg-config`. From the repository root, run:
+
+```bash
+mise trust
+mise install
+mise exec -- cargo fetch --locked --manifest-path backend/Cargo.toml
+(cd frontend && mise exec -- npm ci)
+```
+
+The root `mise.toml` pins Rust (including Cargo, rustfmt, and Clippy), Node.js (including npm), Python, ripgrep, and the SQLite CLI. Cargo and npm install project dependencies from their existing lockfiles.
+
+Run commands through `mise exec --` from the repository root or either project directory, or [activate mise in your shell](https://mise.jdx.dev/cli/activate.html) to use the commands directly. The dev container installs the tools and dependencies on creation. In VS Code, use **Workspace: Serve** or **Workspace: Validate**.
+
+For browser tests, run `mise exec -- npx playwright install --with-deps chromium` from `frontend/` after `npm ci`.
+
 ## Project Layout
 
 Most users can ignore the repository structure, but for contributors:

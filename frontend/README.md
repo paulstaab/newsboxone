@@ -22,14 +22,17 @@ offer a compatible feed-reader API surface (untested).
 
 ### Prerequisites
 
-- Node.js 26 or higher
-- npm
+Follow the [repository setup](../README.md#local-development) to install the pinned Node.js release and bundled npm through mise.
 
 ### Installation
 
+From `frontend/`, run:
+
 ```bash
-npm install
+mise exec -- npm ci
 ```
+
+Activate mise in your shell to run the npm commands below directly, or prefix them with `mise exec --`.
 
 This will automatically set up Git hooks via husky.
 

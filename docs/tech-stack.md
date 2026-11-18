@@ -28,7 +28,7 @@ It describes the shared runtime, major technologies, development workflow, and p
 ## Frontend Stack
 
 - Language: TypeScript 7.0
-- Runtime: Node.js 26+
+- Runtime: Node.js 26 with bundled npm, pinned in `mise.toml`
 - Framework: Next.js 16 App Router
 - UI library: React 19
 - Data fetching: SWR 2.x
@@ -70,14 +70,18 @@ It describes the shared runtime, major technologies, development workflow, and p
 
 ## Shared Tooling
 
+- Tool versions: root `mise.toml` pins Rust, Node.js with bundled npm, Python, ripgrep, and the SQLite CLI.
+
 - Workspace tasks: root `.vscode/tasks.json`
 - Dev container: root `.devcontainer/devcontainer.json`
-- CI: GitHub Actions under `.github/workflows/`
+- CI: GitHub Actions under `.github/workflows/` installs Rust and Node.js through mise.
 - Dependency update automation: Dependabot for devcontainers, Docker images, GitHub Actions, Cargo, and npm
 - Container packaging: root `Dockerfile` plus `docker/nginx.conf`
-- Container backend build: Rust 1.95.0 Debian Bookworm image
+- Release container builds: Rust 1.99 and Node.js 26 Debian Bookworm builder images
 
 ## Local Development
+
+- Toolchain setup: run `mise trust` and `mise install` from the repository root. VS Code tasks use `mise exec`.
 
 - Preferred combined task: `Workspace: Serve`
 - Backend local port: `8000`
