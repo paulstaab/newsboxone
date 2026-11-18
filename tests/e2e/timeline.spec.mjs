@@ -22,7 +22,7 @@ test.describe('Timeline and reading workflow e2e scenarios', () => {
     await expect(page.getByText(/design systems review/i)).toHaveCount(0);
   });
 
-  test('[TS-TIMELINE-002] reader marks a folder read and advances', async ({
+  test('[TS-TIMELINE-002] reader marks folders read and finishes the queue', async ({
     page,
     request,
   }) => {
