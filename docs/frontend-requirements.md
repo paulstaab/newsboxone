@@ -108,9 +108,9 @@ This baseline records agreed target behavior. Updating it does not imply that th
 - `TIMELINE-026`: Pressing Enter on the timeline background or an article card shall mark the current folder read when that action is allowed. Enter on a focused link or button shall activate that control instead. Editable-field and overlay exclusions in `TIMELINE-022` shall apply.
 - `TIMELINE-027`: Mark all read shall remove the current folder from the active queue, enqueue its item IDs for persistence, and advance to the next available folder.
 - `TIMELINE-028`: Skip shall exclude the current folder from active selection without marking its items read and advance to the next eligible folder. Skipped folders shall not cycle back automatically.
-- `TIMELINE-029`: When every folder in the current pass has been skipped or marked read, the page shall show an “All folders viewed” state with a restart action.
+- `TIMELINE-029`: When no eligible folder remains and skipped folders still contain unread articles, the page shall show an “All folders viewed” state with a restart action.
 - `TIMELINE-030`: Restart shall restore skipped folders to eligibility and reactivate the first folder according to `TIMELINE-004`.
-- `TIMELINE-031`: When an initial load or explicit refresh finds no unread items, the page shall show an “All caught up!” empty state. Completing the current folder pass shall use `TIMELINE-029`.
+- `TIMELINE-031`: When the queue is exhausted and no unread articles remain, the page shall show “All caught up!” immediately.
 - `TIMELINE-032`: When live refresh fails and cached articles exist, the page shall preserve the cached timeline, surface an error toast, and keep retry controls available. If the first load fails without cached articles, the page shall show a dedicated error state with Retry, distinct from “All caught up!”.
 - `TIMELINE-033`: The timeline shall automatically trigger a refresh after hydration for authenticated users.
 - `TIMELINE-034`: The refresh action shall merge newly fetched unread items into the existing cache instead of discarding the current client view immediately.

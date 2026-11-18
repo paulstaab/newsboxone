@@ -56,7 +56,6 @@ function TimelineContent() {
     activeFolder,
     activeArticles,
     totalUnread,
-    hasCompletedPass,
     isHydrated,
     isUpdating,
     isRefreshing,
@@ -397,11 +396,7 @@ function TimelineContent() {
   let emptyStateType: 'no-unread' | 'no-items' | 'offline' | 'error' | 'all-viewed' = 'no-unread';
   if (error || lastUpdateError) {
     emptyStateType = 'error';
-  } else if (hasCompletedPass) {
-    emptyStateType = 'all-viewed';
-  } else if (totalUnread === 0) {
-    emptyStateType = 'no-unread';
-  } else {
+  } else if (totalUnread > 0) {
     emptyStateType = 'all-viewed';
   }
 
