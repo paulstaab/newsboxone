@@ -19,11 +19,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Set up Rust with mise
+        uses: jdx/mise-action@v4
         with:
-          toolchain: 1.95.0
-          components: rustfmt, clippy
+          version: "2026.11.10"
+          install_args: rust
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
@@ -43,10 +43,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Set up Rust with mise
+        uses: jdx/mise-action@v4
         with:
-          toolchain: 1.95.0
+          version: "2026.11.10"
+          install_args: rust
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
@@ -64,12 +65,16 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
+      - name: Set up Node.js with mise
+        uses: jdx/mise-action@v4
         with:
-          node-version: "26"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          version: "2026.11.10"
+          install_args: node
+      - name: Cache npm downloads
+        uses: actions/cache@v5
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
       - name: Install dependencies
         run: npm ci
       - name: Check formatting
@@ -91,12 +96,16 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
+      - name: Set up Node.js with mise
+        uses: jdx/mise-action@v4
         with:
-          node-version: "26"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          version: "2026.11.10"
+          install_args: node
+      - name: Cache npm downloads
+        uses: actions/cache@v5
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
       - name: Install dependencies
         run: npm ci
       - name: Run unit tests
@@ -114,12 +123,16 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
+      - name: Set up Node.js with mise
+        uses: jdx/mise-action@v4
         with:
-          node-version: "26"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          version: "2026.11.10"
+          install_args: node
+      - name: Cache npm downloads
+        uses: actions/cache@v5
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
       - name: Install dependencies
         run: npm ci
       - name: Install Playwright browsers
@@ -136,20 +149,20 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Set up Rust and Node.js with mise
+        uses: jdx/mise-action@v4
         with:
-          toolchain: 1.95.0
+          version: "2026.11.10"
+          install_args: rust node
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: backend
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
+      - name: Cache npm downloads
+        uses: actions/cache@v5
         with:
-          node-version: "26"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
       - name: Install frontend dependencies
         run: npm ci
         working-directory: frontend
