@@ -59,7 +59,6 @@ export interface UseTimelineResult extends SelectionActions {
   activeArticles: ArticlePreview[];
   progress: FolderProgressState;
   totalUnread: number;
-  hasCompletedPass: boolean;
   isHydrated: boolean;
   isUpdating: boolean;
   isRefreshing: boolean;
@@ -220,7 +219,6 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
       window.removeEventListener(SESSION_ENDED_EVENT, reset);
     };
   }, []);
-  const [hasCompletedPass, setHasCompletedPass] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [lastUpdateError, setLastUpdateError] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -344,7 +342,6 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
         });
 
         setLastUpdateError(null);
-        if (options.forceSync) setHasCompletedPass(false);
       } catch (error: unknown) {
         if (generation !== generationRef.current) return;
         const errorMessage = error instanceof Error ? error.message : 'Update failed';
@@ -497,7 +494,6 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
       }
       readVersionRef.current += 1;
       itemIds.forEach((id) => readChangesRef.current.set(id, readVersionRef.current));
-      setHasCompletedPass(true);
       const restoredArticles = folder.articles;
       const restoredFolder = folder;
 
@@ -535,7 +531,6 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
 
   const skipFolder = useCallback(
     (folderId: number) => {
-      setHasCompletedPass(true);
       return new Promise<void>((resolve) => {
         setEnvelope((current) => {
           const nextEnvelope = skipTimelineFolder(current, folderId);
@@ -549,7 +544,6 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
   );
 
   const restart = useCallback(() => {
-    setHasCompletedPass(false);
     return new Promise<void>((resolve) => {
       setEnvelope((current) => {
         const nextEnvelope = restartTimelineQueue(current);
@@ -675,7 +669,6 @@ export function useTimeline(options: UseTimelineOptions = {}): UseTimelineResult
     activeArticles,
     progress,
     totalUnread,
-    hasCompletedPass,
     isHydrated,
     isUpdating,
     isRefreshing: isSyncing,

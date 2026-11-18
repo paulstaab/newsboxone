@@ -22,7 +22,7 @@ test.describe('Timeline and reading workflow e2e scenarios', () => {
     await expect(page.getByText(/design systems review/i)).toHaveCount(0);
   });
 
-  test('[TS-TIMELINE-002] reader marks a folder read and advances', async ({
+  test('[TS-TIMELINE-002] reader marks folders read and finishes the queue', async ({
     page,
     request,
   }) => {
@@ -30,6 +30,9 @@ test.describe('Timeline and reading workflow e2e scenarios', () => {
     await loginViaUi(page);
     await page.getByRole('button', { name: /mark all read/i }).click();
     await expect(page.getByTestId('active-folder-name')).toHaveText(/design/i);
+    await page.getByRole('button', { name: /mark all read/i }).click();
+    await expect(page.getByRole('heading', { name: 'All caught up!' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^restart$/i })).toHaveCount(0);
   });
 
   test('[TS-TIMELINE-003] reader skips folders and restarts the queue', async ({
