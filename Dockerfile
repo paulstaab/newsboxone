@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:26-bookworm AS frontend-builder
+FROM node:26.13.1-bookworm AS frontend-builder
 WORKDIR /app/frontend
 
 COPY frontend/package.json frontend/package-lock.json ./
@@ -9,7 +9,7 @@ RUN --mount=type=cache,target=/root/.npm npm ci
 COPY frontend/ ./
 RUN npm run build
 
-FROM rust:1.99-bookworm AS backend-builder
+FROM rust:1.100.0-bookworm AS backend-builder
 WORKDIR /app/backend
 
 COPY backend/Cargo.toml backend/Cargo.lock ./

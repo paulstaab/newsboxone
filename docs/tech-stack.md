@@ -14,7 +14,7 @@ It describes the shared runtime, major technologies, development workflow, and p
 
 ## Backend Stack
 
-- Language: Rust 2024 edition on Rust 1.95.0
+- Language: Rust 2024 edition on Rust 1.100.0
 - Web framework: `axum`
 - Async runtime: `tokio`
 - HTTP client: `reqwest`
@@ -28,7 +28,7 @@ It describes the shared runtime, major technologies, development workflow, and p
 ## Frontend Stack
 
 - Language: TypeScript 7.0
-- Runtime: Node.js 26 with bundled npm, pinned in `mise.toml`
+- Runtime: Node.js 26.13.1 with bundled npm, pinned in `mise.toml`
 - Framework: Next.js 16 App Router
 - UI library: React 19
 - Data fetching: SWR 2.x
@@ -70,14 +70,14 @@ It describes the shared runtime, major technologies, development workflow, and p
 
 ## Shared Tooling
 
-- Tool versions: root `mise.toml` pins Rust, Node.js with bundled npm, Python, ripgrep, and the SQLite CLI.
+- Tool versions: root `mise.toml` pins Rust, Node.js with bundled npm, Python 3.15.2, ripgrep, and the SQLite CLI.
 
 - Workspace tasks: root `.vscode/tasks.json`
 - Dev container: root `.devcontainer/devcontainer.json`
 - CI: GitHub Actions under `.github/workflows/` installs Rust and Node.js through mise.
 - Dependency update automation: Dependabot for devcontainers, Docker images, GitHub Actions, Cargo, and npm
 - Container packaging: root `Dockerfile` plus `docker/nginx.conf`
-- Release container builds: Rust 1.99 and Node.js 26 Debian Bookworm builder images
+- Release container builds: Rust 1.100.0 and Node.js 26.13.1 Debian Bookworm builder images
 
 ## Local Development
 
