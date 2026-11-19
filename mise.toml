@@ -1,9 +1,9 @@
 min_version = "2026.11.10"
 
 [tools]
-rust = { version = "1.95.0", profile = "minimal", components = "rustfmt,clippy,rust-src" }
+rust = { version = "1.100.0", profile = "minimal", components = "rustfmt,clippy,rust-src" }
 # This Node release includes npm 11.20.0.
 node = "26.13.1"
-python = "3.12.14"
+python = "3.15.2"
 ripgrep = "15.2.0"
 sqlite = "3.53.3"
