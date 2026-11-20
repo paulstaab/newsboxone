@@ -71,7 +71,7 @@ jobs:
           version: "2026.11.10"
           install_args: node
       - name: Cache npm downloads
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.npm
           key: npm-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
@@ -102,7 +102,7 @@ jobs:
           version: "2026.11.10"
           install_args: node
       - name: Cache npm downloads
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.npm
           key: npm-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
@@ -129,7 +129,7 @@ jobs:
           version: "2026.11.10"
           install_args: node
       - name: Cache npm downloads
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.npm
           key: npm-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
@@ -159,7 +159,7 @@ jobs:
         with:
           workspaces: backend
       - name: Cache npm downloads
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.npm
           key: npm-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
